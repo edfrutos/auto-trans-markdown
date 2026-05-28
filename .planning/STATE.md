@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-05-28)
 ## Current Position
 
 Phase: 0 of 5 (MVP Hardening)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-05-28 — Phase 0 CONTEXT.md created (auto discuss via /gsd-next)
+Plan: 0 of 4 in current phase
+Status: Ready to execute
+Last activity: 2026-05-28 — Phase 0 plans created (4 plans, 4 waves)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -68,5 +68,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-28
-Stopped at: Roadmap created; ready for `/gsd-plan-phase Pre-A` or Phase 1 planning
+Stopped at: Phase 0 plans ready — run `/gsd-execute-phase 0`
 Resume file: None
