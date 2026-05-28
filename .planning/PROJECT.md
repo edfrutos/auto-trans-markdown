@@ -20,6 +20,10 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 - ✓ UI web: editor, archivo, lote, modo oscuro, favicon — `static/`
 - ✓ Reintentos y chunking en traducción; executor async — `src/translator.py`, `src/main.py`
 - ✓ `.env` y secretos fuera de git — `.gitignore`
+- ✓ Rechazo traducciones incompletas (HTTP 502) — Phase 0 / HARD-01
+- ✓ UTF-8 estricto en uploads (HTTP 400) — Phase 0 / HARD-02
+- ✓ Idiomas filtrados por proveedor activo — Phase 0 / HARD-03
+- ✓ Tests integración traductor + API + reassemble — Phase 0 / HARD-04
 
 ### Active
 

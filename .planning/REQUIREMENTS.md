@@ -7,10 +7,10 @@
 
 ### Hardening (Pre-A)
 
-- [ ] **HARD-01**: El sistema rechaza traducciones incompletas cuando el número de segmentos traducidos no coincide con los solicitados
-- [ ] **HARD-02**: El usuario recibe error claro al subir archivos que no son UTF-8 válido (sin sustitución silenciosa)
-- [ ] **HARD-03**: La lista de idiomas expuesta refleja las capacidades del proveedor activo (OpenAI vs DeepL)
-- [ ] **HARD-04**: Existen tests de integración para `translate_segments`, endpoints API y contrato de reassemble
+- [x] **HARD-01**: El sistema rechaza traducciones incompletas cuando el número de segmentos traducidos no coincide con los solicitados
+- [x] **HARD-02**: El usuario recibe error claro al subir archivos que no son UTF-8 válido (sin sustitución silenciosa)
+- [x] **HARD-03**: La lista de idiomas expuesta refleja las capacidades del proveedor activo (OpenAI vs DeepL)
+- [x] **HARD-04**: Existen tests de integración para `translate_segments`, endpoints API y contrato de reassemble
 
 ### Pipeline & Core (Phase A)
 
@@ -89,10 +89,10 @@
 
 | Requirement | Phase | Status |
 | ----------- | ----- | ------ |
-| HARD-01 | Pre-A | Pending |
-| HARD-02 | Pre-A | Pending |
-| HARD-03 | Pre-A | Pending |
-| HARD-04 | Pre-A | Pending |
+| HARD-01 | 0 | Complete |
+| HARD-02 | 0 | Complete |
+| HARD-03 | 0 | Complete |
+| HARD-04 | 0 | Complete |
 | PIPE-01 | 1 | Pending |
 | GLOS-01 | 1 | Pending |
 | GLOS-02 | 1 | Pending |
