@@ -28,7 +28,13 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
   2. Usuario recibe error claro al subir archivos que no son UTF-8 válido
   3. La lista de idiomas en UI/API refleja solo las capacidades del proveedor activo (OpenAI vs DeepL)
   4. Tests de integración cubren `translate_segments`, endpoints API y contrato de reassemble
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 00-01-PLAN.md — Rechazo de traducciones incompletas (502, validación OpenAI/DeepL)
+- [ ] 00-02-PLAN.md — UTF-8 estricto en uploads (400, sin latin-1)
+- [ ] 00-03-PLAN.md — Idiomas filtrados por proveedor + validación en todas las rutas + UI
+- [ ] 00-04-PLAN.md — Tests de integración con mocks (traductor, API, reassemble)
 
 ### Phase 1: Production Table Stakes
 **Goal**: Usuario puede automatizar traducciones con terminología consistente y memoria persistente vía CLI y web
@@ -97,7 +103,7 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. MVP Hardening | 0/TBD | Not started | - |
+| 0. MVP Hardening | 0/4 | Not started | - |
 | 1. Production Table Stakes | 0/TBD | Not started | - |
 | 2. Trust & QA | 0/TBD | Not started | - |
 | 3. Batch UX & Cost Control | 0/TBD | Not started | - |
