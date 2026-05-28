@@ -10,7 +10,7 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 - **Phase 0 (Pre-A)**: Hardening del MVP antes de ampliar funcionalidad
 - **Phases 1–5**: NOTEBOOK A→E (table stakes → trust → batch UX → team scale → editorial)
 
-- [ ] **Phase 0: MVP Hardening** - Contratos fiables, UTF-8 estricto, idiomas por proveedor, tests de integración
+- [x] **Phase 0: MVP Hardening** - Contratos fiables, UTF-8 estricto, idiomas por proveedor, tests de integración
 - [ ] **Phase 1: Production Table Stakes** - Pipeline unificado, glosario, memoria SQLite, CLI `md-translate`
 - [ ] **Phase 2: Trust & QA** - Validación post-traducción, preview renderizada, parser ampliado, frontmatter selectivo
 - [ ] **Phase 3: Batch UX & Cost Control** - Jobs SSE con progreso real, cancelación, lotes parciales, estimación de coste
@@ -103,7 +103,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. MVP Hardening | 0/4 | Not started | - |
+| 0. MVP Hardening | 4/4 | Complete | 2026-05-28 |
 | 1. Production Table Stakes | 0/TBD | Not started | - |
 | 2. Trust & QA | 0/TBD | Not started | - |
 | 3. Batch UX & Cost Control | 0/TBD | Not started | - |
