@@ -119,7 +119,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 0. MVP Hardening | 4/4 | Complete    | 2026-05-28 |
 | 1. Production Table Stakes | 0/5 | Not started | - |
-| 2. Trust & QA | 0/5 | Not started | - |
+| 2. Trust & QA | 0/5 | Planned | - |
 | 3. Batch UX & Cost Control | 0/TBD | Not started | - |
 | 4. Team Scale | 0/TBD | Not started | - |
 | 5. Editorial & Pro Workflow | 0/TBD | Not started | - |
