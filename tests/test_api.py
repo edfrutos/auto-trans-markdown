@@ -106,6 +106,39 @@ def test_translate_batch_invalid_target_lang(client, monkeypatch):
     assert res.status_code == 400
 
 
+def test_clear_memory(client, tmp_path, monkeypatch):
+    db = tmp_path / "tm.db"
+    monkeypatch.setattr("src.main.default_memory_path", lambda: db)
+    from src.memory import TranslationMemory
+
+    tm = TranslationMemory(db)
+    tm.store_batch([(0, "a", "b")], None, "es")
+    res = client.delete("/api/memory")
+    assert res.status_code == 200
+    assert res.json()["deleted"] >= 1
+
+
+def test_glossary_get_put(client, tmp_path, monkeypatch):
+    gpath = tmp_path / "glossary.yaml"
+    monkeypatch.setattr("src.main.DEFAULT_GLOSSARY_PATH", gpath)
+    monkeypatch.setattr("src.pipeline.DEFAULT_GLOSSARY_PATH", gpath)
+
+    res = client.get("/api/glossary")
+    assert res.status_code == 200
+    assert "version" in res.json()
+
+    res2 = client.put(
+        "/api/glossary",
+        json={
+            "version": 1,
+            "do_not_translate": ["Foo"],
+            "pairs": {"en-es": {"bar": "baz"}},
+        },
+    )
+    assert res2.status_code == 200
+    assert res2.json()["do_not_translate"] == ["Foo"]
+
+
 def test_translate_batch_success(client, mock_translate_success):
     res = client.post(
         "/api/translate/batch",
