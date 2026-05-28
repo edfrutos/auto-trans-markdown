@@ -111,12 +111,64 @@ class ProgressCallback(Protocol):
     def __call__(self, done: int, total: int) -> None: ...
 
 
+class IncompleteTranslationError(ValueError):
+    """Traducción con menos segmentos de los solicitados."""
+
+    def __init__(self, expected: int, received: int, missing_indices: list[int]):
+        self.expected = expected
+        self.received = received
+        self.missing_indices = missing_indices
+        super().__init__(
+            f"Traducción incompleta: faltan {len(missing_indices)} de {expected} segmentos"
+        )
+
+
 def _language_label(code: str) -> str:
     return LANGUAGE_NAMES.get(code, code)
 
 
 def get_provider() -> str:
     return os.getenv("TRANSLATION_PROVIDER", "openai").strip().lower()
+
+
+def get_supported_language_codes(provider: str | None = None) -> frozenset[str]:
+    provider = (provider or get_provider()).lower()
+    if provider == "deepl":
+        return frozenset(DEEPL_TARGET_MAP.keys())
+    return frozenset(LANGUAGE_NAMES.keys())
+
+
+def get_supported_languages(provider: str | None = None) -> dict[str, str]:
+    codes = get_supported_language_codes(provider)
+    return {code: LANGUAGE_NAMES[code] for code in sorted(codes, key=lambda c: LANGUAGE_NAMES[c])}
+
+
+def is_valid_target_lang(code: str, provider: str | None = None) -> bool:
+    return code in get_supported_language_codes(provider)
+
+
+def is_valid_source_lang(code: str, provider: str | None = None) -> bool:
+    if code == "auto":
+        return True
+    provider = (provider or get_provider()).lower()
+    if provider == "deepl":
+        return code in DEEPL_SOURCE_MAP
+    return code in LANGUAGE_NAMES
+
+
+def _validate_translation_completeness(
+    items: list[tuple[int, str]],
+    result: dict[int, str],
+) -> None:
+    expected = {idx for idx, _ in items}
+    received = set(result.keys())
+    if expected != received:
+        missing_indices = sorted(expected - received)
+        raise IncompleteTranslationError(
+            expected=len(expected),
+            received=len(result),
+            missing_indices=missing_indices,
+        )
 
 
 def _build_user_prompt(
@@ -310,8 +362,14 @@ def _translate_deepl_batch(
         try:
             results = client.translate_text(texts, **kwargs)
             if isinstance(results, list):
-                return [r.text for r in results]
-            return [results.text]
+                translated = [r.text for r in results]
+            else:
+                translated = [results.text]
+            if len(translated) != len(texts):
+                raise ValueError(
+                    f"DeepL devolvió {len(translated)} traducciones, se esperaban {len(texts)}"
+                )
+            return translated
         except Exception as exc:
             msg = str(exc).lower()
             if "429" in msg or "too many" in msg or "456" in msg:
@@ -378,4 +436,5 @@ def translate_segments(
         if on_progress:
             on_progress(len(result), total)
 
+    _validate_translation_completeness(items, result)
     return result

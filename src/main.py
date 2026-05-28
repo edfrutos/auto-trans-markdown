@@ -19,7 +19,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .parser import collect_translatable, reassemble, segment_markdown
-from .translator import LANGUAGE_NAMES, translate_segments
+from .translator import (
+    IncompleteTranslationError,
+    get_supported_languages,
+    is_valid_source_lang,
+    is_valid_target_lang,
+    translate_segments,
+)
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -69,6 +75,7 @@ class ProgressEvent(BaseModel):
 
 
 def _decode_upload(raw: bytes, filename: str) -> str:
+    """Decodifica uploads multipart como UTF-8 estricto (editor JSON usa str nativo)."""
     if not raw:
         raise ValueError(f"{filename}: archivo vacío")
     sample = raw[:4096]
@@ -78,8 +85,39 @@ def _decode_upload(raw: bytes, filename: str) -> str:
         )
     try:
         return raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return raw.decode("latin-1", errors="replace")
+    except UnicodeDecodeError as e:
+        raise ValueError(
+            f"{filename}: el archivo no es UTF-8 válido. "
+            "Guarda el archivo con codificación UTF-8 e inténtalo de nuevo."
+        ) from e
+
+
+def _translation_http_exception(exc: IncompleteTranslationError) -> HTTPException:
+    return HTTPException(
+        502,
+        detail={
+            "message": (
+                f"Traducción incompleta: faltan {len(exc.missing_indices)} "
+                f"de {exc.expected} segmentos"
+            ),
+            "expected": exc.expected,
+            "received": exc.received,
+            "missing_indices": exc.missing_indices,
+        },
+    )
+
+
+def _validate_languages(target_lang: str, source_lang: str) -> None:
+    if not is_valid_target_lang(target_lang):
+        raise HTTPException(
+            400,
+            f"Idioma destino no soportado por el proveedor activo: {target_lang}",
+        )
+    if source_lang != "auto" and not is_valid_source_lang(source_lang):
+        raise HTTPException(
+            400,
+            f"Idioma origen no soportado por el proveedor activo: {source_lang}",
+        )
 
 
 def _unique_zip_name(filename: str, target_lang: str, used: set[str]) -> str:
@@ -126,7 +164,10 @@ async def root():
 async def list_languages():
     return [
         LanguageItem(code="auto", name="Detectar automáticamente"),
-        *[LanguageItem(code=k, name=v) for k, v in sorted(LANGUAGE_NAMES.items(), key=lambda x: x[1])],
+        *[
+            LanguageItem(code=k, name=v)
+            for k, v in get_supported_languages().items()
+        ],
     ]
 
 
@@ -134,8 +175,7 @@ async def list_languages():
 async def translate_text(body: TranslateTextRequest):
     if not body.content.strip():
         raise HTTPException(400, "El contenido está vacío")
-    if body.target_lang not in LANGUAGE_NAMES:
-        raise HTTPException(400, f"Idioma destino no soportado: {body.target_lang}")
+    _validate_languages(body.target_lang, body.source_lang)
 
     segments = segment_markdown(body.content)
     translatable = collect_translatable(segments)
@@ -147,6 +187,8 @@ async def translate_text(body: TranslateTextRequest):
             None,
             partial(translate_segments, translatable, body.target_lang, source),
         )
+    except IncompleteTranslationError as e:
+        raise _translation_http_exception(e) from e
     except RuntimeError as e:
         raise HTTPException(503, str(e)) from e
     except Exception as e:
@@ -170,6 +212,8 @@ async def translate_file(
     if not file.filename or not file.filename.lower().endswith((".md", ".markdown", ".mdx")):
         raise HTTPException(400, "Solo se aceptan archivos .md, .markdown o .mdx")
 
+    _validate_languages(target_lang, source_lang)
+
     raw = await file.read()
     try:
         content = _decode_upload(raw, file.filename)
@@ -180,6 +224,8 @@ async def translate_file(
 
     try:
         output = await _translate_file_content(content, target_lang, source)
+    except IncompleteTranslationError as e:
+        raise _translation_http_exception(e) from e
     except RuntimeError as e:
         raise HTTPException(503, str(e)) from e
     except Exception as e:
@@ -210,6 +256,8 @@ async def translate_batch(
     if len(files) > 20:
         raise HTTPException(400, "Máximo 20 archivos por lote")
 
+    _validate_languages(target_lang, source_lang)
+
     source = None if source_lang == "auto" else source_lang
     zip_buffer = io.BytesIO()
     used_names: set[str] = set()
@@ -233,6 +281,8 @@ async def translate_batch(
 
             try:
                 output = await _translate_file_content(content, target_lang, source)
+            except IncompleteTranslationError as e:
+                raise _translation_http_exception(e) from e
             except RuntimeError as e:
                 raise HTTPException(503, str(e)) from e
             except Exception as e:
