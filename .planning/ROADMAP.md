@@ -65,7 +65,14 @@ Plans:
   3. Comentarios traducibles en fences Python, JS/TS y HTML; claves técnicas YAML nunca se traducen
   4. Usuario traduce campos whitelist de frontmatter (`title`, `description`, `summary`) sin alterar slug/fecha/layout
   5. Modo `--strict` en CLI bloquea exportación si la validación falla
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Validador post-traducción validator.py + tests (VAL-01)
+- [ ] 02-02-PLAN.md — Parser comentarios python/js/html + frontmatter YAML (PARS-01, PARS-02, FM-01, FM-02)
+- [ ] 02-03-PLAN.md — Pipeline + API + validation.json en ZIP lote (VAL-02)
+- [ ] 02-04-PLAN.md — CLI --strict bloquea export en error (VAL-03)
+- [ ] 02-05-PLAN.md — Preview marked+DOMPurify + panel Validación UI (PREV-01, PREV-02, VAL-02 UI)
 **UI hint**: yes
 
 ### Phase 3: Batch UX & Cost Control
@@ -112,7 +119,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 0. MVP Hardening | 4/4 | Complete    | 2026-05-28 |
 | 1. Production Table Stakes | 0/5 | Not started | - |
-| 2. Trust & QA | 0/TBD | Not started | - |
+| 2. Trust & QA | 0/5 | Not started | - |
 | 3. Batch UX & Cost Control | 0/TBD | Not started | - |
 | 4. Team Scale | 0/TBD | Not started | - |
 | 5. Editorial & Pro Workflow | 0/TBD | Not started | - |
