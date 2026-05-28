@@ -48,11 +48,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Fachada pipeline.py + refactor main.py (PIPE-01)
-- [ ] 01-02-PLAN.md — Memoria SQLite + integración pipeline + API clear (TM-01, TM-02, TM-03)
-- [ ] 01-03-PLAN.md — Glosario YAML + integración pipeline + API CRUD (GLOS-01, GLOS-03)
-- [ ] 01-04-PLAN.md — Panel glosario UI + botón limpiar memoria (GLOS-02, TM-03 UI)
-- [ ] 01-05-PLAN.md — CLI Typer md-translate + entry points + tests (CLI-01 … CLI-05)
+- [x] 01-01-PLAN.md — Fachada pipeline.py + refactor main.py (PIPE-01)
+- [x] 01-02-PLAN.md — Memoria SQLite + integración pipeline + API clear (TM-01, TM-02, TM-03)
+- [x] 01-03-PLAN.md — Glosario YAML + integración pipeline + API CRUD (GLOS-01, GLOS-03)
+- [x] 01-04-PLAN.md — Panel glosario UI + botón limpiar memoria (GLOS-02, TM-03 UI)
+- [x] 01-05-PLAN.md — CLI Typer md-translate + entry points + tests (CLI-01 … CLI-05)
 **UI hint**: yes
 
 ### Phase 2: Trust & QA
