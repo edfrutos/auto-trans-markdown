@@ -43,6 +43,11 @@ const state = {
 
 const $ = (sel) => document.querySelector(sel);
 
+/** Evita crash si el HTML en caché no incluye nodos de fases nuevas. */
+function setHtml(el, html) {
+  if (el) el.innerHTML = html;
+}
+
 const els = {
   sourceLang: $('#source-lang'),
   targetLang: $('#target-lang'),
@@ -82,28 +87,33 @@ const tabs = [
 ];
 
 function showStatus(message, type = 'success') {
+  if (!els.status) return;
   els.status.textContent = message;
   els.status.className = `mt-4 rounded-xl px-4 py-3 text-sm ${type}`;
   els.status.classList.remove('hidden');
 }
 
 function hideStatus() {
-  els.status.classList.add('hidden');
+  els.status?.classList.add('hidden');
 }
 
 function setLoading(loading, text = 'Traduciendo…') {
   state.loading = loading;
-  els.btnTranslate.disabled = loading || !state.languagesLoaded;
-  els.btnTranslateLabel.textContent = loading ? text : 'Traducir';
+  if (els.btnTranslate) {
+    els.btnTranslate.disabled = loading || !state.languagesLoaded;
+  }
+  if (els.btnTranslateLabel) {
+    els.btnTranslateLabel.textContent = loading ? text : 'Traducir';
+  }
   if (loading) {
-    els.progressWrap.classList.remove('hidden');
-    els.progressBar.style.width = '30%';
-    els.progressText.textContent = 'Procesando con IA…';
+    els.progressWrap?.classList.remove('hidden');
+    if (els.progressBar) els.progressBar.style.width = '30%';
+    if (els.progressText) els.progressText.textContent = 'Procesando con IA…';
   } else {
-    els.progressBar.style.width = '100%';
+    if (els.progressBar) els.progressBar.style.width = '100%';
     setTimeout(() => {
-      els.progressWrap.classList.add('hidden');
-      els.progressBar.style.width = '0%';
+      els.progressWrap?.classList.add('hidden');
+      if (els.progressBar) els.progressBar.style.width = '0%';
     }, 400);
   }
 }
@@ -159,15 +169,24 @@ function assembleGlossaryPayload() {
   return { version: 1, do_not_translate, pairs };
 }
 
+function hasGlossaryUi() {
+  return Boolean(els.glossaryTbody);
+}
+
 function renderGlossaryTable() {
+  if (!hasGlossaryUi()) return;
   if (!state.glossary.entries.length) {
-    els.glossaryTbody.innerHTML = `
-      <tr><td colspan="4" class="text-ink-muted text-sm py-4 text-center">
+    setHtml(
+      els.glossaryTbody,
+      `<tr><td colspan="4" class="text-ink-muted text-sm py-4 text-center">
         No hay entradas. Añade términos para forzar traducciones consistentes.
-      </td></tr>`;
+      </td></tr>`
+    );
     return;
   }
-  els.glossaryTbody.innerHTML = state.glossary.entries
+  setHtml(
+    els.glossaryTbody,
+    state.glossary.entries
     .map(
       (row, i) => `
     <tr data-idx="${i}">
@@ -179,7 +198,8 @@ function renderGlossaryTable() {
       </td>
     </tr>`
     )
-    .join('');
+      .join('')
+  );
   bindGlossaryRowEvents();
 }
 
@@ -220,6 +240,7 @@ function bindGlossaryRowEvents() {
 }
 
 async function loadGlossary() {
+  if (!hasGlossaryUi()) return;
   try {
     const res = await fetch('/api/glossary');
     if (!res.ok) throw new Error('No se pudo cargar el glosario');
@@ -234,6 +255,7 @@ async function loadGlossary() {
 }
 
 async function saveGlossary() {
+  if (!els.btnSaveGlossary) return;
   els.btnSaveGlossary.disabled = true;
   const prev = els.btnSaveGlossary.textContent;
   els.btnSaveGlossary.textContent = 'Guardando…';
@@ -277,14 +299,18 @@ async function clearMemory() {
 }
 
 async function loadLanguages() {
-  els.btnTranslate.disabled = true;
+  if (!els.targetLang || !els.sourceLang) {
+    console.error('MarkDown Auto Translator: faltan selectores de idioma en el DOM');
+    return;
+  }
+  if (els.btnTranslate) els.btnTranslate.disabled = true;
   els.targetLang.setAttribute('aria-busy', 'true');
   try {
     const res = await fetch('/api/languages');
     if (!res.ok) throw new Error('No se pudieron cargar los idiomas');
     const langs = await res.json();
-    els.targetLang.innerHTML = '';
-    els.sourceLang.innerHTML = '<option value="auto">Detectar automáticamente</option>';
+    setHtml(els.targetLang, '');
+    setHtml(els.sourceLang, '<option value="auto">Detectar automáticamente</option>');
     let defaultSet = false;
     for (const { code, name } of langs) {
       if (code === 'auto') continue;
@@ -306,13 +332,13 @@ async function loadLanguages() {
       els.targetLang.options[0].selected = true;
     }
     state.languagesLoaded = true;
-    els.btnTranslate.disabled = false;
+    if (els.btnTranslate) els.btnTranslate.disabled = false;
     els.targetLang.removeAttribute('aria-busy');
     await loadGlossary();
   } catch (err) {
     state.languagesLoaded = false;
     els.targetLang.removeAttribute('aria-busy');
-    els.targetLang.innerHTML = '';
+    setHtml(els.targetLang, '');
     const opt = document.createElement('option');
     opt.value = '';
     opt.textContent = 'Error al cargar idiomas';
@@ -325,12 +351,13 @@ async function loadLanguages() {
 function switchTab(mode) {
   state.mode = mode;
   tabs.forEach(({ tab, panel, mode: m }) => {
+    if (!tab || !panel) return;
     const active = m === mode;
     tab.setAttribute('aria-selected', String(active));
     tab.classList.toggle('tab-btn-active', active);
     panel.classList.toggle('hidden', !active);
   });
-  els.btnDownload.classList.add('hidden');
+  els.btnDownload?.classList.add('hidden');
   hideStatus();
 }
 
@@ -472,8 +499,8 @@ function initTheme() {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const dark = stored === 'dark' || (!stored && prefersDark);
   document.documentElement.classList.toggle('dark', dark);
-  els.iconSun.classList.toggle('hidden', !dark);
-  els.iconMoon.classList.toggle('hidden', dark);
+  els.iconSun?.classList.toggle('hidden', !dark);
+  els.iconMoon?.classList.toggle('hidden', dark);
 }
 
 function toggleTheme() {
@@ -484,15 +511,15 @@ function toggleTheme() {
 }
 
 // Event listeners
-tabs.forEach(({ tab, mode }) => tab.addEventListener('click', () => switchTab(mode)));
-els.btnTranslate.addEventListener('click', handleTranslate);
-els.btnDownload.addEventListener('click', downloadResult);
-els.btnSample.addEventListener('click', () => { els.inputMd.value = SAMPLE_MD; });
-els.btnCopy.addEventListener('click', async () => {
+tabs.forEach(({ tab, mode }) => tab?.addEventListener('click', () => switchTab(mode)));
+els.btnTranslate?.addEventListener('click', handleTranslate);
+els.btnDownload?.addEventListener('click', downloadResult);
+els.btnSample?.addEventListener('click', () => { els.inputMd.value = SAMPLE_MD; });
+els.btnCopy?.addEventListener('click', async () => {
   await navigator.clipboard.writeText(els.outputMd.value);
   showStatus('Copiado al portapapeles.');
 });
-els.themeToggle.addEventListener('click', toggleTheme);
+els.themeToggle?.addEventListener('click', toggleTheme);
 
 els.glossaryToggle?.addEventListener('click', () => {
   const expanded = els.glossaryPanel.classList.toggle('hidden');
@@ -518,23 +545,30 @@ els.targetLang.addEventListener('change', () => {
   if (state.glossary.loaded) loadGlossary();
 });
 
-setupDropZone(els.dropZone, els.fileInput, (files) => {
-  const f = files[0];
-  if (!f) return;
-  state.selectedFile = f;
-  els.fileName.textContent = f.name;
-  els.fileName.classList.remove('hidden');
-});
+if (els.dropZone && els.fileInput) {
+  setupDropZone(els.dropZone, els.fileInput, (files) => {
+    const f = files[0];
+    if (!f) return;
+    state.selectedFile = f;
+    if (els.fileName) {
+      els.fileName.textContent = f.name;
+      els.fileName.classList.remove('hidden');
+    }
+  });
+}
 
-setupDropZone(els.dropZoneBatch, els.batchInput, (files) => {
-  state.batchFiles = Array.from(files).filter((f) =>
-    /\.(md|markdown|mdx)$/i.test(f.name)
-  );
-  els.batchList.innerHTML = state.batchFiles
-    .map((f) => `<li>${f.name}</li>`)
-    .join('');
-  els.batchList.classList.toggle('hidden', !state.batchFiles.length);
-});
+if (els.dropZoneBatch && els.batchInput) {
+  setupDropZone(els.dropZoneBatch, els.batchInput, (files) => {
+    state.batchFiles = Array.from(files).filter((f) =>
+      /\.(md|markdown|mdx)$/i.test(f.name)
+    );
+    setHtml(
+      els.batchList,
+      state.batchFiles.map((f) => `<li>${f.name}</li>`).join('')
+    );
+    els.batchList?.classList.toggle('hidden', !state.batchFiles.length);
+  });
+}
 
 loadLanguages();
 initTheme();

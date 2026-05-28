@@ -25,6 +25,11 @@ test = ["pytest>=8.0", "typer>=0.21.0"]
 [project.scripts]
 md-translate = "src.cli:app"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+exclude = ["src.*.egg-info"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

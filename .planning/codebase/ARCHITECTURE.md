@@ -9,6 +9,7 @@
 The application is a single-process FastAPI service with a three-stage translation pipeline. Markdown is split into protected and translatable segments locally, only translatable text is sent to an external translation provider in batches, and the document is reconstructed by index. The web UI is static assets served by the same process; there is no separate frontend build step or database.
 
 **Key Characteristics:**
+
 - **Preserve-then-translate:** `src/parser.py` classifies content before any API call; code blocks, frontmatter, and inline code never leave the process untranslated-by-design.
 - **Provider abstraction via env:** `src/translator.py` switches between OpenAI (LLM JSON batches) and DeepL (REST batches) using `TRANSLATION_PROVIDER`; both expose the same `translate_segments()` entry point.
 - **Async boundary at I/O:** FastAPI handlers are `async`; blocking translation runs in `asyncio.run_in_executor()` so the event loop stays responsive.
@@ -17,6 +18,7 @@ The application is a single-process FastAPI service with a three-stage translati
 ## Layers
 
 **Presentation (Web UI):**
+
 - Purpose: Browser interface for editor, single-file upload, and batch ZIP download
 - Location: `static/`
 - Contains: `static/index.html`, `static/css/app.css`, `static/js/app.js`
@@ -24,6 +26,7 @@ The application is a single-process FastAPI service with a three-stage translati
 - Used by: End users via browser at `/`
 
 **HTTP / Application layer:**
+
 - Purpose: Route definitions, request validation, file decode, orchestration of the pipeline, static file mounting, error mapping to HTTP status codes
 - Location: `src/main.py`
 - Contains: FastAPI `app`, Pydantic request/response models, upload helpers (`_decode_upload`, `_unique_zip_name`), `_translate_file_content()`
@@ -31,6 +34,7 @@ The application is a single-process FastAPI service with a three-stage translati
 - Used by: Browser client (`static/js/app.js`), external API consumers, OpenAPI docs at `/docs`
 
 **Domain / Processing layer (Markdown segmentation):**
+
 - Purpose: Parse Markdown into ordered segments tagged as protected or translatable; reassemble with translations while preserving whitespace
 - Location: `src/parser.py`
 - Contains: `Segment`, `SegmentKind`, `segment_markdown()`, `collect_translatable()`, `reassemble()`
@@ -38,6 +42,7 @@ The application is a single-process FastAPI service with a three-stage translati
 - Used by: `src/main.py` (all translation endpoints)
 
 **Infrastructure layer (Translation providers):**
+
 - Purpose: Batch translation against OpenAI Chat Completions or DeepL API; retries, chunking, language mapping
 - Location: `src/translator.py`
 - Contains: `translate_segments()`, `LANGUAGE_NAMES`, provider clients, batch/chunk helpers
@@ -81,6 +86,7 @@ The application is a single-process FastAPI service with a three-stage translati
 5. Everything else is `TRANSLATABLE` at line or sub-line granularity.
 
 **State Management:**
+
 - No server-side session or job queue.
 - Frontend holds UI state in a plain object in `static/js/app.js` (`state.mode`, `state.selectedFile`, `state.batchFiles`, `state.downloadBlob`).
 - Theme preference in `localStorage` (`theme` key).

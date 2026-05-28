@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Wrapper: usa el CLI instalado en .venv sin activar el entorno virtual.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLI="$ROOT/.venv/bin/md-translate"
+
+if [[ ! -x "$CLI" ]]; then
+  echo "md-translate: no encontrado en .venv/bin/" >&2
+  echo "Desde la raíz del proyecto, con el venv activo, ejecuta:" >&2
+  echo "  pip install -e ." >&2
+  exit 2
+fi
+
+exec "$CLI" "$@"

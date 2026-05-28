@@ -23,6 +23,7 @@ cd auto-trans-markdown
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -e .            # Instala el comando md-translate en .venv/bin/
 cp .env.example .env        # Edita y añade tu API key
 ```
 
@@ -92,7 +93,20 @@ pytest tests/ -q
 
 ## CLI
 
-Tras `pip install -e .`:
+Tras `pip install -e .` (con el venv activado), puedes usar:
+
+```bash
+md-translate file README.md -t es -o README.es.md
+```
+
+**Sin activar `.venv`**, desde la raíz del repo:
+
+```bash
+./scripts/md-translate --help
+./scripts/md-translate file README.md -t es --dry-run
+```
+
+Opcional: añade `export PATH="/ruta/al/proyecto/scripts:$PATH"` en tu shell para invocar `md-translate` desde cualquier directorio.
 
 ```bash
 md-translate file README.md -t es -o README.es.md
