@@ -9,6 +9,20 @@ from src.main import app
 from src.translator import IncompleteTranslationError
 
 
+@pytest.fixture(autouse=True)
+def isolated_memory_db(tmp_path, monkeypatch):
+    """Evita que tests compartan la TM en data/translation_memory.db."""
+    db = tmp_path / "test_tm.db"
+
+    def _path():
+        return db
+
+    monkeypatch.setattr("src.memory.default_memory_path", _path)
+    monkeypatch.setattr("src.pipeline.default_memory_path", _path)
+    monkeypatch.setattr("src.main.default_memory_path", _path)
+    monkeypatch.setattr("src.cli.default_memory_path", _path)
+
+
 @pytest.fixture
 def client():
     return TestClient(app)
@@ -27,7 +41,7 @@ def mock_translate_success(monkeypatch):
     def _translate(items, target_lang, source_lang=None, **kwargs):
         return {idx: f"TR:{text}" for idx, text in items}
 
-    monkeypatch.setattr("src.main.translate_segments", _translate)
+    monkeypatch.setattr("src.pipeline.translate_segments", _translate)
     return _translate
 
 
@@ -39,7 +53,7 @@ def mock_translate_incomplete(monkeypatch):
         idx, text = items[0]
         return {idx: f"TR:{text}"}
 
-    monkeypatch.setattr("src.main.translate_segments", _translate)
+    monkeypatch.setattr("src.pipeline.translate_segments", _translate)
     return _translate
 
 
@@ -52,5 +66,5 @@ def mock_translate_raises_incomplete(monkeypatch):
             missing_indices=[items[-1][0]] if items else [],
         )
 
-    monkeypatch.setattr("src.main.translate_segments", _translate)
+    monkeypatch.setattr("src.pipeline.translate_segments", _translate)
     return _translate

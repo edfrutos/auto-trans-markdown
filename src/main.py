@@ -16,15 +16,16 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from .parser import collect_translatable, reassemble, segment_markdown
+from .glossary import glossary_from_dict, glossary_to_dict, load_glossary, save_glossary
+from .memory import TranslationMemory, default_memory_path
+from .pipeline import DEFAULT_GLOSSARY_PATH, TranslateOptions, translate_markdown
 from .translator import (
     IncompleteTranslationError,
     get_supported_languages,
     is_valid_source_lang,
     is_valid_target_lang,
-    translate_segments,
 )
 
 load_dotenv()
@@ -33,7 +34,9 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_DIR = ROOT / "static"
 OUTPUT_DIR = ROOT / "output"
+DATA_DIR = ROOT / "data"
 OUTPUT_DIR.mkdir(exist_ok=True)
+DATA_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(
     title="MarkDown Auto Translator",
@@ -74,6 +77,12 @@ class ProgressEvent(BaseModel):
     total: int
 
 
+class GlossaryPayload(BaseModel):
+    version: int = Field(1, ge=1, le=1)
+    do_not_translate: list[str] = Field(default_factory=list)
+    pairs: dict[str, dict[str, str]] = Field(default_factory=dict)
+
+
 def _decode_upload(raw: bytes, filename: str) -> str:
     """Decodifica uploads multipart como UTF-8 estricto (editor JSON usa str nativo)."""
     if not raw:
@@ -107,7 +116,7 @@ def _translation_http_exception(exc: IncompleteTranslationError) -> HTTPExceptio
     )
 
 
-def _validate_languages(target_lang: str, source_lang: str) -> None:
+def _validate_languages_http(target_lang: str, source_lang: str) -> None:
     if not is_valid_target_lang(target_lang):
         raise HTTPException(
             400,
@@ -137,19 +146,28 @@ def _unique_zip_name(filename: str, target_lang: str, used: set[str]) -> str:
         n += 1
 
 
-async def _translate_file_content(
+async def _run_translate(
     content: str,
     target_lang: str,
-    source: str | None,
-) -> str:
-    segments = segment_markdown(content)
-    translatable = collect_translatable(segments)
+    source_lang: str,
+) -> TranslateResponse:
+    source = None if source_lang == "auto" else source_lang
+    options = TranslateOptions(target_lang=target_lang, source_lang=source)
     loop = asyncio.get_running_loop()
-    translations = await loop.run_in_executor(
-        None,
-        partial(translate_segments, translatable, target_lang, source),
+    try:
+        result = await loop.run_in_executor(
+            None,
+            partial(translate_markdown, content, options),
+        )
+    except IncompleteTranslationError:
+        raise
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return TranslateResponse(
+        content=result.content,
+        segments_total=result.segments_total,
+        segments_translated=result.segments_translated,
     )
-    return reassemble(segments, translations)
 
 
 @app.get("/")
@@ -171,22 +189,37 @@ async def list_languages():
     ]
 
 
+@app.get("/api/glossary")
+async def get_glossary():
+    glossary = load_glossary(DEFAULT_GLOSSARY_PATH)
+    return glossary_to_dict(glossary)
+
+
+@app.put("/api/glossary")
+async def put_glossary(body: GlossaryPayload):
+    try:
+        glossary = glossary_from_dict(body.model_dump())
+        save_glossary(DEFAULT_GLOSSARY_PATH, glossary)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return glossary_to_dict(glossary)
+
+
+@app.delete("/api/memory")
+async def clear_memory():
+    tm = TranslationMemory(default_memory_path())
+    deleted = tm.clear()
+    return {"deleted": deleted}
+
+
 @app.post("/api/translate", response_model=TranslateResponse)
 async def translate_text(body: TranslateTextRequest):
     if not body.content.strip():
         raise HTTPException(400, "El contenido está vacío")
-    _validate_languages(body.target_lang, body.source_lang)
-
-    segments = segment_markdown(body.content)
-    translatable = collect_translatable(segments)
-    source = None if body.source_lang == "auto" else body.source_lang
+    _validate_languages_http(body.target_lang, body.source_lang)
 
     try:
-        loop = asyncio.get_running_loop()
-        translations = await loop.run_in_executor(
-            None,
-            partial(translate_segments, translatable, body.target_lang, source),
-        )
+        return await _run_translate(body.content, body.target_lang, body.source_lang)
     except IncompleteTranslationError as e:
         raise _translation_http_exception(e) from e
     except RuntimeError as e:
@@ -194,13 +227,6 @@ async def translate_text(body: TranslateTextRequest):
     except Exception as e:
         logger.exception("Error traduciendo texto")
         raise HTTPException(502, f"Error de traducción: {e}") from e
-
-    output = reassemble(segments, translations)
-    return TranslateResponse(
-        content=output,
-        segments_total=len(segments),
-        segments_translated=len(translatable),
-    )
 
 
 @app.post("/api/translate/file")
@@ -212,7 +238,7 @@ async def translate_file(
     if not file.filename or not file.filename.lower().endswith((".md", ".markdown", ".mdx")):
         raise HTTPException(400, "Solo se aceptan archivos .md, .markdown o .mdx")
 
-    _validate_languages(target_lang, source_lang)
+    _validate_languages_http(target_lang, source_lang)
 
     raw = await file.read()
     try:
@@ -220,10 +246,8 @@ async def translate_file(
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 
-    source = None if source_lang == "auto" else source_lang
-
     try:
-        output = await _translate_file_content(content, target_lang, source)
+        response = await _run_translate(content, target_lang, source_lang)
     except IncompleteTranslationError as e:
         raise _translation_http_exception(e) from e
     except RuntimeError as e:
@@ -236,7 +260,7 @@ async def translate_file(
     suffix = Path(file.filename).suffix or ".md"
     out_name = f"{stem}.{target_lang}{suffix}"
     out_path = OUTPUT_DIR / f"{uuid.uuid4().hex}_{out_name}"
-    out_path.write_text(output, encoding="utf-8")
+    out_path.write_text(response.content, encoding="utf-8")
 
     return FileResponse(
         path=out_path,
@@ -256,9 +280,8 @@ async def translate_batch(
     if len(files) > 20:
         raise HTTPException(400, "Máximo 20 archivos por lote")
 
-    _validate_languages(target_lang, source_lang)
+    _validate_languages_http(target_lang, source_lang)
 
-    source = None if source_lang == "auto" else source_lang
     zip_buffer = io.BytesIO()
     used_names: set[str] = set()
     translated_count = 0
@@ -280,7 +303,7 @@ async def translate_batch(
                 raise HTTPException(400, str(e)) from e
 
             try:
-                output = await _translate_file_content(content, target_lang, source)
+                response = await _run_translate(content, target_lang, source_lang)
             except IncompleteTranslationError as e:
                 raise _translation_http_exception(e) from e
             except RuntimeError as e:
@@ -292,7 +315,7 @@ async def translate_batch(
                 ) from e
 
             out_name = _unique_zip_name(upload.filename, target_lang, used_names)
-            zf.writestr(out_name, output.encode("utf-8"))
+            zf.writestr(out_name, response.content.encode("utf-8"))
             translated_count += 1
 
     if translated_count == 0:
