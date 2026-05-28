@@ -175,6 +175,7 @@ def _build_user_prompt(
     segments: list[str],
     target_lang: str,
     source_lang: str | None,
+    glossary_prompt: str | None = None,
 ) -> str:
     target = _language_label(target_lang)
     source_hint = (
@@ -183,11 +184,14 @@ def _build_user_prompt(
         else "Detecta el idioma origen automáticamente."
     )
     numbered = json.dumps(segments, ensure_ascii=False)
-    return (
-        f"{source_hint}\n"
-        f"Idioma destino: {target}.\n"
-        f"Traduce estos segmentos Markdown (array JSON):\n{numbered}"
-    )
+    parts = [
+        source_hint,
+        f"Idioma destino: {target}.",
+    ]
+    if glossary_prompt:
+        parts.append(glossary_prompt)
+    parts.append(f"Traduce estos segmentos Markdown (array JSON):\n{numbered}")
+    return "\n".join(parts)
 
 
 def _parse_openai_response(raw: str, expected_count: int) -> list[str]:
@@ -289,6 +293,7 @@ def _translate_openai_batch(
     target_lang: str,
     source_lang: str | None,
     client: OpenAI | None = None,
+    glossary_prompt: str | None = None,
 ) -> list[str]:
     client = client or create_openai_client()
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -303,7 +308,9 @@ def _translate_openai_batch(
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {
                         "role": "user",
-                        "content": _build_user_prompt(texts, target_lang, source_lang),
+                        "content": _build_user_prompt(
+                            texts, target_lang, source_lang, glossary_prompt
+                        ),
                     },
                 ],
             )
@@ -327,8 +334,12 @@ def _translate_openai_batch(
                 mid,
                 len(texts) - mid,
             )
-            left = _translate_openai_batch(texts[:mid], target_lang, source_lang, client)
-            right = _translate_openai_batch(texts[mid:], target_lang, source_lang, client)
+            left = _translate_openai_batch(
+                texts[:mid], target_lang, source_lang, client, glossary_prompt
+            )
+            right = _translate_openai_batch(
+                texts[mid:], target_lang, source_lang, client, glossary_prompt
+            )
             return left + right
         except APIError as exc:
             if attempt == MAX_RETRIES - 1 or exc.status_code not in {429, 500, 502, 503}:
@@ -396,6 +407,7 @@ def translate_segments(
     source_lang: str | None = None,
     *,
     on_progress: Callable[[int, int], None] | None = None,
+    glossary_prompt: str | None = None,
     client=None,
 ) -> dict[int, str]:
     """Traduce segmentos en lotes y devuelve mapa index -> texto traducido."""
@@ -422,7 +434,11 @@ def translate_segments(
             )
         elif provider == "openai":
             translations = _translate_openai_batch(
-                texts, target_lang, source_lang, client=client
+                texts,
+                target_lang,
+                source_lang,
+                client=client,
+                glossary_prompt=glossary_prompt,
             )
         else:
             raise RuntimeError(
