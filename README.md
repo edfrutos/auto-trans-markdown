@@ -37,7 +37,7 @@ Abre [http://127.0.0.1:8000](http://127.0.0.1:8000) en el navegador.
 ### API
 
 | Método | Ruta | Descripción |
-|--------|------|-------------|
+| ------ | ---- | ------------- |
 | `GET` | `/api/languages` | Lista de idiomas |
 | `POST` | `/api/translate` | Traduce texto JSON `{ content, target_lang, source_lang }` |
 | `POST` | `/api/translate/file` | Sube un `.md` y devuelve el archivo traducido |
@@ -72,7 +72,7 @@ DEEPL_API_URL=https://api-free.deepl.com
 ```
 
 | Variable | Descripción |
-|----------|-------------|
+| -------- | ----------- |
 | `TRANSLATION_PROVIDER` | `openai` (default) o `deepl` |
 | `OPENAI_API_KEY` | Clave OpenAI (solo si provider=openai) |
 | `OPENAI_BASE_URL` | Endpoint alternativo (Ollama, Azure, etc.) |
@@ -92,7 +92,7 @@ pytest tests/ -q
 
 ## Arquitectura
 
-```
+```sh
 src/parser.py      → Segmenta MD (protegido vs traducible)
 src/translator.py  → Traducción por lotes (OpenAI o DeepL)
 src/main.py        → API FastAPI + archivos estáticos
