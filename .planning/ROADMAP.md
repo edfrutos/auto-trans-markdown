@@ -2,15 +2,15 @@
 
 ## Overview
 
-Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte de un pipeline segment → translate → reassemble ya operativo y se cierra deuda de producción (hardening, glosario, memoria, CLI), luego confianza (validación, preview), UX de lote (SSE, coste), escala de equipo (multi-destino, Docker) y flujo editorial (revisión, diff, watch). Orden de ejecución: Pre-A → 1 → 2 → 3 → 4 → 5.
+Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte de un pipeline segment → translate → reassemble ya operativo y se cierra deuda de producción (hardening, glosario, memoria, CLI), luego confianza (validación, preview), UX de lote (SSE, coste), escala de equipo (multi-destino, Docker) y flujo editorial (revisión, diff, watch). Orden de ejecución: Phase 0 (Pre-A hardening) → 1 → 2 → 3 → 4 → 5.
 
 ## Phases
 
 **Phase Numbering:**
-- **Pre-A**: Hardening del MVP antes de ampliar funcionalidad
+- **Phase 0 (Pre-A)**: Hardening del MVP antes de ampliar funcionalidad
 - **Phases 1–5**: NOTEBOOK A→E (table stakes → trust → batch UX → team scale → editorial)
 
-- [ ] **Pre-A: MVP Hardening** - Contratos fiables, UTF-8 estricto, idiomas por proveedor, tests de integración
+- [ ] **Phase 0: MVP Hardening** - Contratos fiables, UTF-8 estricto, idiomas por proveedor, tests de integración
 - [ ] **Phase 1: Production Table Stakes** - Pipeline unificado, glosario, memoria SQLite, CLI `md-translate`
 - [ ] **Phase 2: Trust & QA** - Validación post-traducción, preview renderizada, parser ampliado, frontmatter selectivo
 - [ ] **Phase 3: Batch UX & Cost Control** - Jobs SSE con progreso real, cancelación, lotes parciales, estimación de coste
@@ -19,7 +19,7 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 
 ## Phase Details
 
-### Pre-A: MVP Hardening
+### Phase 0: MVP Hardening
 **Goal**: El pipeline existente es fiable y verificable antes de añadir glosario, memoria y CLI
 **Depends on**: Nothing (first phase)
 **Requirements**: HARD-01, HARD-02, HARD-03, HARD-04
@@ -32,7 +32,7 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 
 ### Phase 1: Production Table Stakes
 **Goal**: Usuario puede automatizar traducciones con terminología consistente y memoria persistente vía CLI y web
-**Depends on**: Pre-A
+**Depends on**: Phase 0
 **Requirements**: PIPE-01, GLOS-01, GLOS-02, GLOS-03, TM-01, TM-02, TM-03, CLI-01, CLI-02, CLI-03, CLI-04, CLI-05
 **Success Criteria** (what must be TRUE):
   1. Usuario obtiene el mismo comportamiento de traducción vía API, CLI y web (fachada `translate_markdown()` única)
@@ -93,11 +93,11 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 ## Progress
 
 **Execution Order:**
-Pre-A → 1 → 2 → 3 → 4 → 5
+0 → 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| Pre-A. MVP Hardening | 0/TBD | Not started | - |
+| 0. MVP Hardening | 0/TBD | Not started | - |
 | 1. Production Table Stakes | 0/TBD | Not started | - |
 | 2. Trust & QA | 0/TBD | Not started | - |
 | 3. Batch UX & Cost Control | 0/TBD | Not started | - |

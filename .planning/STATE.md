@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-05-28)
 
 **Core value:** Traducir solo el texto dirigido al usuario sin alterar Markdown ni código, con coherencia terminológica y coste predecible en lotes grandes.
-**Current focus:** Pre-A — MVP Hardening
+**Current focus:** Phase 0 — MVP Hardening (Pre-A)
 
 ## Current Position
 
-Phase: Pre-A of 5 (MVP Hardening)
+Phase: 0 of 5 (MVP Hardening)
 Plan: 0 of TBD in current phase
 Status: Ready to plan
-Last activity: 2026-05-28 — Roadmap NOTEBOOK milestone created
+Last activity: 2026-05-28 — Phase 0 CONTEXT.md created (auto discuss via /gsd-next)
 
 Progress: [░░░░░░░░░░] 0%
 
