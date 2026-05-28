@@ -43,7 +43,7 @@ def _mock_deepl_client(texts: list[str], *, short: bool = False):
 def test_openai_incomplete_raises(monkeypatch):
     monkeypatch.setenv("TRANSLATION_PROVIDER", "openai")
 
-    def short_batch(texts, target_lang, source_lang, client=None):
+    def short_batch(texts, target_lang, source_lang, client=None, glossary_prompt=None):
         return [f"TR:{texts[0]}"]
 
     monkeypatch.setattr("src.translator._translate_openai_batch", short_batch)

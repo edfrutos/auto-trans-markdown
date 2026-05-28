@@ -90,11 +90,30 @@ pip install pytest
 pytest tests/ -q
 ```
 
+## CLI
+
+Tras `pip install -e .`:
+
+```bash
+md-translate file README.md -t es -o README.es.md
+md-translate dir docs/ -t en -o docs-en/ --recursive
+md-translate batch ./articles/*.md -t fr --zip out.zip
+md-translate file doc.md -t es --dry-run
+md-translate memory clear
+md-translate serve
+```
+
+Glosario por defecto en `glossary.yaml`; memoria SQLite en `data/translation_memory.db` (gitignored).
+
 ## Arquitectura
 
 ```sh
 src/parser.py      → Segmenta MD (protegido vs traducible)
+src/pipeline.py    → Fachada translate_markdown (TM + glosario)
 src/translator.py  → Traducción por lotes (OpenAI o DeepL)
+src/memory.py      → Memoria de traducción SQLite
+src/glossary.py    → Glosario YAML
+src/cli.py         → CLI Typer md-translate
 src/main.py        → API FastAPI + archivos estáticos
 static/            → Interfaz web (Tailwind + Plus Jakarta Sans)
 ```

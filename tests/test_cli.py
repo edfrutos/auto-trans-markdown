@@ -1,0 +1,120 @@
+"""Tests CLI Typer."""
+
+from __future__ import annotations
+
+import zipfile
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+from typer.testing import CliRunner
+
+from src.cli import app
+from src.pipeline import TranslateResult
+
+runner = CliRunner()
+
+
+@pytest.fixture
+def mock_pipeline(monkeypatch):
+    def _fake(content, options):
+        if options.dry_run:
+            return TranslateResult(
+                content="",
+                segments_total=1,
+                segments_translated=1,
+                dry_run_segments=[(0, "Hello")],
+            )
+        return TranslateResult(
+            content=f"# TR\n{content}",
+            segments_total=1,
+            segments_translated=1,
+        )
+
+    monkeypatch.setattr("src.cli.translate_markdown", _fake)
+    return _fake
+
+
+def test_file_dry_run(tmp_path, mock_pipeline):
+    md = tmp_path / "doc.md"
+    md.write_text("# Hello\n", encoding="utf-8")
+    result = runner.invoke(
+        app, ["file", str(md), "-t", "es", "--dry-run"], catch_exceptions=False
+    )
+    assert result.exit_code == 0
+    assert "Hello" in result.stdout
+
+
+def test_file_writes_output(tmp_path, mock_pipeline):
+    md = tmp_path / "doc.md"
+    md.write_text("# Hello\n", encoding="utf-8")
+    out = tmp_path / "out.es.md"
+    result = runner.invoke(
+        app, ["file", str(md), "-t", "es", "-o", str(out)], catch_exceptions=False
+    )
+    assert result.exit_code == 0
+    assert out.exists()
+    assert "TR" in out.read_text(encoding="utf-8")
+
+
+def test_memory_clear(tmp_path, monkeypatch):
+    db = tmp_path / "tm.db"
+    monkeypatch.setattr("src.cli.default_memory_path", lambda: db)
+    from src.memory import TranslationMemory
+
+    tm = TranslationMemory(db)
+    tm.store_batch([(0, "a", "b")], None, "es")
+    result = runner.invoke(app, ["memory", "clear"], catch_exceptions=False)
+    assert result.exit_code == 0
+    assert "eliminadas" in result.stdout.lower() or "vaciada" in result.stdout.lower()
+
+
+def test_help_lists_commands():
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    assert "file" in result.stdout
+    assert "serve" in result.stdout
+    assert "memory" in result.stdout
+
+
+def test_invalid_target_exits_2(tmp_path, monkeypatch):
+    monkeypatch.setenv("TRANSLATION_PROVIDER", "openai")
+    md = tmp_path / "doc.md"
+    md.write_text("# Hi", encoding="utf-8")
+    result = runner.invoke(
+        app, ["file", str(md), "-t", "notalang"], catch_exceptions=False
+    )
+    assert result.exit_code == 2
+
+
+def test_dir_recursive(tmp_path, mock_pipeline):
+    root = tmp_path / "docs"
+    sub = root / "sub"
+    sub.mkdir(parents=True)
+    (root / "a.md").write_text("# A", encoding="utf-8")
+    (sub / "b.md").write_text("# B", encoding="utf-8")
+    out = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        ["dir", str(root), "-o", str(out), "-t", "es", "--recursive"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert (out / "a.es.md").exists()
+    assert (out / "sub" / "b.es.md").exists()
+
+
+def test_batch_zip(tmp_path, mock_pipeline):
+    a = tmp_path / "a.md"
+    b = tmp_path / "b.md"
+    a.write_text("# A", encoding="utf-8")
+    b.write_text("# B", encoding="utf-8")
+    zpath = tmp_path / "out.zip"
+    result = runner.invoke(
+        app,
+        ["batch", str(a), str(b), "-t", "es", "--zip", str(zpath)],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    with zipfile.ZipFile(zpath) as zf:
+        assert len(zf.namelist()) == 2
