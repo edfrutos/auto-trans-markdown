@@ -89,13 +89,53 @@
 
 | Requirement | Phase | Status |
 | ----------- | ----- | ------ |
-| HARD-01..04 | Pre-A | Pending |
-| PIPE-01, GLOS-01..03, TM-01..03, CLI-01..05 | 1 | Pending |
-| VAL-01..03, PREV-01..02, PARS-01..02, FM-01..02 | 2 | Pending |
-| JOB-01..04, COST-01..02 | 3 | Pending |
-| MULTI-01..02, DOCKER-01..02, SEC-01..02 | 4 | Pending |
-| REV-01..02, FALL-01, DIFF-01, WATCH-01, TREE-01, TONE-01, HIST-01, EXPORT-01 | 5 | Pending |
+| HARD-01 | Pre-A | Pending |
+| HARD-02 | Pre-A | Pending |
+| HARD-03 | Pre-A | Pending |
+| HARD-04 | Pre-A | Pending |
+| PIPE-01 | 1 | Pending |
+| GLOS-01 | 1 | Pending |
+| GLOS-02 | 1 | Pending |
+| GLOS-03 | 1 | Pending |
+| TM-01 | 1 | Pending |
+| TM-02 | 1 | Pending |
+| TM-03 | 1 | Pending |
+| CLI-01 | 1 | Pending |
+| CLI-02 | 1 | Pending |
+| CLI-03 | 1 | Pending |
+| CLI-04 | 1 | Pending |
+| CLI-05 | 1 | Pending |
+| VAL-01 | 2 | Pending |
+| VAL-02 | 2 | Pending |
+| VAL-03 | 2 | Pending |
+| PREV-01 | 2 | Pending |
+| PREV-02 | 2 | Pending |
+| PARS-01 | 2 | Pending |
+| PARS-02 | 2 | Pending |
+| FM-01 | 2 | Pending |
+| FM-02 | 2 | Pending |
+| JOB-01 | 3 | Pending |
+| JOB-02 | 3 | Pending |
+| JOB-03 | 3 | Pending |
+| JOB-04 | 3 | Pending |
+| COST-01 | 3 | Pending |
+| COST-02 | 3 | Pending |
+| MULTI-01 | 4 | Pending |
+| MULTI-02 | 4 | Pending |
+| DOCKER-01 | 4 | Pending |
+| DOCKER-02 | 4 | Pending |
+| SEC-01 | 4 | Pending |
+| SEC-02 | 4 | Pending |
+| REV-01 | 5 | Pending |
+| REV-02 | 5 | Pending |
+| FALL-01 | 5 | Pending |
+| DIFF-01 | 5 | Pending |
+| WATCH-01 | 5 | Pending |
+| TREE-01 | 5 | Pending |
+| TONE-01 | 5 | Pending |
+| HIST-01 | 5 | Pending |
+| EXPORT-01 | 5 | Pending |
 
 ---
 *Requirements defined: 2026-05-28*  
-*Last updated: 2026-05-28 after GSD research synthesis*
+*Last updated: 2026-05-28 after roadmap creation*
