@@ -102,6 +102,9 @@ function setLoading(loading, text = 'Traduciendo…') {
 function apiErrorMessage(err, fallback) {
   if (!err) return fallback;
   if (typeof err.detail === 'string') return err.detail;
+  if (typeof err.detail === 'object' && err.detail !== null && !Array.isArray(err.detail)) {
+    return err.detail.message || fallback;
+  }
   if (Array.isArray(err.detail)) {
     return err.detail.map((d) => d.msg || String(d)).join('; ');
   }
@@ -111,15 +114,20 @@ function apiErrorMessage(err, fallback) {
 async function loadLanguages() {
   try {
     const res = await fetch('/api/languages');
+    if (!res.ok) throw new Error('No se pudieron cargar los idiomas');
     const langs = await res.json();
     els.targetLang.innerHTML = '';
     els.sourceLang.innerHTML = '<option value="auto">Detectar automáticamente</option>';
+    let defaultSet = false;
     for (const { code, name } of langs) {
       if (code === 'auto') continue;
       const optTarget = document.createElement('option');
       optTarget.value = code;
       optTarget.textContent = name;
-      if (code === 'es') optTarget.selected = true;
+      if (code === 'es') {
+        optTarget.selected = true;
+        defaultSet = true;
+      }
       els.targetLang.appendChild(optTarget);
 
       const optSource = document.createElement('option');
@@ -127,8 +135,17 @@ async function loadLanguages() {
       optSource.textContent = name;
       els.sourceLang.appendChild(optSource);
     }
-  } catch {
-    /* defaults en HTML */
+    if (!defaultSet && els.targetLang.options.length > 0) {
+      els.targetLang.options[0].selected = true;
+    }
+  } catch (err) {
+    els.targetLang.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Error al cargar idiomas';
+    opt.disabled = true;
+    els.targetLang.appendChild(opt);
+    showStatus(err.message || 'No se pudieron cargar los idiomas desde la API.', 'error');
   }
 }
 
