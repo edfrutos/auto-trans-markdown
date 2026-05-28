@@ -37,6 +37,8 @@ const state = {
   downloadBlob: null,
   downloadName: 'traduccion.md',
   loading: false,
+  languagesLoaded: false,
+  glossary: { loaded: false, entries: [], dirty: false, expanded: false },
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -64,6 +66,13 @@ const els = {
   themeToggle: $('#theme-toggle'),
   iconSun: $('#icon-sun'),
   iconMoon: $('#icon-moon'),
+  glossaryToggle: $('#glossary-toggle'),
+  glossaryPanel: $('#glossary-panel'),
+  glossaryChevron: $('#glossary-chevron'),
+  glossaryTbody: $('#glossary-tbody'),
+  btnAddGlossary: $('#btn-add-glossary'),
+  btnSaveGlossary: $('#btn-save-glossary'),
+  btnClearMemory: $('#btn-clear-memory'),
 };
 
 const tabs = [
@@ -84,7 +93,7 @@ function hideStatus() {
 
 function setLoading(loading, text = 'Traduciendo…') {
   state.loading = loading;
-  els.btnTranslate.disabled = loading;
+  els.btnTranslate.disabled = loading || !state.languagesLoaded;
   els.btnTranslateLabel.textContent = loading ? text : 'Traducir';
   if (loading) {
     els.progressWrap.classList.remove('hidden');
@@ -111,7 +120,165 @@ function apiErrorMessage(err, fallback) {
   return fallback;
 }
 
+function pairKey() {
+  const src = els.sourceLang.value || 'auto';
+  const tgt = els.targetLang.value;
+  return `${src}-${tgt}`;
+}
+
+function flattenGlossary(data) {
+  const entries = [];
+  for (const term of data.do_not_translate || []) {
+    entries.push({ term, translation: '', dnt: true });
+  }
+  const pk = pairKey();
+  const pairs = data.pairs?.[pk] || data.pairs?.[`auto-${els.targetLang.value}`] || {};
+  for (const [term, translation] of Object.entries(pairs)) {
+    entries.push({ term, translation, dnt: false });
+  }
+  return entries;
+}
+
+function assembleGlossaryPayload() {
+  const do_not_translate = [];
+  const pairs = {};
+  const key = pairKey();
+  pairs[key] = {};
+  for (const row of state.glossary.entries) {
+    const term = (row.term || '').trim();
+    if (!term) continue;
+    if (row.dnt) {
+      do_not_translate.push(term);
+    } else if ((row.translation || '').trim()) {
+      pairs[key][term] = row.translation.trim();
+    }
+  }
+  if (Object.keys(pairs[key]).length === 0) {
+    delete pairs[key];
+  }
+  return { version: 1, do_not_translate, pairs };
+}
+
+function renderGlossaryTable() {
+  if (!state.glossary.entries.length) {
+    els.glossaryTbody.innerHTML = `
+      <tr><td colspan="4" class="text-ink-muted text-sm py-4 text-center">
+        No hay entradas. Añade términos para forzar traducciones consistentes.
+      </td></tr>`;
+    return;
+  }
+  els.glossaryTbody.innerHTML = state.glossary.entries
+    .map(
+      (row, i) => `
+    <tr data-idx="${i}">
+      <td class="px-3 py-2"><input type="text" class="input-inline glossary-term" value="${escapeAttr(row.term)}" placeholder="API Gateway"></td>
+      <td class="px-3 py-2"><input type="text" class="input-inline glossary-trans" value="${escapeAttr(row.translation)}" placeholder="panel" ${row.dnt ? 'disabled' : ''}></td>
+      <td class="px-3 py-2 text-center"><input type="checkbox" class="glossary-dnt" ${row.dnt ? 'checked' : ''} aria-label="No traducir"></td>
+      <td class="px-3 py-2 text-center">
+        <button type="button" class="text-ink-muted hover:text-red-600 glossary-remove" aria-label="Eliminar entrada">✕</button>
+      </td>
+    </tr>`
+    )
+    .join('');
+  bindGlossaryRowEvents();
+}
+
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
+function bindGlossaryRowEvents() {
+  els.glossaryTbody.querySelectorAll('tr[data-idx]').forEach((tr) => {
+    const idx = Number(tr.dataset.idx);
+    const termIn = tr.querySelector('.glossary-term');
+    const transIn = tr.querySelector('.glossary-trans');
+    const dntIn = tr.querySelector('.glossary-dnt');
+    const markDirty = () => {
+      state.glossary.dirty = true;
+      state.glossary.entries[idx] = {
+        term: termIn.value,
+        translation: transIn.value,
+        dnt: dntIn.checked,
+      };
+    };
+    termIn?.addEventListener('input', markDirty);
+    transIn?.addEventListener('input', markDirty);
+    dntIn?.addEventListener('change', () => {
+      transIn.disabled = dntIn.checked;
+      if (dntIn.checked) transIn.value = '';
+      markDirty();
+    });
+    tr.querySelector('.glossary-remove')?.addEventListener('click', () => {
+      state.glossary.entries.splice(idx, 1);
+      state.glossary.dirty = true;
+      renderGlossaryTable();
+    });
+  });
+}
+
+async function loadGlossary() {
+  try {
+    const res = await fetch('/api/glossary');
+    if (!res.ok) throw new Error('No se pudo cargar el glosario');
+    const data = await res.json();
+    state.glossary.entries = flattenGlossary(data);
+    state.glossary.loaded = true;
+    state.glossary.dirty = false;
+    renderGlossaryTable();
+  } catch (err) {
+    showStatus(err.message || 'Error al cargar glosario', 'error');
+  }
+}
+
+async function saveGlossary() {
+  els.btnSaveGlossary.disabled = true;
+  const prev = els.btnSaveGlossary.textContent;
+  els.btnSaveGlossary.textContent = 'Guardando…';
+  try {
+    const body = assembleGlossaryPayload();
+    const res = await fetch('/api/glossary', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(apiErrorMessage(data, 'Error al guardar glosario'));
+    state.glossary.dirty = false;
+    state.glossary.entries = flattenGlossary(data);
+    renderGlossaryTable();
+    showStatus('Glosario guardado correctamente', 'success');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  } finally {
+    els.btnSaveGlossary.disabled = false;
+    els.btnSaveGlossary.textContent = prev;
+  }
+}
+
+async function clearMemory() {
+  if (
+    !confirm(
+      '¿Eliminar todas las traducciones en cache? Esta acción no se puede deshacer.'
+    )
+  ) {
+    return;
+  }
+  try {
+    const res = await fetch('/api/memory', { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(apiErrorMessage(data, 'Error al limpiar memoria'));
+    showStatus('Memoria de traducción vaciada', 'success');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  }
+}
+
 async function loadLanguages() {
+  els.btnTranslate.disabled = true;
+  els.targetLang.setAttribute('aria-busy', 'true');
   try {
     const res = await fetch('/api/languages');
     if (!res.ok) throw new Error('No se pudieron cargar los idiomas');
@@ -138,7 +305,13 @@ async function loadLanguages() {
     if (!defaultSet && els.targetLang.options.length > 0) {
       els.targetLang.options[0].selected = true;
     }
+    state.languagesLoaded = true;
+    els.btnTranslate.disabled = false;
+    els.targetLang.removeAttribute('aria-busy');
+    await loadGlossary();
   } catch (err) {
+    state.languagesLoaded = false;
+    els.targetLang.removeAttribute('aria-busy');
     els.targetLang.innerHTML = '';
     const opt = document.createElement('option');
     opt.value = '';
@@ -320,6 +493,30 @@ els.btnCopy.addEventListener('click', async () => {
   showStatus('Copiado al portapapeles.');
 });
 els.themeToggle.addEventListener('click', toggleTheme);
+
+els.glossaryToggle?.addEventListener('click', () => {
+  const expanded = els.glossaryPanel.classList.toggle('hidden');
+  const isOpen = !expanded;
+  els.glossaryToggle.setAttribute('aria-expanded', String(isOpen));
+  els.glossaryChevron?.classList.toggle('expanded', isOpen);
+  state.glossary.expanded = isOpen;
+});
+
+els.btnAddGlossary?.addEventListener('click', () => {
+  state.glossary.entries.push({ term: '', translation: '', dnt: false });
+  state.glossary.dirty = true;
+  renderGlossaryTable();
+});
+
+els.btnSaveGlossary?.addEventListener('click', saveGlossary);
+els.btnClearMemory?.addEventListener('click', clearMemory);
+
+els.sourceLang.addEventListener('change', () => {
+  if (state.glossary.loaded) loadGlossary();
+});
+els.targetLang.addEventListener('change', () => {
+  if (state.glossary.loaded) loadGlossary();
+});
 
 setupDropZone(els.dropZone, els.fileInput, (files) => {
   const f = files[0];
