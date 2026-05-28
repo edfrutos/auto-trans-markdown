@@ -1,0 +1,381 @@
+"""Traducción contextual de segmentos Markdown (OpenAI o DeepL)."""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import time
+from typing import Callable, Protocol
+
+from openai import APIError, OpenAI, RateLimitError
+
+logger = logging.getLogger(__name__)
+
+LANGUAGE_NAMES: dict[str, str] = {
+    "es": "español",
+    "en": "inglés",
+    "fr": "francés",
+    "de": "alemán",
+    "it": "italiano",
+    "pt": "portugués",
+    "pt-BR": "portugués brasileño",
+    "ca": "catalán",
+    "gl": "gallego",
+    "eu": "euskera",
+    "nl": "neerlandés",
+    "pl": "polaco",
+    "ru": "ruso",
+    "uk": "ucraniano",
+    "ja": "japonés",
+    "ko": "coreano",
+    "zh": "chino simplificado",
+    "zh-TW": "chino tradicional",
+    "ar": "árabe",
+    "hi": "hindi",
+    "tr": "turco",
+    "sv": "sueco",
+    "da": "danés",
+    "no": "noruego",
+    "fi": "finlandés",
+    "cs": "checo",
+    "ro": "rumano",
+    "hu": "húngaro",
+    "el": "griego",
+    "he": "hebreo",
+    "id": "indonesio",
+    "vi": "vietnamita",
+    "th": "tailandés",
+}
+
+# Códigos destino DeepL (idiomas no listados → no disponibles en DeepL)
+DEEPL_TARGET_MAP: dict[str, str] = {
+    "es": "ES",
+    "en": "EN-US",
+    "fr": "FR",
+    "de": "DE",
+    "it": "IT",
+    "pt": "PT-PT",
+    "pt-BR": "PT-BR",
+    "nl": "NL",
+    "pl": "PL",
+    "ru": "RU",
+    "uk": "UK",
+    "ja": "JA",
+    "ko": "KO",
+    "zh": "ZH-HANS",
+    "zh-TW": "ZH-HANT",
+    "ar": "AR",
+    "tr": "TR",
+    "sv": "SV",
+    "da": "DA",
+    "no": "NB",
+    "fi": "FI",
+    "cs": "CS",
+    "ro": "RO",
+    "hu": "HU",
+    "el": "EL",
+    "id": "ID",
+}
+
+DEEPL_SOURCE_MAP: dict[str, str] = {
+    **{k: v.split("-")[0] for k, v in DEEPL_TARGET_MAP.items()},
+    "pt-BR": "PT",
+    "zh-TW": "ZH",
+}
+
+SYSTEM_PROMPT = """Eres un traductor profesional especializado en documentación técnica Markdown.
+
+REGLAS ESTRICTAS:
+1. Traduce SOLO el texto visible al lector final al idioma destino indicado.
+2. PRESERVA exactamente toda la sintaxis Markdown: encabezados (#), listas (- * 1.), enlaces [texto](url), imágenes ![alt](url), negrita **, cursiva *, citas >, tablas |, HTML inline si existe.
+3. NO traduzcas URLs, rutas de archivo, nombres de variables, comandos CLI, identificadores técnicos ni contenido dentro de backticks (ya excluido del input).
+4. Adapta expresiones coloquiales e idiomáticas al registro natural del idioma destino (localización, no traducción literal palabra a palabra).
+5. Mantén el tono del original: formal/informal, técnico/divulgativo.
+6. Conserva espacios iniciales/finales y saltos de línea exactos de cada segmento.
+7. Si un segmento es solo puntuación o espacios, devuélvelo igual.
+8. Responde ÚNICAMENTE con un JSON válido: {"translations": ["texto1", "texto2", ...]} con el mismo número de elementos que recibes, en el mismo orden."""
+
+BATCH_SIZE = 15
+DEEPL_BATCH_SIZE = 40
+MAX_BATCH_CHARS = 4000
+MAX_RETRIES = 3
+DEEPL_CONTEXT = (
+    "Technical documentation written in Markdown. "
+    "Preserve all Markdown syntax (# headers, lists, links, bold, tables). "
+    "Translate only user-facing prose; keep URLs and code identifiers unchanged."
+)
+
+
+class ProgressCallback(Protocol):
+    def __call__(self, done: int, total: int) -> None: ...
+
+
+def _language_label(code: str) -> str:
+    return LANGUAGE_NAMES.get(code, code)
+
+
+def get_provider() -> str:
+    return os.getenv("TRANSLATION_PROVIDER", "openai").strip().lower()
+
+
+def _build_user_prompt(
+    segments: list[str],
+    target_lang: str,
+    source_lang: str | None,
+) -> str:
+    target = _language_label(target_lang)
+    source_hint = (
+        f"El idioma origen es {_language_label(source_lang)}."
+        if source_lang and source_lang != "auto"
+        else "Detecta el idioma origen automáticamente."
+    )
+    numbered = json.dumps(segments, ensure_ascii=False)
+    return (
+        f"{source_hint}\n"
+        f"Idioma destino: {target}.\n"
+        f"Traduce estos segmentos Markdown (array JSON):\n{numbered}"
+    )
+
+
+def _parse_openai_response(raw: str, expected_count: int) -> list[str]:
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+    data = json.loads(text)
+    translations = data.get("translations", data)
+    if not isinstance(translations, list):
+        raise ValueError("La respuesta no contiene un array 'translations'")
+    if len(translations) != expected_count:
+        raise ValueError(
+            f"Se esperaban {expected_count} traducciones, recibidas {len(translations)}"
+        )
+    return [str(t) for t in translations]
+
+
+def create_openai_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY no configurada. Usa TRANSLATION_PROVIDER=deepl "
+            "con DEEPL_API_KEY, o añade OPENAI_API_KEY en .env"
+        )
+    return OpenAI(
+        api_key=api_key,
+        base_url=os.getenv("OPENAI_BASE_URL") or None,
+    )
+
+
+def create_deepl_client():
+    try:
+        import deepl
+    except ImportError as e:
+        raise RuntimeError(
+            "Paquete 'deepl' no instalado. Ejecuta: pip install deepl"
+        ) from e
+
+    api_key = os.getenv("DEEPL_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "DEEPL_API_KEY no configurada. Obtén una en https://www.deepl.com/pro-api"
+        )
+    server_url = os.getenv("DEEPL_API_URL") or None
+    return deepl.Translator(api_key, server_url=server_url)
+
+
+def _deepl_target(code: str) -> str:
+    target = DEEPL_TARGET_MAP.get(code)
+    if not target:
+        raise ValueError(
+            f"DeepL no soporta el idioma destino '{_language_label(code)}'. "
+            f"Usa TRANSLATION_PROVIDER=openai o elige otro idioma."
+        )
+    return target
+
+
+def _deepl_source(code: str | None) -> str | None:
+    if not code or code == "auto":
+        return None
+    source = DEEPL_SOURCE_MAP.get(code)
+    if not source:
+        raise ValueError(
+            f"DeepL no soporta el idioma origen '{_language_label(code)}'."
+        )
+    return source
+
+
+def _chunk_items(
+    items: list[tuple[int, str]],
+    max_items: int,
+    max_chars: int,
+) -> list[list[tuple[int, str]]]:
+    """Agrupa segmentos limitando cantidad y tamaño total del lote."""
+    chunks: list[list[tuple[int, str]]] = []
+    current: list[tuple[int, str]] = []
+    current_chars = 0
+
+    for item in items:
+        _, text = item
+        if current and (
+            len(current) >= max_items
+            or current_chars + len(text) > max_chars
+        ):
+            chunks.append(current)
+            current = []
+            current_chars = 0
+        current.append(item)
+        current_chars += len(text)
+
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _translate_openai_batch(
+    texts: list[str],
+    target_lang: str,
+    source_lang: str | None,
+    client: OpenAI | None = None,
+) -> list[str]:
+    client = client or create_openai_client()
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                temperature=0.3,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": _build_user_prompt(texts, target_lang, source_lang),
+                    },
+                ],
+            )
+            raw = response.choices[0].message.content or ""
+            return _parse_openai_response(raw, len(texts))
+        except RateLimitError:
+            if attempt == MAX_RETRIES - 1:
+                raise
+            wait = 2 ** (attempt + 1)
+            logger.warning("Rate limit OpenAI, reintento en %ss", wait)
+            time.sleep(wait)
+        except (ValueError, json.JSONDecodeError) as exc:
+            if len(texts) <= 1:
+                raise ValueError(
+                    f"Respuesta inválida del modelo para un segmento: {exc}"
+                ) from exc
+            mid = len(texts) // 2
+            logger.warning(
+                "Lote OpenAI incompleto (%d segmentos), dividiendo en %d + %d",
+                len(texts),
+                mid,
+                len(texts) - mid,
+            )
+            left = _translate_openai_batch(texts[:mid], target_lang, source_lang, client)
+            right = _translate_openai_batch(texts[mid:], target_lang, source_lang, client)
+            return left + right
+        except APIError as exc:
+            if attempt == MAX_RETRIES - 1 or exc.status_code not in {429, 500, 502, 503}:
+                raise
+            wait = 2 ** (attempt + 1)
+            logger.warning("Error API OpenAI %s, reintento en %ss", exc.status_code, wait)
+            time.sleep(wait)
+
+    raise RuntimeError("No se pudo completar la traducción tras varios intentos")
+
+
+def _translate_deepl_batch(
+    texts: list[str],
+    target_lang: str,
+    source_lang: str | None,
+    client=None,
+) -> list[str]:
+    client = client or create_deepl_client()
+    target = _deepl_target(target_lang)
+    source = _deepl_source(source_lang)
+
+    kwargs: dict = {
+        "target_lang": target,
+        "preserve_formatting": True,
+        "context": DEEPL_CONTEXT,
+    }
+    if source:
+        kwargs["source_lang"] = source
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            results = client.translate_text(texts, **kwargs)
+            if isinstance(results, list):
+                return [r.text for r in results]
+            return [results.text]
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "429" in msg or "too many" in msg or "456" in msg:
+                if attempt == MAX_RETRIES - 1:
+                    raise
+                wait = 2 ** (attempt + 1)
+                logger.warning("Rate limit DeepL, reintento en %ss", wait)
+                time.sleep(wait)
+                continue
+            if len(texts) <= 1:
+                raise
+            mid = len(texts) // 2
+            logger.warning("Lote DeepL fallido, dividiendo en %d + %d", mid, len(texts) - mid)
+            left = _translate_deepl_batch(texts[:mid], target_lang, source_lang, client)
+            right = _translate_deepl_batch(texts[mid:], target_lang, source_lang, client)
+            return left + right
+
+    raise RuntimeError("No se pudo completar la traducción DeepL")
+
+
+def translate_segments(
+    items: list[tuple[int, str]],
+    target_lang: str,
+    source_lang: str | None = None,
+    *,
+    on_progress: Callable[[int, int], None] | None = None,
+    client=None,
+) -> dict[int, str]:
+    """Traduce segmentos en lotes y devuelve mapa index -> texto traducido."""
+    if not items:
+        return {}
+
+    provider = get_provider()
+    if provider == "deepl":
+        max_items, max_chars = DEEPL_BATCH_SIZE, MAX_BATCH_CHARS
+    else:
+        max_items, max_chars = BATCH_SIZE, MAX_BATCH_CHARS
+
+    result: dict[int, str] = {}
+    total = len(items)
+    chunks = _chunk_items(items, max_items, max_chars)
+
+    for chunk in chunks:
+        texts = [text for _, text in chunk]
+        indices = [idx for idx, _ in chunk]
+
+        if provider == "deepl":
+            translations = _translate_deepl_batch(
+                texts, target_lang, source_lang, client=client
+            )
+        elif provider == "openai":
+            translations = _translate_openai_batch(
+                texts, target_lang, source_lang, client=client
+            )
+        else:
+            raise RuntimeError(
+                f"TRANSLATION_PROVIDER desconocido: '{provider}'. "
+                "Usa 'openai' o 'deepl'."
+            )
+
+        for idx, translated in zip(indices, translations):
+            result[idx] = translated
+
+        if on_progress:
+            on_progress(len(result), total)
+
+    return result

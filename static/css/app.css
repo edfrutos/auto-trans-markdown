@@ -1,0 +1,263 @@
+/* MarkDown Auto Translator — design tokens & components */
+
+:root {
+  --color-primary: #0D9488;
+  --color-primary-dark: #0F766E;
+  --color-surface: #F0FDFA;
+  --color-card: #FFFFFF;
+  --color-ink: #134E4A;
+  --color-ink-muted: #475569;
+  --color-accent: #F97316;
+  --color-border: #CCFBF1;
+  --transition: 180ms ease;
+}
+
+html.dark {
+  --color-surface: #042F2E;
+  --color-card: #0D3D3A;
+  --color-ink: #F0FDFA;
+  --color-ink-muted: #99F6E4;
+  --color-border: #115E59;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+html.dark body {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(13, 148, 136, 0.04);
+}
+
+html.dark .card-header {
+  background: rgba(20, 184, 166, 0.08);
+}
+
+.editor-area {
+  flex: 1;
+  min-height: 320px;
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-ink);
+  background: transparent;
+  outline: none;
+}
+
+.editor-area:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.input-select {
+  width: 100%;
+  padding: 0.625rem 2.5rem 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%230D9488'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+}
+
+.input-select:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+}
+
+.tab-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition);
+}
+
+.tab-btn:hover {
+  color: var(--color-ink);
+}
+
+.tab-btn-active {
+  background: var(--color-card);
+  color: var(--color-primary);
+  box-shadow: 0 1px 2px rgba(19, 78, 74, 0.06);
+}
+
+html.dark .tab-btn-active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: white;
+  background: var(--color-primary);
+  cursor: pointer;
+  transition: background var(--transition), opacity var(--transition);
+  border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1.5px solid var(--color-primary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.btn-secondary:hover {
+  background: rgba(13, 148, 136, 0.08);
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.btn-icon:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.btn-icon:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: 1rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: var(--color-card);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.drop-zone:hover,
+.drop-zone:focus-visible,
+.drop-zone.drag-over {
+  border-color: var(--color-primary);
+  background: rgba(13, 148, 136, 0.04);
+}
+
+.drop-zone:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.feature-card {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+}
+
+.feature-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: rgba(13, 148, 136, 0.1);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+#status.success {
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--color-primary-dark);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+}
+
+#status.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #B91C1C;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+html.dark #status.error {
+  color: #FCA5A5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

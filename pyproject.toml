@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-trans-markdown"
+version = "1.0.0"
+description = "Traductor de Markdown preservando formato y código"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "openai>=1.55.0",
+    "python-dotenv>=1.0.1",
+    "deepl>=1.20.0",
+]
+
+[project.scripts]
+md-translate = "src.main:run"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
