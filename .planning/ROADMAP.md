@@ -28,13 +28,13 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
   2. Usuario recibe error claro al subir archivos que no son UTF-8 válido
   3. La lista de idiomas en UI/API refleja solo las capacidades del proveedor activo (OpenAI vs DeepL)
   4. Tests de integración cubren `translate_segments`, endpoints API y contrato de reassemble
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 00-01-PLAN.md — Rechazo de traducciones incompletas (502, validación OpenAI/DeepL)
-- [ ] 00-02-PLAN.md — UTF-8 estricto en uploads (400, sin latin-1)
-- [ ] 00-03-PLAN.md — Idiomas filtrados por proveedor + validación en todas las rutas + UI
-- [ ] 00-04-PLAN.md — Tests de integración con mocks (traductor, API, reassemble)
+- [x] 00-01-PLAN.md — Rechazo de traducciones incompletas (502, validación OpenAI/DeepL)
+- [x] 00-02-PLAN.md — UTF-8 estricto en uploads (400, sin latin-1)
+- [x] 00-03-PLAN.md — Idiomas filtrados por proveedor + validación en todas las rutas + UI
+- [x] 00-04-PLAN.md — Tests de integración con mocks (traductor, API, reassemble)
 
 ### Phase 1: Production Table Stakes
 **Goal**: Usuario puede automatizar traducciones con terminología consistente y memoria persistente vía CLI y web
@@ -45,7 +45,14 @@ Plans:
   2. Usuario define términos en `glossary.yaml` y los gestiona desde la UI; el glosario se aplica en editor, archivo único y lote
   3. Segmentos repetidos se sirven desde cache SQLite sin llamar al proveedor; el usuario puede limpiar la memoria
   4. Usuario ejecuta `md-translate file|dir|batch` con `--dry-run`; `md-translate serve` arranca el servidor web por separado
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Fachada pipeline.py + refactor main.py (PIPE-01)
+- [ ] 01-02-PLAN.md — Memoria SQLite + integración pipeline + API clear (TM-01, TM-02, TM-03)
+- [ ] 01-03-PLAN.md — Glosario YAML + integración pipeline + API CRUD (GLOS-01, GLOS-03)
+- [ ] 01-04-PLAN.md — Panel glosario UI + botón limpiar memoria (GLOS-02, TM-03 UI)
+- [ ] 01-05-PLAN.md — CLI Typer md-translate + entry points + tests (CLI-01 … CLI-05)
 **UI hint**: yes
 
 ### Phase 2: Trust & QA
@@ -103,8 +110,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. MVP Hardening | 4/4 | Complete | 2026-05-28 |
-| 1. Production Table Stakes | 0/TBD | Not started | - |
+| 0. MVP Hardening | 4/4 | Complete    | 2026-05-28 |
+| 1. Production Table Stakes | 0/5 | Not started | - |
 | 2. Trust & QA | 0/TBD | Not started | - |
 | 3. Batch UX & Cost Control | 0/TBD | Not started | - |
 | 4. Team Scale | 0/TBD | Not started | - |
