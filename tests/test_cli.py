@@ -212,6 +212,32 @@ def test_batch_multi_lang_zip(tmp_path, mock_pipeline):
         assert "doc.en.md" in names
 
 
+def test_batch_zip_passes_tone(tmp_path, monkeypatch):
+    captured_tones: list[str] = []
+
+    def _fake(content, options):
+        captured_tones.append(options.tone)
+        return TranslateResult(
+            content=f"# TR\n{content}",
+            segments_total=1,
+            segments_translated=1,
+            validation=ValidationReport(overall="pass", checks=[]),
+        )
+
+    monkeypatch.setattr("src.cli.translate_markdown", _fake)
+    md = tmp_path / "doc.md"
+    md.write_text("# Doc", encoding="utf-8")
+    zpath = tmp_path / "out.zip"
+    result = runner.invoke(
+        app,
+        ["batch", str(md), "-t", "es", "--zip", str(zpath), "--tone", "formal"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert captured_tones
+    assert all(t == "formal" for t in captured_tones)
+
+
 def test_dir_respects_gitignore(tmp_path, mock_pipeline):
     root = tmp_path / "docs"
     root.mkdir()

@@ -13,6 +13,7 @@ from src.deployment import (
     get_api_token,
     sweep_output_dir,
     verify_api_token,
+    verify_api_token_auth,
 )
 
 
@@ -78,3 +79,10 @@ def test_api_token_bearer(monkeypatch):
     assert verify_api_token("Bearer secret-token") is True
     assert verify_api_token("Bearer wrong") is False
     assert verify_api_token(None) is False
+
+
+def test_api_token_auth_query_param(monkeypatch):
+    monkeypatch.setenv("API_TOKEN", "secret-token")
+    assert verify_api_token_auth(None, "secret-token") is True
+    assert verify_api_token_auth(None, "wrong") is False
+    assert verify_api_token_auth("Bearer secret-token", None) is True

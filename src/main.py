@@ -13,7 +13,7 @@ from functools import partial
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -25,7 +25,7 @@ from .deployment import (
     output_sweep_interval_hours,
     output_ttl_hours,
     sweep_output_dir,
-    verify_api_token,
+    verify_api_token_auth,
 )
 from .estimate import EstimateResult, estimate_files, estimate_markdown
 from .glossary import glossary_from_dict, glossary_to_dict, load_glossary, save_glossary
@@ -204,8 +204,11 @@ def _translation_http_exception(exc: IncompleteTranslationError) -> HTTPExceptio
     )
 
 
-def _require_api_token(authorization: str | None = Header(default=None)) -> None:
-    if not verify_api_token(authorization):
+def _require_api_token(
+    authorization: str | None = Header(default=None),
+    access_token: str | None = Query(default=None),
+) -> None:
+    if not verify_api_token_auth(authorization, access_token):
         raise HTTPException(401, "No autorizado")
 
 
@@ -726,7 +729,10 @@ async def _job_event_stream(job_id: str):
 
 
 @app.get("/api/translate/batch/jobs/{job_id}/events")
-async def batch_job_events(job_id: str):
+async def batch_job_events(
+    job_id: str,
+    _: None = Depends(_require_api_token),
+):
     if get_job(job_id) is None:
         raise HTTPException(404, "Job no encontrado")
     return StreamingResponse(
@@ -743,14 +749,20 @@ async def batch_job_events(job_id: str):
     "/api/translate/batch/jobs/{job_id}",
     response_model=BatchJobCancelResponse,
 )
-async def cancel_batch_translation_job(job_id: str):
+async def cancel_batch_translation_job(
+    job_id: str,
+    _: None = Depends(_require_api_token),
+):
     if not cancel_job(job_id):
         raise HTTPException(404, "Job no encontrado")
     return BatchJobCancelResponse(cancelled=True)
 
 
 @app.get("/api/translate/batch/jobs/{job_id}/download")
-async def download_batch_translation_job(job_id: str):
+async def download_batch_translation_job(
+    job_id: str,
+    _: None = Depends(_require_api_token),
+):
     job = get_job(job_id)
     if job is None:
         raise HTTPException(404, "Job no encontrado")

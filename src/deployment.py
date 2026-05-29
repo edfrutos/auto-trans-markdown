@@ -84,3 +84,18 @@ def verify_api_token(authorization: str | None) -> bool:
     if authorization.startswith("Bearer "):
         return authorization[7:].strip() == expected
     return authorization.strip() == expected
+
+
+def verify_api_token_auth(
+    authorization: str | None,
+    access_token: str | None = None,
+) -> bool:
+    """Acepta Bearer header o query access_token (p. ej. EventSource)."""
+    expected = get_api_token()
+    if not expected:
+        return True
+    if authorization and verify_api_token(authorization):
+        return True
+    if access_token and access_token.strip() == expected:
+        return True
+    return False

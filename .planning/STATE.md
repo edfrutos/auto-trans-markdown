@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Polish & PDF
 status: ready-to-execute
-stopped_at: Phase 6 planned — ready for /gsd-execute-phase 6
-last_updated: "2026-05-29T23:30:00.000Z"
-last_activity: 2026-05-29 -- phase 6 planned (4 plans, 3 waves)
+stopped_at: Phase 6 complete — next /gsd-plan-phase 7
+last_updated: "2026-05-29T23:59:00.000Z"
+last_activity: 2026-05-29 -- phase 6 executed (DEBT-01…04)
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 0
-  percent: 0
+  completed_plans: 4
+  percent: 57
   phase_6_plans: 4
   phase_6_planned: true
 ---
@@ -22,19 +22,19 @@ progress:
 
 **Shipped:** v1.0 NOTEBOOK A→E (tag `v1.0`)  
 **Active milestone:** v2.0 Production Polish & PDF  
-**Phase:** 6 — v1 Tech Debt Closure (planned)  
-**Next action:** `/gsd-execute-phase 6`
+**Phase:** 7 — PDF Export (next)  
+**Next action:** `/gsd-plan-phase 7` o `/gsd-execute-phase 7`
 
-**Current focus:** Ejecutar fase 6 (waves 1→2→3)
+**Current focus:** PDF export (fase 7)
 
-## Deferred Items (from v1.0 — in scope v2.0 phase 6)
+## Deferred Items (from v1.0 — resolved in phase 6)
 
-| Item | REQ |
-|------|-----|
-| CLI batch --zip + tone | DEBT-01 |
-| UI Bearer + API_TOKEN | DEBT-02 |
-| Editor multi-idioma | DEBT-03 |
-| 02-VERIFICATION.md | DEBT-04 |
+| Item | REQ | Status |
+|------|-----|--------|
+| CLI batch --zip + tone | DEBT-01 | Done |
+| UI Bearer + API_TOKEN | DEBT-02 | Done |
+| Editor multi-idioma | DEBT-03 | Done |
+| 02-VERIFICATION.md | DEBT-04 | Done |
 
 ## Deferred to v2.1+
 

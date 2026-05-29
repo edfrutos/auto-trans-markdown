@@ -8,10 +8,10 @@
 
 ### Tech debt closure (Phase 6)
 
-- [ ] **DEBT-01**: CLI `batch --zip` propaga `--tone` a `_build_options` (paridad con dir/batch output-dir)
-- [ ] **DEBT-02**: UI web envía `Authorization: Bearer` en fetch/EventSource cuando el usuario configura token (localStorage opt-in, sin commitear secretos)
-- [ ] **DEBT-03**: Editor multi-idioma: selector o tabs para ver/descargar cada traducción cuando `target_langs` > 1
-- [ ] **DEBT-04**: Documento `02-VERIFICATION.md` retroactivo (artefacto GSD fase 2)
+- [x] **DEBT-01**: CLI `batch --zip` propaga `--tone` a `_build_options` (paridad con dir/batch output-dir)
+- [x] **DEBT-02**: UI web envía `Authorization: Bearer` en fetch/EventSource cuando el usuario configura token (localStorage opt-in, sin commitear secretos)
+- [x] **DEBT-03**: Editor multi-idioma: selector o tabs para ver/descargar cada traducción cuando `target_langs` > 1
+- [x] **DEBT-04**: Documento `02-VERIFICATION.md` retroactivo (artefacto GSD fase 2)
 
 ### PDF export (Phase 7)
 
@@ -40,10 +40,10 @@
 
 | Requirement | Phase | Status |
 | ----------- | ----- | ------ |
-| DEBT-01 | 6 | Pending |
-| DEBT-02 | 6 | Pending |
-| DEBT-03 | 6 | Pending |
-| DEBT-04 | 6 | Pending |
+| DEBT-01 | 6 | Complete |
+| DEBT-02 | 6 | Complete |
+| DEBT-03 | 6 | Complete |
+| DEBT-04 | 6 | Complete |
 | PDF-01 | 7 | Pending |
 | PDF-02 | 7 | Pending |
 | PDF-03 | 7 | Pending |

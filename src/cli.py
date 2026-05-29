@@ -294,7 +294,7 @@ def batch_cmd(
                 content = md_file.read_text(encoding="utf-8")
                 for lang in targets:
                     options = _build_options(
-                        lang, source, dry_run, no_memory, no_glossary, glossary_path
+                        lang, source, dry_run, no_memory, no_glossary, glossary_path, tone
                     )
                     try:
                         result = _translate_content(content, options)

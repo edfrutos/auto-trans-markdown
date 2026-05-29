@@ -34,13 +34,13 @@ Detalle: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
   2. Con `API_TOKEN` en servidor, la UI permite guardar token y las peticiones autenticadas funcionan (incl. SSE)
   3. Tras traducir a 2+ idiomas en editor, el usuario puede ver y descargar cada idioma sin perder validación/preview
   4. Existe `02-VERIFICATION.md` con status passed para fase 2  
-**Plans:** 4 plans
+**Plans:** 4/4 complete
 
 Plans:
-- [ ] 06-01-PLAN.md — CLI batch ZIP + tone (DEBT-01) — wave 1
-- [ ] 06-02-PLAN.md — UI Bearer token + fetch/SSE (DEBT-02) — wave 1
-- [ ] 06-03-PLAN.md — Editor multi-idioma tabs/download (DEBT-03) — wave 2
-- [ ] 06-04-PLAN.md — 02-VERIFICATION retroactivo + tests regresión (DEBT-04) — wave 3
+- [x] 06-01-PLAN.md — CLI batch ZIP + tone (DEBT-01) — wave 1
+- [x] 06-02-PLAN.md — UI Bearer token + fetch/SSE (DEBT-02) — wave 1
+- [x] 06-03-PLAN.md — Editor multi-idioma tabs/download (DEBT-03) — wave 2
+- [x] 06-04-PLAN.md — 02-VERIFICATION retroactivo + tests regresión (DEBT-04) — wave 3
 
 ### Phase 7: PDF Export
 **Goal**: Usuario exporta Markdown traducido a PDF desde CLI y UI  
@@ -63,10 +63,10 @@ Plans:
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 0–5 | v1.0 | 29/29 | Complete | 2026-05-29 |
-| 6. Tech Debt Closure | v2.0 | 0/4 | Planned | — |
+| 6. Tech Debt Closure | v2.0 | 4/4 | Complete | 2026-05-29 |
 | 7. PDF Export | v2.0 | 0/3 | Not started | — |
 
 **Execution order:** 6 → 7
 
 ---
-*Last updated: 2026-05-29 — phase 6 planned (4 plans)*
+*Last updated: 2026-05-29 — phase 6 complete*

@@ -53,7 +53,11 @@ const state = {
   draftSegments: [],
   sourceContent: '',
   historyEnabled: false,
+  translationResults: null,
+  activeResultLang: null,
 };
+
+const API_TOKEN_KEY = 'md-translate-api-token';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -122,6 +126,13 @@ const els = {
   btnExportHtml: $('#btn-export-html'),
   historyEnabled: $('#history-enabled'),
   btnClearHistory: $('#btn-clear-history'),
+  apiTokenToggle: $('#api-token-toggle'),
+  apiTokenPanel: $('#api-token-panel'),
+  apiTokenChevron: $('#api-token-chevron'),
+  apiTokenInput: $('#api-token-input'),
+  btnSaveApiToken: $('#btn-save-api-token'),
+  btnClearApiToken: $('#btn-clear-api-token'),
+  resultLangTabs: $('#result-lang-tabs'),
 };
 
 const CHECK_LABELS = {
@@ -147,6 +158,100 @@ function showStatus(message, type = 'success') {
 
 function hideStatus() {
   els.status?.classList.add('hidden');
+}
+
+function getApiToken() {
+  return localStorage.getItem(API_TOKEN_KEY)?.trim() || '';
+}
+
+function setApiToken(value) {
+  const v = value?.trim();
+  if (v) localStorage.setItem(API_TOKEN_KEY, v);
+  else localStorage.removeItem(API_TOKEN_KEY);
+}
+
+function authHeaders(extra = {}) {
+  const headers = { ...extra };
+  const token = getApiToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+async function apiFetch(url, init = {}) {
+  const raw = init.headers;
+  const base =
+    raw instanceof Headers
+      ? Object.fromEntries(raw.entries())
+      : { ...(raw || {}) };
+  const res = await fetch(url, { ...init, headers: authHeaders(base) });
+  if (res.status === 401) {
+    const err = new Error(
+      'No autorizado — configura el token de API en «Token API».'
+    );
+    err.status = 401;
+    throw err;
+  }
+  return res;
+}
+
+function authEventSourceUrl(path) {
+  const token = getApiToken();
+  if (!token) return path;
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}access_token=${encodeURIComponent(token)}`;
+}
+
+function clearResultLangTabs() {
+  state.translationResults = null;
+  state.activeResultLang = null;
+  els.resultLangTabs?.classList.add('hidden');
+  setHtml(els.resultLangTabs, '');
+}
+
+function renderResultLangTabs() {
+  if (!els.resultLangTabs || !state.translationResults) return;
+  const langs = Object.keys(state.translationResults);
+  if (langs.length <= 1) {
+    els.resultLangTabs.classList.add('hidden');
+    setHtml(els.resultLangTabs, '');
+    return;
+  }
+  els.resultLangTabs.classList.remove('hidden');
+  setHtml(
+    els.resultLangTabs,
+    langs
+      .map((code) => {
+        const name = state.langNames[code] || code;
+        const active = code === state.activeResultLang;
+        return `<button type="button" role="tab" class="result-lang-tab${
+          active ? ' active' : ''
+        }" data-lang="${code}" aria-selected="${active}">${name}</button>`;
+      })
+      .join('')
+  );
+  els.resultLangTabs.querySelectorAll('.result-lang-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const lang = btn.getAttribute('data-lang');
+      if (lang) showTranslationForLang(lang);
+    });
+  });
+}
+
+function showTranslationForLang(lang) {
+  const result = state.translationResults?.[lang];
+  if (!result) return;
+  state.activeResultLang = lang;
+  els.outputMd.value = result.content;
+  els.btnCopy.disabled = false;
+  const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
+  state.downloadBlob = blob;
+  state.downloadName = `traduccion.${lang}.md`;
+  els.btnDownload.classList.remove('hidden');
+  renderPreview(state.sourceContent, els.previewSource);
+  renderPreview(result.content, els.previewResult);
+  renderDiff(state.sourceContent, result.content);
+  renderValidationPanel(result.validation);
+  renderResultLangTabs();
 }
 
 function debounce(fn, ms) {
@@ -336,7 +441,7 @@ async function finalizeReview() {
     if (textarea) edits[idx] = textarea.value;
   });
   try {
-    const res = await fetch('/api/translate/finalize', {
+    const res = await apiFetch('/api/translate/finalize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -384,13 +489,15 @@ async function finalizeReview() {
   }
 }
 
-function onTranslateSuccess({ content, source, validation, segmentsTranslated, multiLang }) {
+function onTranslateSuccess({ content, source, validation, segmentsTranslated, multiLang, skipRender }) {
   state.sourceContent = source || state.sourceContent;
   els.btnExportHtml?.classList.remove('hidden');
-  renderPreview(source, els.previewSource);
-  renderPreview(content, els.previewResult);
-  renderDiff(source, content);
-  renderValidationPanel(validation);
+  if (!skipRender) {
+    renderPreview(source, els.previewSource);
+    renderPreview(content, els.previewResult);
+    renderDiff(source, content);
+    renderValidationPanel(validation);
+  }
   pushHistory({
     targetLang: state.targetLangs[0],
     mode: state.mode,
@@ -454,7 +561,7 @@ async function fetchEstimateBatch() {
   appendTargetLangsToForm(form);
   form.append('source_lang', els.sourceLang.value);
   try {
-    const res = await fetch('/api/translate/estimate', {
+    const res = await apiFetch('/api/translate/estimate', {
       method: 'POST',
       body: form,
       signal: state.estimateController.signal,
@@ -482,7 +589,7 @@ async function fetchEstimateFile() {
   appendTargetLangsToForm(form);
   form.append('source_lang', els.sourceLang.value);
   try {
-    const res = await fetch('/api/translate/estimate', {
+    const res = await apiFetch('/api/translate/estimate', {
       method: 'POST',
       body: form,
       signal: state.estimateController.signal,
@@ -576,7 +683,7 @@ function setBatchFileStatus(filename, status) {
 }
 
 async function downloadBatchJobResult(jobId) {
-  const res = await fetch(`/api/translate/batch/jobs/${jobId}/download`);
+  const res = await apiFetch(`/api/translate/batch/jobs/${jobId}/download`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(apiErrorMessage(err, 'No se pudo descargar el ZIP'));
@@ -590,7 +697,7 @@ async function cancelBatchJob() {
   if (!state.batchJobId) return;
   if (!confirm('¿Cancelar la traducción en curso?')) return;
   try {
-    await fetch(`/api/translate/batch/jobs/${state.batchJobId}`, {
+    await apiFetch(`/api/translate/batch/jobs/${state.batchJobId}`, {
       method: 'DELETE',
     });
   } catch {
@@ -793,7 +900,7 @@ function bindGlossaryRowEvents() {
 async function loadGlossary() {
   if (!hasGlossaryUi()) return;
   try {
-    const res = await fetch('/api/glossary');
+    const res = await apiFetch('/api/glossary');
     if (!res.ok) throw new Error('No se pudo cargar el glosario');
     const data = await res.json();
     state.glossary.entries = flattenGlossary(data);
@@ -812,7 +919,7 @@ async function saveGlossary() {
   els.btnSaveGlossary.textContent = 'Guardando…';
   try {
     const body = assembleGlossaryPayload();
-    const res = await fetch('/api/glossary', {
+    const res = await apiFetch('/api/glossary', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -840,7 +947,7 @@ async function clearMemory() {
     return;
   }
   try {
-    const res = await fetch('/api/memory', { method: 'DELETE' });
+    const res = await apiFetch('/api/memory', { method: 'DELETE' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(apiErrorMessage(data, 'Error al limpiar memoria'));
     showStatus('Memoria de traducción vaciada', 'success');
@@ -919,6 +1026,7 @@ function switchTab(mode) {
   els.reviewSection?.classList.toggle('hidden', mode !== 'editor');
   els.btnDownload?.classList.add('hidden');
   els.btnExportHtml?.classList.add('hidden');
+  clearResultLangTabs();
   hideStatus();
 }
 
@@ -930,12 +1038,13 @@ async function translateEditor() {
   }
   hideStatus();
   setLoading(true);
+  clearResultLangTabs();
   state.sourceContent = content;
   const reviewMode =
     state.reviewMode && state.targetLangs.length === 1;
   try {
     if (reviewMode) {
-      const res = await fetch('/api/translate/draft', {
+      const res = await apiFetch('/api/translate/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -967,7 +1076,7 @@ async function translateEditor() {
       return;
     }
 
-    const res = await fetch('/api/translate', {
+    const res = await apiFetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -981,27 +1090,44 @@ async function translateEditor() {
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorMessage(data, 'Error de traducción'));
     const primary = state.targetLangs[0];
-    const result = data.translations?.[primary] || data;
-    state.draftSegments = [];
-    els.outputMd.value = result.content;
-    els.btnCopy.disabled = false;
-    els.btnFinalizeReview?.classList.add('hidden');
-    const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
-    state.downloadBlob = blob;
-    state.downloadName = `traduccion.${primary}.md`;
-    els.btnDownload.classList.remove('hidden');
-    const langCount = data.translations ? state.targetLangs.length : 1;
-    onTranslateSuccess({
-      content: result.content,
-      source: content,
-      validation: result.validation,
-      segmentsTranslated: result.segments_translated,
-      multiLang: langCount > 1,
-    });
-    if (langCount > 1) {
-      showStatus(
-        `Listo — ${langCount} idiomas traducidos (mostrando ${state.langNames[primary] || primary}).`
-      );
+    if (data.translations) {
+      state.translationResults = data.translations;
+      state.activeResultLang = primary;
+      state.draftSegments = [];
+      els.btnFinalizeReview?.classList.add('hidden');
+      showTranslationForLang(primary);
+      els.btnExportHtml?.classList.remove('hidden');
+      const langCount = state.targetLangs.length;
+      onTranslateSuccess({
+        content: data.translations[primary].content,
+        source: content,
+        validation: data.translations[primary].validation,
+        segmentsTranslated: data.translations[primary].segments_translated,
+        multiLang: langCount > 1,
+        skipRender: true,
+      });
+      if (langCount > 1) {
+        showStatus(
+          `Listo — ${langCount} idiomas traducidos (mostrando ${state.langNames[primary] || primary}).`
+        );
+      }
+    } else {
+      const result = data;
+      state.draftSegments = [];
+      els.outputMd.value = result.content;
+      els.btnCopy.disabled = false;
+      els.btnFinalizeReview?.classList.add('hidden');
+      const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
+      state.downloadBlob = blob;
+      state.downloadName = `traduccion.${primary}.md`;
+      els.btnDownload.classList.remove('hidden');
+      onTranslateSuccess({
+        content: result.content,
+        source: content,
+        validation: result.validation,
+        segmentsTranslated: result.segments_translated,
+        multiLang: false,
+      });
     }
   } catch (err) {
     showStatus(err.message, 'error');
@@ -1022,7 +1148,7 @@ async function translateFile() {
   appendTargetLangsToForm(form);
   form.append('source_lang', els.sourceLang.value);
   try {
-    const res = await fetch('/api/translate/file', { method: 'POST', body: form });
+    const res = await apiFetch('/api/translate/file', { method: 'POST', body: form });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(apiErrorMessage(err, 'Error al traducir archivo'));
@@ -1101,7 +1227,7 @@ async function translateBatch() {
   form.append('source_lang', els.sourceLang.value);
 
   try {
-    const res = await fetch('/api/translate/batch/jobs', {
+    const res = await apiFetch('/api/translate/batch/jobs', {
       method: 'POST',
       body: form,
     });
@@ -1114,7 +1240,7 @@ async function translateBatch() {
 
     await new Promise((resolve, reject) => {
       const es = new EventSource(
-        `/api/translate/batch/jobs/${jobId}/events`
+        authEventSourceUrl(`/api/translate/batch/jobs/${jobId}/events`)
       );
       state.eventSource = es;
 
@@ -1319,6 +1445,28 @@ els.btnClearHistory?.addEventListener('click', () => {
   showStatus('Historial local borrado.');
 });
 
+els.apiTokenToggle?.addEventListener('click', () => {
+  const expanded = els.apiTokenPanel?.classList.toggle('hidden');
+  const isOpen = !expanded;
+  els.apiTokenToggle.setAttribute('aria-expanded', String(isOpen));
+  els.apiTokenChevron?.classList.toggle('expanded', isOpen);
+});
+
+els.btnSaveApiToken?.addEventListener('click', () => {
+  setApiToken(els.apiTokenInput?.value || '');
+  showStatus('Token API guardado en este navegador.');
+});
+
+els.btnClearApiToken?.addEventListener('click', () => {
+  setApiToken('');
+  if (els.apiTokenInput) els.apiTokenInput.value = '';
+  showStatus('Token API borrado.');
+});
+
+function initApiTokenField() {
+  if (els.apiTokenInput) els.apiTokenInput.value = getApiToken();
+}
+
 els.sourceLang.addEventListener('change', () => {
   if (state.glossary.loaded) loadGlossary();
   scheduleEstimateBatch();
@@ -1362,6 +1510,7 @@ if (els.dropZoneBatch && els.batchInput) {
 loadLanguages();
 initTheme();
 initHistory();
+initApiTokenField();
 if (state.mode === 'editor') {
   els.reviewSection?.classList.remove('hidden');
 }

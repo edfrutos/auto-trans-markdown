@@ -220,6 +220,24 @@ def test_batch_job_events_content_type(client):
     assert "/api/translate/batch/jobs/{job_id}/events" in res.json()["paths"]
 
 
+def test_batch_job_events_requires_token(client, monkeypatch, mock_translate_success):
+    monkeypatch.setenv("API_TOKEN", "secret-token")
+    create = client.post(
+        "/api/translate/batch/jobs",
+        headers={"Authorization": "Bearer secret-token"},
+        files={"files": ("doc.md", make_md_bytes("# Hello"), "text/markdown")},
+        data={"target_lang": "es", "source_lang": "auto"},
+    )
+    assert create.status_code == 200
+    job_id = create.json()["job_id"]
+    denied = client.get(f"/api/translate/batch/jobs/{job_id}/events")
+    assert denied.status_code == 401
+    allowed = client.get(
+        f"/api/translate/batch/jobs/{job_id}/events?access_token=secret-token"
+    )
+    assert allowed.status_code == 200
+
+
 def _wait_for_job(job_id: str, timeout: float = 5.0) -> None:
     import time
 
