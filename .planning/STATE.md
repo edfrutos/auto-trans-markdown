@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Polish & PDF
 status: ready-to-execute
-stopped_at: Phase 6 complete — next /gsd-plan-phase 7
-last_updated: "2026-05-29T23:59:00.000Z"
-last_activity: 2026-05-29 -- phase 6 executed (DEBT-01…04)
+stopped_at: Phase 7 planned — ready for /gsd-execute-phase 7
+last_updated: "2026-05-30T00:00:00.000Z"
+last_activity: 2026-05-29 -- phase 7 planned (3 plans, 3 waves)
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 7
   completed_plans: 4
   percent: 57
-  phase_6_plans: 4
-  phase_6_planned: true
+  phase_7_plans: 3
+  phase_7_planned: true
 ---
 
 # Project State
@@ -22,10 +22,10 @@ progress:
 
 **Shipped:** v1.0 NOTEBOOK A→E (tag `v1.0`)  
 **Active milestone:** v2.0 Production Polish & PDF  
-**Phase:** 7 — PDF Export (next)  
-**Next action:** `/gsd-plan-phase 7` o `/gsd-execute-phase 7`
+**Phase:** 7 — PDF Export (planned)  
+**Next action:** `/gsd-execute-phase 7`
 
-**Current focus:** PDF export (fase 7)
+**Current focus:** Ejecutar fase 7 (PDF export)
 
 ## Deferred Items (from v1.0 — resolved in phase 6)
 
@@ -44,6 +44,6 @@ progress:
 
 ## Session Continuity
 
-Stopped at: Phase 6 plans committed  
-Resume file: `.planning/phases/06-v1-tech-debt-closure/06-01-PLAN.md`  
+Stopped at: Phase 7 plans committed  
+Resume file: `.planning/phases/07-pdf-export/07-01-PLAN.md`  
 Resume file: `.planning/ROADMAP.md` Phase 6
