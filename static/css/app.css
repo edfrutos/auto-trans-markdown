@@ -472,3 +472,65 @@ html.dark #btn-cancel-job {
   content: '✕';
   color: #dc2626;
 }
+
+/* Revisión y diff (Phase 5) */
+.review-segment {
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+html.dark .review-segment {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(45, 212, 191, 0.15);
+}
+
+.review-segment-doubtful {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.diff-panel {
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+html.dark .diff-panel {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.diff-segment {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.diff-segment:last-child {
+  border-bottom: none;
+}
+
+.diff-segment-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted, #64748b);
+  margin-bottom: 0.35rem;
+}
+
+.diff-segment-doubtful {
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 0.5rem;
+  padding-left: 0.35rem;
+}
+
+.diff-panel ins {
+  background: rgba(16, 185, 129, 0.25);
+  text-decoration: none;
+}
+
+.diff-panel del {
+  background: rgba(239, 68, 68, 0.2);
+}

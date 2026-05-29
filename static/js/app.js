@@ -49,6 +49,10 @@ const state = {
   batchActiveProgress: { done: 0, total: 1 },
   targetLangs: [],
   langNames: {},
+  reviewMode: false,
+  draftSegments: [],
+  sourceContent: '',
+  historyEnabled: false,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -106,6 +110,18 @@ const els = {
   validationChevron: $('#validation-chevron'),
   validationSummary: $('#validation-summary'),
   validationChecks: $('#validation-checks'),
+  toneSelect: $('#tone-select'),
+  reviewSection: $('#review-section'),
+  reviewModeToggle: $('#review-mode-toggle'),
+  reviewSegments: $('#review-segments'),
+  btnFinalizeReview: $('#btn-finalize-review'),
+  tabPreview: $('#tab-preview'),
+  tabDiff: $('#tab-diff'),
+  previewGrid: $('#preview-grid'),
+  diffPanel: $('#diff-panel'),
+  btnExportHtml: $('#btn-export-html'),
+  historyEnabled: $('#history-enabled'),
+  btnClearHistory: $('#btn-clear-history'),
 };
 
 const CHECK_LABELS = {
@@ -162,10 +178,228 @@ function renderEstimateBlock(el, warnEl, data) {
   }
 }
 
+function getTone() {
+  return els.toneSelect?.value || 'auto';
+}
+
 function appendTargetLangsToForm(form) {
   if (!state.targetLangs.length) return;
   form.append('target_lang', state.targetLangs[0]);
   state.targetLangs.forEach((lang) => form.append('target_langs', lang));
+  form.append('tone', getTone());
+}
+
+const HISTORY_KEY = 'md-translate-history';
+const MAX_HISTORY = 50;
+const EXPORT_CSS =
+  'body{font-family:system-ui,sans-serif;line-height:1.6;max-width:48rem;margin:2rem auto;padding:0 1rem;color:#1e293b}' +
+  'h1,h2,h3{color:#0f766e;margin-top:1.5em}pre{background:#f1f5f9;padding:1rem;overflow-x:auto;border-radius:.5rem}' +
+  'code{background:#f1f5f9;padding:.1em .35em;border-radius:.25rem;font-size:.9em}' +
+  'blockquote{border-left:4px solid #14b8a6;margin-left:0;padding-left:1rem;color:#475569}';
+
+function pushHistory(entry) {
+  if (!state.historyEnabled) return;
+  try {
+    const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    list.unshift({
+      ts: Date.now(),
+      targetLang: entry.targetLang,
+      mode: entry.mode,
+      segments: entry.segments,
+      chars: entry.chars,
+    });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, MAX_HISTORY)));
+    els.btnClearHistory?.classList.remove('hidden');
+  } catch {
+    /* localStorage no disponible */
+  }
+}
+
+function initHistory() {
+  const stored = localStorage.getItem('md-translate-history-enabled');
+  state.historyEnabled = stored === '1';
+  if (els.historyEnabled) els.historyEnabled.checked = state.historyEnabled;
+  if (state.historyEnabled) els.btnClearHistory?.classList.remove('hidden');
+}
+
+function exportHtml() {
+  const md = els.outputMd?.value?.trim();
+  if (!md) {
+    showStatus('No hay traducción para exportar.', 'error');
+    return;
+  }
+  const title = state.downloadName?.replace(/\.md$/i, '') || 'traduccion';
+  let bodyHtml = '';
+  if (typeof marked !== 'undefined') {
+    bodyHtml = marked.parse(md, { gfm: true, breaks: false });
+  } else {
+    bodyHtml = `<pre>${escapeHtml(md)}</pre>`;
+  }
+  const doc =
+    `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<title>${escapeHtml(title)}</title><style>${EXPORT_CSS}</style></head>` +
+    `<body>${bodyHtml}</body></html>`;
+  const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus('HTML exportado.');
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function buildDiffSegments(source, translated) {
+  if (state.draftSegments.length) return state.draftSegments;
+  if (source && translated) {
+    return [{ index: 0, original: source, translated, doubtful: false }];
+  }
+  return [];
+}
+
+function renderDiff(source, translated) {
+  const panel = els.diffPanel;
+  if (!panel) return;
+  const segments = buildDiffSegments(source, translated);
+  if (typeof diff_match_patch === 'undefined') {
+    panel.textContent = 'Diff no disponible (CDN no cargado).';
+    return;
+  }
+  if (!segments.length) {
+    setHtml(panel, '<p class="text-sm text-ink-muted p-2">Traduce primero para ver el diff.</p>');
+    return;
+  }
+  const dmp = new diff_match_patch();
+  setHtml(
+    panel,
+    segments
+      .map((s) => {
+        const diffs = dmp.diff_main(s.original || '', s.translated || '');
+        dmp.diff_cleanupSemantic(diffs);
+        const diffHtml = dmp.diff_prettyHtml(diffs);
+        const doubtful = s.doubtful ? ' diff-segment-doubtful' : '';
+        return `<div class="diff-segment${doubtful}"><p class="diff-segment-label">Segmento ${s.index}</p>${diffHtml}</div>`;
+      })
+      .join('')
+  );
+}
+
+function switchPreviewTab(tab) {
+  const isDiff = tab === 'diff';
+  els.tabPreview?.classList.toggle('tab-btn-active', !isDiff);
+  els.tabDiff?.classList.toggle('tab-btn-active', isDiff);
+  els.tabPreview?.setAttribute('aria-selected', String(!isDiff));
+  els.tabDiff?.setAttribute('aria-selected', String(isDiff));
+  els.previewGrid?.classList.toggle('hidden', isDiff);
+  els.diffPanel?.classList.toggle('hidden', !isDiff);
+  if (isDiff) {
+    renderDiff(state.sourceContent, els.outputMd?.value || '');
+  }
+}
+
+function renderReviewSegments(segments) {
+  if (!els.reviewSegments) return;
+  if (!segments?.length) {
+    setHtml(els.reviewSegments, '<p class="text-sm text-ink-muted">Sin segmentos traducibles.</p>');
+    return;
+  }
+  setHtml(
+    els.reviewSegments,
+    segments
+      .map(
+        (s) => `
+    <div class="review-segment${s.doubtful ? ' review-segment-doubtful' : ''}" data-segment-index="${s.index}">
+      <p class="review-original text-xs text-ink-muted mb-1">${escapeHtml(s.original)}</p>
+      <textarea class="review-edit w-full rounded-lg border border-teal-100 px-2 py-1 text-sm" rows="2">${escapeHtml(s.translated)}</textarea>
+    </div>`
+      )
+      .join('')
+  );
+}
+
+async function finalizeReview() {
+  if (!state.sourceContent) return;
+  hideStatus();
+  setLoading(true, 'Confirmando…');
+  const edits = {};
+  els.reviewSegments?.querySelectorAll('[data-segment-index]').forEach((row) => {
+    const idx = parseInt(row.getAttribute('data-segment-index'), 10);
+    const textarea = row.querySelector('textarea');
+    if (textarea) edits[idx] = textarea.value;
+  });
+  try {
+    const res = await fetch('/api/translate/finalize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: state.sourceContent,
+        segments: edits,
+        source_lang: els.sourceLang.value,
+        tone: getTone(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(apiErrorMessage(data, 'Error al confirmar revisión'));
+    els.outputMd.value = data.content;
+    state.draftSegments = Object.entries(edits).map(([index, translated]) => {
+      const seg = state.draftSegments.find((s) => s.index === Number(index));
+      return {
+        index: Number(index),
+        original: seg?.original || '',
+        translated,
+        doubtful: false,
+      };
+    });
+    els.btnCopy.disabled = false;
+    const primary = state.targetLangs[0];
+    const blob = new Blob([data.content], { type: 'text/markdown;charset=utf-8' });
+    state.downloadBlob = blob;
+    state.downloadName = `traduccion.${primary}.md`;
+    els.btnDownload?.classList.remove('hidden');
+    els.btnExportHtml?.classList.remove('hidden');
+    renderPreview(state.sourceContent, els.previewSource);
+    renderPreview(data.content, els.previewResult);
+    renderDiff(state.sourceContent, data.content);
+    renderValidationPanel(data.validation);
+    els.btnFinalizeReview?.classList.add('hidden');
+    pushHistory({
+      targetLang: primary,
+      mode: 'editor-review',
+      segments: data.segments_translated,
+      chars: data.content.length,
+    });
+    showStatus('Revisión confirmada y lista para exportar.');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function onTranslateSuccess({ content, source, validation, segmentsTranslated, multiLang }) {
+  state.sourceContent = source || state.sourceContent;
+  els.btnExportHtml?.classList.remove('hidden');
+  renderPreview(source, els.previewSource);
+  renderPreview(content, els.previewResult);
+  renderDiff(source, content);
+  renderValidationPanel(validation);
+  pushHistory({
+    targetLang: state.targetLangs[0],
+    mode: state.mode,
+    segments: segmentsTranslated,
+    chars: content?.length || 0,
+  });
+  if (!multiLang) {
+    showStatus(`Listo — ${segmentsTranslated} segmentos traducidos.`);
+  }
 }
 
 function renderTargetChips() {
@@ -682,7 +916,9 @@ function switchTab(mode) {
     tab.classList.toggle('tab-btn-active', active);
     panel.classList.toggle('hidden', !active);
   });
+  els.reviewSection?.classList.toggle('hidden', mode !== 'editor');
   els.btnDownload?.classList.add('hidden');
+  els.btnExportHtml?.classList.add('hidden');
   hideStatus();
 }
 
@@ -694,7 +930,43 @@ async function translateEditor() {
   }
   hideStatus();
   setLoading(true);
+  state.sourceContent = content;
+  const reviewMode =
+    state.reviewMode && state.targetLangs.length === 1;
   try {
+    if (reviewMode) {
+      const res = await fetch('/api/translate/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          target_lang: state.targetLangs[0],
+          source_lang: els.sourceLang.value,
+          tone: getTone(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(apiErrorMessage(data, 'Error de borrador'));
+      state.draftSegments = data.segments || [];
+      els.outputMd.value = data.content;
+      renderReviewSegments(state.draftSegments);
+      els.btnFinalizeReview?.classList.remove('hidden');
+      els.btnCopy.disabled = false;
+      const blob = new Blob([data.content], { type: 'text/markdown;charset=utf-8' });
+      state.downloadBlob = blob;
+      state.downloadName = `traduccion.${state.targetLangs[0]}.md`;
+      els.btnDownload.classList.remove('hidden');
+      els.btnExportHtml?.classList.remove('hidden');
+      renderPreview(content, els.previewSource);
+      renderPreview(data.content, els.previewResult);
+      renderDiff(content, data.content);
+      renderValidationPanel(data.validation);
+      showStatus(
+        `Borrador — ${data.segments_translated} segmentos (${state.draftSegments.filter((s) => s.doubtful).length} dudosos).`
+      );
+      return;
+    }
+
     const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -703,27 +975,34 @@ async function translateEditor() {
         target_lang: state.targetLangs[0],
         target_langs: state.targetLangs,
         source_lang: els.sourceLang.value,
+        tone: getTone(),
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorMessage(data, 'Error de traducción'));
     const primary = state.targetLangs[0];
     const result = data.translations?.[primary] || data;
+    state.draftSegments = [];
     els.outputMd.value = result.content;
     els.btnCopy.disabled = false;
+    els.btnFinalizeReview?.classList.add('hidden');
     const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
     state.downloadBlob = blob;
     state.downloadName = `traduccion.${primary}.md`;
     els.btnDownload.classList.remove('hidden');
-    renderPreview(content, els.previewSource);
-    renderPreview(result.content, els.previewResult);
-    renderValidationPanel(result.validation);
     const langCount = data.translations ? state.targetLangs.length : 1;
-    showStatus(
-      langCount > 1
-        ? `Listo — ${langCount} idiomas traducidos (mostrando ${state.langNames[primary] || primary}).`
-        : `Listo — ${result.segments_translated} segmentos traducidos.`
-    );
+    onTranslateSuccess({
+      content: result.content,
+      source: content,
+      validation: result.validation,
+      segmentsTranslated: result.segments_translated,
+      multiLang: langCount > 1,
+    });
+    if (langCount > 1) {
+      showStatus(
+        `Listo — ${langCount} idiomas traducidos (mostrando ${state.langNames[primary] || primary}).`
+      );
+    }
   } catch (err) {
     showStatus(err.message, 'error');
   } finally {
@@ -767,10 +1046,13 @@ async function translateFile() {
       );
     } else {
       const text = await blob.text();
+      const src = await state.selectedFile.text();
+      state.sourceContent = src;
       els.outputMd.value = text;
       els.btnCopy.disabled = false;
-      renderPreview(await state.selectedFile.text(), els.previewSource);
+      renderPreview(src, els.previewSource);
       renderPreview(text, els.previewResult);
+      renderDiff(src, text);
       const valHeader = res.headers.get('X-Validation-Report');
       if (valHeader) {
         try {
@@ -780,8 +1062,17 @@ async function translateFile() {
         }
       }
       showStatus(`Archivo traducido: ${state.downloadName}`);
+      pushHistory({
+        targetLang: state.targetLangs[0],
+        mode: 'file',
+        segments: 0,
+        chars: text.length,
+      });
     }
     els.btnDownload.classList.remove('hidden');
+    if (!contentType.includes('zip')) {
+      els.btnExportHtml?.classList.remove('hidden');
+    }
   } catch (err) {
     showStatus(err.message, 'error');
   } finally {
@@ -1006,6 +1297,27 @@ els.btnAddGlossary?.addEventListener('click', () => {
 
 els.btnSaveGlossary?.addEventListener('click', saveGlossary);
 els.btnClearMemory?.addEventListener('click', clearMemory);
+els.btnExportHtml?.addEventListener('click', exportHtml);
+els.btnFinalizeReview?.addEventListener('click', finalizeReview);
+els.tabPreview?.addEventListener('click', () => switchPreviewTab('preview'));
+els.tabDiff?.addEventListener('click', () => switchPreviewTab('diff'));
+els.reviewModeToggle?.addEventListener('change', () => {
+  state.reviewMode = Boolean(els.reviewModeToggle?.checked);
+});
+els.historyEnabled?.addEventListener('change', () => {
+  state.historyEnabled = Boolean(els.historyEnabled?.checked);
+  localStorage.setItem('md-translate-history-enabled', state.historyEnabled ? '1' : '0');
+  if (state.historyEnabled) {
+    els.btnClearHistory?.classList.remove('hidden');
+  } else {
+    els.btnClearHistory?.classList.add('hidden');
+  }
+});
+els.btnClearHistory?.addEventListener('click', () => {
+  localStorage.removeItem(HISTORY_KEY);
+  els.btnClearHistory?.classList.add('hidden');
+  showStatus('Historial local borrado.');
+});
 
 els.sourceLang.addEventListener('change', () => {
   if (state.glossary.loaded) loadGlossary();
@@ -1049,3 +1361,7 @@ if (els.dropZoneBatch && els.batchInput) {
 
 loadLanguages();
 initTheme();
+initHistory();
+if (state.mode === 'editor') {
+  els.reviewSection?.classList.remove('hidden');
+}

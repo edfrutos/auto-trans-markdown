@@ -39,6 +39,7 @@ class TranslateOptions:
     glossary_path: Path | None = None
     memory_path: Path | None = None
     on_progress: ProgressCallback | None = None
+    tone: str = "auto"
 
 
 @dataclass
@@ -51,6 +52,7 @@ class TranslateResult:
     dry_run_segments: list[tuple[int, str]] | None = None
     validation: ValidationReport | None = None
     provider_used: str | None = None
+    segment_translations: dict[int, str] | None = None
 
 
 def _resolve_source(source_lang: str | None) -> str | None:
@@ -131,6 +133,7 @@ def translate_markdown(content: str, options: TranslateOptions) -> TranslateResu
             source,
             on_progress=options.on_progress,
             glossary_prompt=glossary_appendix or None,
+            tone=options.tone,
         )
         if options.use_glossary and rules and rules.has_rules:
             for idx, translated in list(new_translations.items()):
@@ -158,4 +161,5 @@ def translate_markdown(content: str, options: TranslateOptions) -> TranslateResu
         cache_misses=miss_count,
         validation=validation,
         provider_used=get_provider_used(),
+        segment_translations=translations,
     )

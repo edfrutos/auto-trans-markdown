@@ -357,3 +357,61 @@ def test_cors_header_present(client):
     res = client.get("/api/languages", headers={"Origin": origin})
     allowed = res.headers.get("access-control-allow-origin")
     assert allowed == origin or allowed == "*"
+
+
+def test_translate_draft_returns_segments(client, mock_translate_success):
+    res = client.post(
+        "/api/translate/draft",
+        json={
+            "content": "# Title\n\nHello world with enough text here.",
+            "target_lang": "es",
+            "source_lang": "auto",
+            "tone": "formal",
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["segments"]
+    assert data["segments_total"] >= 1
+    assert "validation" in data
+
+
+def test_translate_draft_rejects_multi_lang(client, mock_translate_success):
+    res = client.post(
+        "/api/translate/draft",
+        json={
+            "content": "# Hi",
+            "target_langs": ["es", "en"],
+            "source_lang": "auto",
+        },
+    )
+    assert res.status_code == 400
+
+
+def test_translate_finalize_applies_edits(client, mock_translate_success):
+    md = "# Title\n\nParagraph one.\n"
+    draft = client.post(
+        "/api/translate/draft",
+        json={"content": md, "target_lang": "es", "source_lang": "auto"},
+    )
+    assert draft.status_code == 200
+    segments = {str(s["index"]): s["translated"] for s in draft.json()["segments"]}
+    fin = client.post(
+        "/api/translate/finalize",
+        json={"content": md, "segments": segments},
+    )
+    assert fin.status_code == 200
+    assert fin.json()["content"]
+
+
+def test_translate_text_accepts_tone(client, mock_translate_success):
+    res = client.post(
+        "/api/translate",
+        json={
+            "content": "# Hi",
+            "target_lang": "es",
+            "source_lang": "auto",
+            "tone": "informal",
+        },
+    )
+    assert res.status_code == 200

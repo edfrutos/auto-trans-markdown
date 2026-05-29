@@ -32,6 +32,7 @@ from .glossary import glossary_from_dict, glossary_to_dict, load_glossary, save_
 from .jobs import JobState, cancel_job, create_batch_job, get_job, start_batch_job
 from .memory import TranslationMemory, default_memory_path
 from .pipeline import DEFAULT_GLOSSARY_PATH, TranslateOptions, translate_markdown
+from .review import build_draft, finalize_draft
 from .target_langs import (
     out_name_for_lang,
     parse_target_langs,
@@ -77,6 +78,30 @@ class TranslateTextRequest(BaseModel):
     target_lang: str | None = None
     target_langs: list[str] | None = None
     source_lang: str = "auto"
+    tone: str = "auto"
+
+
+class DraftSegmentModel(BaseModel):
+    index: int
+    original: str
+    translated: str
+    doubtful: bool
+
+
+class DraftResponse(BaseModel):
+    content: str
+    segments: list[DraftSegmentModel]
+    segments_total: int
+    segments_translated: int
+    validation: ValidationReportModel | None = None
+    provider_used: str | None = None
+
+
+class FinalizeRequest(BaseModel):
+    content: str
+    segments: dict[int, str]
+    source_lang: str = "auto"
+    tone: str = "auto"
 
 
 class MultiTranslateResponse(BaseModel):
@@ -225,9 +250,14 @@ async def _translate_content(
     content: str,
     target_lang: str,
     source_lang: str,
+    tone: str = "auto",
 ):
     source = None if source_lang == "auto" else source_lang
-    options = TranslateOptions(target_lang=target_lang, source_lang=source)
+    options = TranslateOptions(
+        target_lang=target_lang,
+        source_lang=source,
+        tone=tone,
+    )
     loop = asyncio.get_running_loop()
     try:
         return await loop.run_in_executor(
@@ -300,8 +330,9 @@ async def _run_translate(
     content: str,
     target_lang: str,
     source_lang: str,
+    tone: str = "auto",
 ) -> TranslateResponse:
-    result = await _translate_content(content, target_lang, source_lang)
+    result = await _translate_content(content, target_lang, source_lang, tone)
     return _to_response(result)
 
 
@@ -405,7 +436,9 @@ async def translate_text(
 
     if len(langs) == 1:
         try:
-            return await _run_translate(body.content, langs[0], body.source_lang)
+            return await _run_translate(
+                body.content, langs[0], body.source_lang, body.tone
+            )
         except IncompleteTranslationError as e:
             raise _translation_http_exception(e) from e
         except RuntimeError as e:
@@ -418,7 +451,7 @@ async def translate_text(
     for lang in langs:
         try:
             translations[lang] = await _run_translate(
-                body.content, lang, body.source_lang
+                body.content, lang, body.source_lang, body.tone
             )
         except IncompleteTranslationError as e:
             raise _translation_http_exception(e) from e
@@ -430,12 +463,81 @@ async def translate_text(
     return MultiTranslateResponse(translations=translations)
 
 
+@app.post("/api/translate/draft", response_model=DraftResponse)
+async def translate_draft(
+    body: TranslateTextRequest,
+    _: None = Depends(_require_api_token),
+):
+    if not body.content.strip():
+        raise HTTPException(400, "El contenido está vacío")
+    langs = _resolve_target_langs(body.target_lang, body.target_langs)
+    if len(langs) != 1:
+        raise HTTPException(
+            400,
+            "El modo revisión requiere un único idioma destino",
+        )
+    _validate_languages_http(body.source_lang)
+    source = None if body.source_lang == "auto" else body.source_lang
+    options = TranslateOptions(
+        target_lang=langs[0],
+        source_lang=source,
+        tone=body.tone,
+    )
+    loop = asyncio.get_running_loop()
+    try:
+        draft = await loop.run_in_executor(
+            None, partial(build_draft, body.content, options)
+        )
+    except IncompleteTranslationError as e:
+        raise _translation_http_exception(e) from e
+    except RuntimeError as e:
+        raise HTTPException(503, str(e)) from e
+    except Exception as e:
+        logger.exception("Error en borrador de traducción")
+        raise HTTPException(502, f"Error de traducción: {e}") from e
+    return DraftResponse(
+        content=draft.content,
+        segments=[
+            DraftSegmentModel(
+                index=s.index,
+                original=s.original,
+                translated=s.translated,
+                doubtful=s.doubtful,
+            )
+            for s in draft.segments
+        ],
+        segments_total=draft.segments_total,
+        segments_translated=draft.segments_translated,
+        validation=_validation_model(draft),
+        provider_used=draft.provider_used,
+    )
+
+
+@app.post("/api/translate/finalize", response_model=TranslateResponse)
+async def translate_finalize(
+    body: FinalizeRequest,
+    _: None = Depends(_require_api_token),
+):
+    if not body.content.strip():
+        raise HTTPException(400, "El contenido está vacío")
+    loop = asyncio.get_running_loop()
+    try:
+        result = await loop.run_in_executor(
+            None,
+            partial(finalize_draft, body.content, body.segments),
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return _to_response(result)
+
+
 @app.post("/api/translate/file")
 async def translate_file(
     file: UploadFile = File(...),
     target_lang: str | None = Form(None),
     target_langs: list[str] = Form(default=[]),
     source_lang: str = Form("auto"),
+    tone: str = Form("auto"),
     _: None = Depends(_require_api_token),
 ):
     if not file.filename or not file.filename.lower().endswith((".md", ".markdown", ".mdx")):
@@ -457,7 +559,7 @@ async def translate_file(
     if len(langs) == 1:
         lang = langs[0]
         try:
-            result = await _translate_content(content, lang, source_lang)
+            result = await _translate_content(content, lang, source_lang, tone)
         except IncompleteTranslationError as e:
             raise _translation_http_exception(e) from e
         except RuntimeError as e:
@@ -492,7 +594,7 @@ async def translate_file(
         file_results: list[tuple[str, object]] = []
         for lang in langs:
             try:
-                result = await _translate_content(content, lang, source_lang)
+                result = await _translate_content(content, lang, source_lang, tone)
             except IncompleteTranslationError as e:
                 raise _translation_http_exception(e) from e
             except RuntimeError as e:
@@ -595,6 +697,7 @@ async def create_batch_translation_job(
     target_lang: str | None = Form(None),
     target_langs: list[str] = Form(default=[]),
     source_lang: str = Form("auto"),
+    tone: str = Form("auto"),
     _: None = Depends(_require_api_token),
 ):
     langs = _resolve_target_langs(target_lang, target_langs or None)
@@ -604,6 +707,7 @@ async def create_batch_translation_job(
         entries,
         target_langs=langs,
         source_lang=source_lang,
+        tone=tone,
         start=False,
     )
     background_tasks.add_task(start_batch_job, job_id)
@@ -667,6 +771,7 @@ async def translate_batch(
     target_lang: str | None = Form(None),
     target_langs: list[str] = Form(default=[]),
     source_lang: str = Form("auto"),
+    tone: str = Form("auto"),
     _: None = Depends(_require_api_token),
 ):
     langs = _resolve_target_langs(target_lang, target_langs or None)
@@ -682,7 +787,7 @@ async def translate_batch(
             file_results: list[tuple[str, object]] = []
             for lang in langs:
                 try:
-                    result = await _translate_content(content, lang, source_lang)
+                    result = await _translate_content(content, lang, source_lang, tone)
                 except IncompleteTranslationError as e:
                     raise _translation_http_exception(e) from e
                 except RuntimeError as e:

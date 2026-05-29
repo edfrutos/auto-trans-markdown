@@ -217,6 +217,7 @@ def _build_user_prompt(
     target_lang: str,
     source_lang: str | None,
     glossary_prompt: str | None = None,
+    tone: str = "auto",
 ) -> str:
     target = _language_label(target_lang)
     source_hint = (
@@ -229,10 +230,29 @@ def _build_user_prompt(
         source_hint,
         f"Idioma destino: {target}.",
     ]
+    tone_hint = _tone_openai_hint(tone)
+    if tone_hint:
+        parts.append(tone_hint)
     if glossary_prompt:
         parts.append(glossary_prompt)
     parts.append(f"Traduce estos segmentos Markdown (array JSON):\n{numbered}")
     return "\n".join(parts)
+
+
+def _tone_openai_hint(tone: str) -> str | None:
+    if tone == "formal":
+        return "Usa registro formal (usted, tono profesional y técnico)."
+    if tone == "informal":
+        return "Usa registro informal y cercano (tú, tono natural y conversacional)."
+    return None
+
+
+def _deepl_formality(tone: str) -> str | None:
+    if tone == "formal":
+        return "more"
+    if tone == "informal":
+        return "less"
+    return None
 
 
 def _parse_openai_response(raw: str, expected_count: int) -> list[str]:
@@ -335,6 +355,7 @@ def _translate_openai_batch(
     source_lang: str | None,
     client: OpenAI | None = None,
     glossary_prompt: str | None = None,
+    tone: str = "auto",
 ) -> list[str]:
     client = client or create_openai_client()
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -350,7 +371,7 @@ def _translate_openai_batch(
                     {
                         "role": "user",
                         "content": _build_user_prompt(
-                            texts, target_lang, source_lang, glossary_prompt
+                            texts, target_lang, source_lang, glossary_prompt, tone
                         ),
                     },
                 ],
@@ -376,10 +397,10 @@ def _translate_openai_batch(
                 len(texts) - mid,
             )
             left = _translate_openai_batch(
-                texts[:mid], target_lang, source_lang, client, glossary_prompt
+                texts[:mid], target_lang, source_lang, client, glossary_prompt, tone
             )
             right = _translate_openai_batch(
-                texts[mid:], target_lang, source_lang, client, glossary_prompt
+                texts[mid:], target_lang, source_lang, client, glossary_prompt, tone
             )
             return left + right
         except APIError as exc:
@@ -397,6 +418,7 @@ def _translate_deepl_batch(
     target_lang: str,
     source_lang: str | None,
     client=None,
+    tone: str = "auto",
 ) -> list[str]:
     client = client or create_deepl_client()
     target = _deepl_target(target_lang)
@@ -409,6 +431,9 @@ def _translate_deepl_batch(
     }
     if source:
         kwargs["source_lang"] = source
+    formality = _deepl_formality(tone)
+    if formality:
+        kwargs["formality"] = formality
 
     for attempt in range(MAX_RETRIES):
         try:
@@ -435,8 +460,12 @@ def _translate_deepl_batch(
                 raise
             mid = len(texts) // 2
             logger.warning("Lote DeepL fallido, dividiendo en %d + %d", mid, len(texts) - mid)
-            left = _translate_deepl_batch(texts[:mid], target_lang, source_lang, client)
-            right = _translate_deepl_batch(texts[mid:], target_lang, source_lang, client)
+            left = _translate_deepl_batch(
+                texts[:mid], target_lang, source_lang, client, tone
+            )
+            right = _translate_deepl_batch(
+                texts[mid:], target_lang, source_lang, client, tone
+            )
             return left + right
 
     raise RuntimeError("No se pudo completar la traducción DeepL")
@@ -449,12 +478,15 @@ def _translate_batch_with_fallback(
     *,
     client=None,
     glossary_prompt: str | None = None,
+    tone: str = "auto",
 ) -> list[str]:
     """DeepL con fallback opcional a OpenAI."""
     global _provider_used
     try:
         _provider_used = "deepl"
-        return _translate_deepl_batch(texts, target_lang, source_lang, client=client)
+        return _translate_deepl_batch(
+            texts, target_lang, source_lang, client=client, tone=tone
+        )
     except Exception as exc:
         if not _openai_fallback_available() or not _deepl_error_fallbackable(exc):
             raise
@@ -469,6 +501,7 @@ def _translate_batch_with_fallback(
             source_lang,
             client=client,
             glossary_prompt=glossary_prompt,
+            tone=tone,
         )
 
 
@@ -479,6 +512,7 @@ def translate_segments(
     *,
     on_progress: Callable[[int, int], None] | None = None,
     glossary_prompt: str | None = None,
+    tone: str = "auto",
     client=None,
 ) -> dict[int, str]:
     """Traduce segmentos en lotes y devuelve mapa index -> texto traducido."""
@@ -508,6 +542,7 @@ def translate_segments(
                 source_lang,
                 client=client,
                 glossary_prompt=glossary_prompt,
+                tone=tone,
             )
         elif provider == "openai":
             translations = _translate_openai_batch(
@@ -516,6 +551,7 @@ def translate_segments(
                 source_lang,
                 client=client,
                 glossary_prompt=glossary_prompt,
+                tone=tone,
             )
         else:
             raise RuntimeError(

@@ -30,6 +30,7 @@ class BatchJob:
     target_langs: list[str]
     source_lang: str
     file_entries: list[tuple[str, str]]
+    tone: str = "auto"
     cancel_requested: bool = False
     successes: list[BatchFileSuccess] = field(default_factory=list)
     errors: list[BatchFileError] = field(default_factory=list)
@@ -98,6 +99,7 @@ async def _run_job(job: BatchJob) -> None:
             options = TranslateOptions(
                 target_lang=lang,
                 source_lang=source,
+                tone=job.tone,
                 on_progress=make_progress_callback(filename, lang),
             )
 
@@ -165,6 +167,7 @@ async def create_batch_job(
     *,
     target_langs: list[str],
     source_lang: str = "auto",
+    tone: str = "auto",
     start: bool = True,
 ) -> str:
     job_id = uuid.uuid4().hex
@@ -173,6 +176,7 @@ async def create_batch_job(
         state=JobState.PENDING,
         target_langs=target_langs,
         source_lang=source_lang,
+        tone=tone,
         file_entries=file_entries,
     )
     async with _lock:

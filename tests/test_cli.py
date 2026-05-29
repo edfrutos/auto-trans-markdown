@@ -210,3 +210,42 @@ def test_batch_multi_lang_zip(tmp_path, mock_pipeline):
         names = zf.namelist()
         assert "doc.es.md" in names
         assert "doc.en.md" in names
+
+
+def test_dir_respects_gitignore(tmp_path, mock_pipeline):
+    root = tmp_path / "docs"
+    root.mkdir()
+    (root / ".gitignore").write_text("secret/\n", encoding="utf-8")
+    (root / "ok.md").write_text("# OK", encoding="utf-8")
+    secret = root / "secret"
+    secret.mkdir()
+    (secret / "skip.md").write_text("# Skip", encoding="utf-8")
+    out = tmp_path / "out"
+    result = runner.invoke(
+        app,
+        ["dir", str(root), "-o", str(out), "-t", "es", "--respect-gitignore"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert (out / "ok.es.md").exists()
+    assert not (out / "secret" / "skip.es.md").exists()
+
+
+def test_export_html(tmp_path):
+    md = tmp_path / "doc.md"
+    md.write_text("# Hello\n\n**World**", encoding="utf-8")
+    html_out = tmp_path / "doc.html"
+    result = runner.invoke(
+        app, ["export", str(md), "-o", str(html_out)], catch_exceptions=False
+    )
+    assert result.exit_code == 0
+    html = html_out.read_text(encoding="utf-8")
+    assert "<h1>Hello</h1>" in html
+    assert "<title>doc</title>" in html
+
+
+def test_help_lists_watch_and_export():
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    assert "watch" in result.stdout
+    assert "export" in result.stdout

@@ -88,6 +88,14 @@
         <div id="target-lang-chips" class="target-lang-chips mt-2 flex flex-wrap gap-2" aria-live="polite"></div>
         <p id="target-lang-hint" class="text-xs text-ink-muted mt-1">Elige un idioma para añadirlo; al menos uno destino requerido</p>
       </div>
+      <div>
+        <label for="tone-select" class="block text-sm font-medium text-ink mb-1.5">Tono</label>
+        <select id="tone-select" class="input-select">
+          <option value="auto">Automático</option>
+          <option value="formal">Formal</option>
+          <option value="informal">Informal</option>
+        </select>
+      </div>
     </section>
 
     <!-- Glosario -->
@@ -153,14 +161,23 @@
           <textarea id="output-md" class="editor-area bg-teal-50/30" readonly placeholder="La traducción aparecerá aquí..." aria-label="Markdown traducido"></textarea>
         </div>
       </div>
-      <div id="preview-row" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <div>
-          <p class="text-xs font-medium text-ink-muted mb-1">Vista previa — Original</p>
-          <div id="preview-source" class="prose-preview" aria-label="Vista previa original"></div>
+      <div id="preview-row" class="mt-4">
+        <div class="flex gap-2 mb-2" role="tablist" aria-label="Vista resultado">
+          <button type="button" id="tab-preview" class="tab-btn tab-btn-active text-sm px-3 py-1 rounded-lg" aria-selected="true">Preview</button>
+          <button type="button" id="tab-diff" class="tab-btn text-sm px-3 py-1 rounded-lg" aria-selected="false">Diff</button>
         </div>
-        <div>
-          <p class="text-xs font-medium text-ink-muted mb-1">Vista previa — Traducido</p>
-          <div id="preview-result" class="prose-preview" aria-label="Vista previa traducido"></div>
+        <div id="preview-panels">
+          <div id="preview-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs font-medium text-ink-muted mb-1">Vista previa — Original</p>
+              <div id="preview-source" class="prose-preview" aria-label="Vista previa original"></div>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-ink-muted mb-1">Vista previa — Traducido</p>
+              <div id="preview-result" class="prose-preview" aria-label="Vista previa traducido"></div>
+            </div>
+          </div>
+          <div id="diff-panel" class="hidden diff-panel max-h-96 overflow-y-auto"></div>
         </div>
       </div>
     </div>
@@ -211,6 +228,19 @@
       </section>
     </div>
 
+    <!-- Revisión editorial -->
+    <section id="review-section" class="hidden mb-6" aria-labelledby="review-heading">
+      <div class="flex items-center justify-between mb-2">
+        <h2 id="review-heading" class="text-sm font-semibold text-ink">Revisión por segmentos</h2>
+        <label class="flex items-center gap-2 text-sm text-ink-muted">
+          <input type="checkbox" id="review-mode-toggle" />
+          Modo revisión
+        </label>
+      </div>
+      <div id="review-segments" class="review-segments space-y-3 max-h-64 overflow-y-auto"></div>
+      <button type="button" id="btn-finalize-review" class="btn-primary mt-3 text-sm hidden">Confirmar y exportar</button>
+    </section>
+
     <!-- Validación -->
     <section id="validation-section" class="hidden mb-6" aria-labelledby="validation-heading">
       <button
@@ -245,6 +275,12 @@
         </svg>
         Descargar .md
       </button>
+      <button type="button" id="btn-export-html" class="btn-secondary hidden text-sm">Export HTML</button>
+      <label class="flex items-center gap-2 text-sm text-ink-muted self-center">
+        <input type="checkbox" id="history-enabled" />
+        Guardar historial local
+      </label>
+      <button type="button" id="btn-clear-history" class="btn-secondary text-sm hidden">Borrar historial</button>
       <button type="button" id="btn-clear-memory" class="btn-secondary text-sm">
         Limpiar memoria
       </button>
@@ -289,6 +325,7 @@
     MarkDown Auto Translator — salida .md lista para publicar
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/diff-match-patch@1.0.5/index.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
   <script src="/static/js/app.js?v=3"></script>

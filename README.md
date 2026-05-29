@@ -172,10 +172,24 @@ md-translate file README.md -t es -o README.es.md
 md-translate file README.md -t es,en,fr
 md-translate dir docs/ -t en -o docs-en/ --recursive
 md-translate batch ./articles/*.md -t fr,de --zip out.zip
+md-translate dir docs/ -t en -o docs-en/ --recursive --respect-gitignore
+md-translate watch docs/ -o docs-en/ -t es
+md-translate export README.es.md -o README.es.html
+md-translate file doc.md -t es --tone formal
 md-translate file doc.md -t es --dry-run
 md-translate memory clear
 md-translate serve
 ```
+
+### Flujo editorial (web)
+
+- **Tono:** selector Auto / Formal / Informal (DeepL `formality`, hint OpenAI).
+- **Modo revisión:** borrador por segmentos con marcado de dudosos; confirmar vía `/api/translate/finalize`.
+- **Diff:** pestaña Diff con resaltado por segmento (`diff-match-patch`).
+- **Historial:** opt-in en localStorage (solo metadatos: idioma, modo, fecha).
+- **Export HTML:** botón en UI o `md-translate export`.
+
+Variables opcionales: `TRANSLATION_FALLBACK=openai` (DeepL → OpenAI si falla cuota/idioma).
 
 Glosario por defecto en `glossary.yaml`; memoria SQLite en `data/translation_memory.db` (gitignored).
 
@@ -188,6 +202,9 @@ src/translator.py  → Traducción por lotes (OpenAI o DeepL)
 src/memory.py      → Memoria de traducción SQLite
 src/glossary.py    → Glosario YAML
 src/cli.py         → CLI Typer md-translate
+src/review.py      → Modo revisión draft/finalize
+src/gitignore_filter.py → Filtro .gitignore para dir/batch
+src/html_export.py → Export Markdown → HTML autocontenido
 src/main.py        → API FastAPI + archivos estáticos
 static/            → Interfaz web (Tailwind + Plus Jakarta Sans)
 ```

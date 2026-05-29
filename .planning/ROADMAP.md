@@ -15,7 +15,7 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 - [x] **Phase 2: Trust & QA** - Validación post-traducción, preview renderizada, parser ampliado, frontmatter selectivo
 - [x] **Phase 3: Batch UX & Cost Control** - Jobs SSE con progreso real, cancelación, lotes parciales, estimación de coste
 - [x] **Phase 4: Team Scale** - Multi-destino, Docker, hardening de despliegue (CORS, límites, TTL)
-- [ ] **Phase 5: Editorial & Pro Workflow** - Revisión, fallback, diff, watch, árbol de docs, tono, historial, export HTML
+- [x] **Phase 5: Editorial & Pro Workflow** - Revisión, fallback, diff, watch, árbol de docs, tono, historial, export HTML
 
 ## Phase Details
 
@@ -125,11 +125,11 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — Fallback DeepL→OpenAI (FALL-01)
-- [ ] 05-02-PLAN.md — Tono formal/informal API/CLI/UI (TONE-01)
-- [ ] 05-03-PLAN.md — Modo revisión draft/finalize (REV-01, REV-02)
-- [ ] 05-04-PLAN.md — Vista diff lado a lado (DIFF-01)
-- [ ] 05-05-PLAN.md — CLI watch + gitignore tree (WATCH-01, TREE-01)
-- [ ] 05-06-PLAN.md — Historial opt-in + export HTML (HIST-01, EXPORT-01)
+- [x] 05-02-PLAN.md — Tono formal/informal API/CLI/UI (TONE-01)
+- [x] 05-03-PLAN.md — Modo revisión draft/finalize (REV-01, REV-02)
+- [x] 05-04-PLAN.md — Vista diff lado a lado (DIFF-01)
+- [x] 05-05-PLAN.md — CLI watch + gitignore tree (WATCH-01, TREE-01)
+- [x] 05-06-PLAN.md — Historial opt-in + export HTML (HIST-01, EXPORT-01)
 **UI hint**: yes
 
 ## Progress
@@ -144,7 +144,7 @@ Plans:
 | 2. Trust & QA | 5/5 | Complete | 2026-05-29 |
 | 3. Batch UX & Cost Control | 4/4 | Complete | 2026-05-29 |
 | 4. Team Scale | 5/5 | Complete | 2026-05-29 |
-| 5. Editorial & Pro Workflow | 0/6 | Planned | - |
+| 5. Editorial & Pro Workflow | 6/6 | Complete | 2026-05-29 |
 
 ---
 *Roadmap created: 2026-05-28 — NOTEBOOK milestone (brownfield)*

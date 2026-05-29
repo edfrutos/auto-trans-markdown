@@ -45,7 +45,7 @@ def _mock_deepl_client(texts: list[str], *, short: bool = False):
 def test_openai_incomplete_raises(monkeypatch):
     monkeypatch.setenv("TRANSLATION_PROVIDER", "openai")
 
-    def short_batch(texts, target_lang, source_lang, client=None, glossary_prompt=None):
+    def short_batch(texts, target_lang, source_lang, client=None, glossary_prompt=None, tone="auto"):
         return [f"TR:{texts[0]}"]
 
     monkeypatch.setattr("src.translator._translate_openai_batch", short_batch)
@@ -132,12 +132,12 @@ def test_deepl_fallback_to_openai(monkeypatch):
     monkeypatch.setenv("TRANSLATION_FALLBACK", "openai")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
 
-    def fail_deepl(texts, target_lang, source_lang, client=None):
+    def fail_deepl(texts, target_lang, source_lang, client=None, tone="auto"):
         raise ValueError("DeepL no soporta el idioma destino 'catalán'.")
 
     openai_calls: list[list[str]] = []
 
-    def ok_openai(texts, target_lang, source_lang, client=None, glossary_prompt=None):
+    def ok_openai(texts, target_lang, source_lang, client=None, glossary_prompt=None, tone="auto"):
         openai_calls.append(texts)
         return [f"TR:{t}" for t in texts]
 
@@ -154,7 +154,7 @@ def test_deepl_no_fallback_without_env(monkeypatch):
     monkeypatch.setenv("TRANSLATION_PROVIDER", "deepl")
     monkeypatch.delenv("TRANSLATION_FALLBACK", raising=False)
 
-    def fail_deepl(texts, target_lang, source_lang, client=None):
+    def fail_deepl(texts, target_lang, source_lang, client=None, tone="auto"):
         raise ValueError("DeepL no soporta el idioma destino.")
 
     monkeypatch.setattr("src.translator._translate_deepl_batch", fail_deepl)
@@ -168,3 +168,29 @@ def test_get_fallback_provider_requires_openai_key(monkeypatch):
     monkeypatch.setenv("TRANSLATION_FALLBACK", "openai")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert get_fallback_provider() is None
+
+
+def test_tone_formal_in_openai_prompt(monkeypatch):
+    monkeypatch.setenv("TRANSLATION_PROVIDER", "openai")
+    captured: list[str] = []
+
+    def fake_batch(texts, target_lang, source_lang, client=None, glossary_prompt=None, tone="auto"):
+        from src.translator import _build_user_prompt
+
+        captured.append(_build_user_prompt(texts, target_lang, source_lang, glossary_prompt, tone))
+        return [f"TR:{t}" for t in texts]
+
+    monkeypatch.setattr("src.translator._translate_openai_batch", fake_batch)
+    translate_segments([(0, "Hi")], "es", tone="formal", client=object())
+    assert "formal" in captured[0].lower()
+
+
+def test_deepl_formality_kwarg(monkeypatch):
+    from src.translator import _translate_deepl_batch
+
+    monkeypatch.setenv("TRANSLATION_PROVIDER", "deepl")
+    client = MagicMock()
+    client.translate_text.return_value = [_MockDeepLResult("Hola")]
+    _translate_deepl_batch(["Hi"], "es", None, client=client, tone="formal")
+    kwargs = client.translate_text.call_args.kwargs
+    assert kwargs.get("formality") == "more"

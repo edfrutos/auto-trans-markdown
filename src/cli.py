@@ -10,6 +10,8 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
+from .gitignore_filter import iter_markdown_files
+from .html_export import markdown_to_html
 from .memory import TranslationMemory, default_memory_path
 from .pipeline import TranslateOptions, translate_markdown
 from .target_langs import out_name_for_lang, validation_sidecar_name
@@ -66,11 +68,14 @@ def _build_options(
     no_memory: bool,
     no_glossary: bool,
     glossary_path: Path | None,
+    tone: str = "auto",
 ) -> TranslateOptions:
     if not is_valid_target_lang(target):
         _exit_config(f"Idioma destino no soportado: {target}")
     if source != "auto" and not is_valid_source_lang(source):
         _exit_config(f"Idioma origen no soportado: {source}")
+    if tone not in ("auto", "formal", "informal"):
+        _exit_config("Tono debe ser auto, formal o informal")
     return TranslateOptions(
         target_lang=target,
         source_lang=None if source == "auto" else source,
@@ -78,6 +83,7 @@ def _build_options(
         use_memory=not no_memory,
         use_glossary=not no_glossary,
         glossary_path=glossary_path,
+        tone=tone,
     )
 
 
@@ -148,11 +154,8 @@ def file_cmd(
     no_memory: bool = typer.Option(False, "--no-memory"),
     no_glossary: bool = typer.Option(False, "--no-glossary"),
     glossary_path: Path | None = typer.Option(None, "--glossary-path"),
-    strict: bool = typer.Option(
-        False,
-        "--strict",
-        help="No escribir salida si la validación estructural falla",
-    ),
+    strict: bool = typer.Option(False, "--strict"),
+    tone: str = typer.Option("auto", "--tone", help="auto|formal|informal"),
 ) -> None:
     """Traduce un archivo Markdown."""
     targets = _parse_targets(target)
@@ -163,7 +166,7 @@ def file_cmd(
     written = 0
     for lang in targets:
         options = _build_options(
-            lang, source, dry_run, no_memory, no_glossary, glossary_path
+            lang, source, dry_run, no_memory, no_glossary, glossary_path, tone
         )
         result = _translate_content(content, options)
 
@@ -203,11 +206,16 @@ def dir_cmd(
     no_glossary: bool = typer.Option(False, "--no-glossary"),
     glossary_path: Path | None = typer.Option(None, "--glossary-path"),
     strict: bool = typer.Option(False, "--strict"),
+    tone: str = typer.Option("auto", "--tone"),
+    respect_gitignore: bool = typer.Option(
+        True,
+        "--respect-gitignore/--no-respect-gitignore",
+        help="Omitir rutas en .gitignore",
+    ),
 ) -> None:
     """Traduce archivos .md en un directorio."""
-    pattern = "**/*" if recursive else "*"
-    files = sorted(
-        p for p in path.glob(pattern) if p.is_file() and _is_markdown(p)
+    files = iter_markdown_files(
+        path, recursive=recursive, respect_gitignore=respect_gitignore
     )
     if not files:
         _exit_config("No se encontraron archivos Markdown")
@@ -220,7 +228,7 @@ def dir_cmd(
         content = md_file.read_text(encoding="utf-8")
         for lang in targets:
             options = _build_options(
-                lang, source, dry_run, no_memory, no_glossary, glossary_path
+                lang, source, dry_run, no_memory, no_glossary, glossary_path, tone
             )
             out_file = output_dir / rel.parent / f"{rel.stem}.{lang}{rel.suffix}"
             out_file.parent.mkdir(parents=True, exist_ok=True)
@@ -258,6 +266,8 @@ def batch_cmd(
     no_glossary: bool = typer.Option(False, "--no-glossary"),
     glossary_path: Path | None = typer.Option(None, "--glossary-path"),
     strict: bool = typer.Option(False, "--strict"),
+    tone: str = typer.Option("auto", "--tone"),
+    respect_gitignore: bool = typer.Option(True, "--respect-gitignore/--no-respect-gitignore"),
 ) -> None:
     """Traduce varios archivos a ZIP o directorio."""
     if bool(zip_path) == bool(output_dir):
@@ -269,7 +279,7 @@ def batch_cmd(
             md_files.append(p)
         elif p.is_dir():
             md_files.extend(
-                sorted(f for f in p.rglob("*") if f.is_file() and _is_markdown(f))
+                iter_markdown_files(p, recursive=True, respect_gitignore=respect_gitignore)
             )
     if not md_files:
         _exit_config("No hay archivos Markdown válidos")
@@ -316,7 +326,7 @@ def batch_cmd(
             content = md_file.read_text(encoding="utf-8")
             for lang in targets:
                 options = _build_options(
-                    lang, source, dry_run, no_memory, no_glossary, glossary_path
+                    lang, source, dry_run, no_memory, no_glossary, glossary_path, tone
                 )
                 out = output_dir / f"{md_file.stem}.{lang}{md_file.suffix}"
                 try:
@@ -332,6 +342,100 @@ def batch_cmd(
 
     if errors:
         raise typer.Exit(1)
+
+
+@app.command("export")
+def export_cmd(
+    input_path: Path = typer.Argument(..., exists=True, readable=True),
+    output: Path = typer.Option(..., "--output", "-o", help="Archivo .html salida"),
+) -> None:
+    """Exporta Markdown a HTML autocontenido."""
+    content = input_path.read_text(encoding="utf-8")
+    html = markdown_to_html(content, title=input_path.stem)
+    output.write_text(html, encoding="utf-8")
+    typer.echo(f"HTML → {output}")
+
+
+@app.command("watch")
+def watch_cmd(
+    input_dir: Path = typer.Argument(..., exists=True, file_okay=False),
+    output_dir: Path = typer.Option(..., "--output-dir", "-o"),
+    target: str = typer.Option(..., "--target", "-t"),
+    source: str = typer.Option("auto", "--source", "-s"),
+    tone: str = typer.Option("auto", "--tone"),
+    no_memory: bool = typer.Option(False, "--no-memory"),
+    no_glossary: bool = typer.Option(False, "--no-glossary"),
+    glossary_path: Path | None = typer.Option(None, "--glossary-path"),
+) -> None:
+    """Vigila una carpeta y traduce .md al guardar (debounce 2s)."""
+    try:
+        from watchdog.events import FileSystemEventHandler
+        from watchdog.observers import Observer
+    except ImportError:
+        _exit_config("Instala watchdog: pip install watchdog")
+
+    import threading
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    targets = _parse_targets(target)
+    debounce_sec = 2.0
+    timers: dict[str, threading.Timer] = {}
+    lock = threading.Lock()
+
+    def translate_path(md_path: Path) -> None:
+        if not md_path.is_file() or not _is_markdown(md_path):
+            return
+        content = md_path.read_text(encoding="utf-8")
+        for lang in targets:
+            options = _build_options(
+                lang, source, False, no_memory, no_glossary, glossary_path, tone
+            )
+            try:
+                result = _translate_content(content, options)
+            except typer.Exit:
+                typer.secho(f"✗ {md_path.name} ({lang})", fg=typer.colors.RED, err=True)
+                continue
+            out = output_dir / f"{md_path.stem}.{lang}{md_path.suffix}"
+            out.write_text(result.content, encoding="utf-8")
+            typer.echo(f"✓ {md_path.name} → {out.name}")
+
+    def schedule(path: Path) -> None:
+        key = str(path.resolve())
+
+        def run() -> None:
+            with lock:
+                timers.pop(key, None)
+            translate_path(path)
+
+        with lock:
+            old = timers.pop(key, None)
+            if old:
+                old.cancel()
+            timers[key] = threading.Timer(debounce_sec, run)
+            timers[key].daemon = True
+            timers[key].start()
+
+    class Handler(FileSystemEventHandler):
+        def on_modified(self, event):  # type: ignore[override]
+            if event.is_directory:
+                return
+            schedule(Path(event.src_path))
+
+        def on_created(self, event):  # type: ignore[override]
+            if event.is_directory:
+                return
+            schedule(Path(event.src_path))
+
+    observer = Observer()
+    observer.schedule(Handler(), str(input_dir), recursive=True)
+    observer.start()
+    typer.echo(f"Vigilando {input_dir} → {output_dir} (Ctrl+C para salir)")
+    try:
+        observer.join()
+    except KeyboardInterrupt:
+        observer.stop()
+        observer.join()
+        typer.echo("Detenido.")
 
 
 if __name__ == "__main__":
