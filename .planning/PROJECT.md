@@ -101,11 +101,23 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
+**Shipped v1.0 (2026-05-29):** NOTEBOOK fases A→E completas. Ver `.planning/MILESTONES.md` y tag `v1.0`.
+
+## Current State (v1.0 shipped)
+
+- **137 tests** (`pytest tests/ -q`)
+- **Stack:** Python 3.11+, FastAPI, SQLite TM, vanilla JS UI, Docker
+- **Proveedores:** OpenAI (default), DeepL + fallback opcional
+- **Modos:** editor, archivo, lote SSE, CLI, watch, revisión editorial
+
+## Next Milestone Goals (v2 — draft)
+
+Prioridades sugeridas desde REQUIREMENTS v2 y auditoría:
+
+- [ ] Export PDF (V2-01)
+- [ ] Cerrar tech debt: `--tone` en batch ZIP CLI, UI Bearer, editor multi-idioma
+- [ ] Redis job store para multi-worker (V2-04)
+- [ ] Plugin Obsidian/VS Code (V2-02) — evaluar alcance
 
 ---
-*Last updated: 2026-05-29 — NOTEBOOK milestone v1 complete*
+*Last updated: 2026-05-29 after v1.0 milestone shipped*
