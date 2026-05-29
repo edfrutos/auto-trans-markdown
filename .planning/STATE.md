@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Polish & PDF
-status: ready-to-execute
-stopped_at: Phase 7 planned — ready for /gsd-execute-phase 7
-last_updated: "2026-05-30T00:00:00.000Z"
-last_activity: 2026-05-29 -- phase 7 planned (3 plans, 3 waves)
+status: milestone-complete
+stopped_at: v2.0 phases 6–7 complete — /gsd-complete-milestone 2.0
+last_updated: "2026-05-30T00:30:00.000Z"
+last_activity: 2026-05-29 -- phase 7 executed (PDF-01…04)
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 4
-  percent: 57
+  completed_plans: 7
+  percent: 100
   phase_7_plans: 3
   phase_7_planned: true
 ---
@@ -22,10 +22,10 @@ progress:
 
 **Shipped:** v1.0 NOTEBOOK A→E (tag `v1.0`)  
 **Active milestone:** v2.0 Production Polish & PDF  
-**Phase:** 7 — PDF Export (planned)  
-**Next action:** `/gsd-execute-phase 7`
+**Phase:** 7 complete — milestone v2.0 listo  
+**Next action:** `/gsd-complete-milestone 2.0` o `/gsd-verify-work`
 
-**Current focus:** Ejecutar fase 7 (PDF export)
+**Current focus:** Cierre milestone v2.0
 
 ## Deferred Items (from v1.0 — resolved in phase 6)
 

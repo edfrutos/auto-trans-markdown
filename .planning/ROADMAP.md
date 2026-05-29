@@ -51,12 +51,12 @@ Plans:
   2. UI ofrece «Export PDF» tras traducción exitosa (mismo patrón que HTML)
   3. Dependencia PDF documentada como opcional; tests mock o skip si WeasyPrint/pandoc ausente
   4. README describe instalación y limitaciones (Docker, headless)  
-**Plans:** 3 plans
+**Plans:** 3/3 complete
 
 Plans:
-- [ ] 07-01-PLAN.md — pdf_export.py + tests (PDF-01, PDF-04) — wave 1
-- [ ] 07-02-PLAN.md — CLI export --format pdf (PDF-02) — wave 2
-- [ ] 07-03-PLAN.md — API + UI Export PDF + README (PDF-03, PDF-04) — wave 3
+- [x] 07-01-PLAN.md — pdf_export.py + tests (PDF-01, PDF-04) — wave 1
+- [x] 07-02-PLAN.md — CLI export --format pdf (PDF-02) — wave 2
+- [x] 07-03-PLAN.md — API + UI Export PDF + README (PDF-03, PDF-04) — wave 3
 
 ## Progress
 
@@ -64,9 +64,9 @@ Plans:
 |-------|-----------|-------|--------|-----------|
 | 0–5 | v1.0 | 29/29 | Complete | 2026-05-29 |
 | 6. Tech Debt Closure | v2.0 | 4/4 | Complete | 2026-05-29 |
-| 7. PDF Export | v2.0 | 0/3 | Planned | — |
+| 7. PDF Export | v2.0 | 3/3 | Complete | 2026-05-29 |
 
 **Execution order:** 6 → 7
 
 ---
-*Last updated: 2026-05-29 — phase 7 planned (3 plans)*
+*Last updated: 2026-05-29 — phase 7 complete; v2.0 milestone ready to ship*

@@ -6,3 +6,4 @@ python-dotenv>=1.0.1
 deepl>=1.20.0
 typer>=0.21.0
 watchdog>=6.0.0
+# weasyprint>=62  # optional: pip install weasyprint  or  pip install -e ".[pdf]"

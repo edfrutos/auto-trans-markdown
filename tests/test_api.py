@@ -433,3 +433,32 @@ def test_translate_text_accepts_tone(client, mock_translate_success):
         },
     )
     assert res.status_code == 200
+
+
+def test_export_pdf(client, monkeypatch):
+    monkeypatch.setattr(
+        "src.main.markdown_to_pdf",
+        lambda content, title="Document": b"%PDF-test",
+    )
+    res = client.post(
+        "/api/export/pdf",
+        json={"content": "# Hello\n\nWorld", "title": "doc"},
+    )
+    assert res.status_code == 200
+    assert res.headers.get("content-type", "").startswith("application/pdf")
+    assert res.content.startswith(b"%PDF")
+    assert "doc.pdf" in res.headers.get("content-disposition", "")
+
+
+def test_export_pdf_unavailable(client, monkeypatch):
+    def _fail(content, title="Document"):
+        raise RuntimeError("WeasyPrint no está instalado")
+
+    monkeypatch.setattr("src.main.markdown_to_pdf", _fail)
+    res = client.post("/api/export/pdf", json={"content": "# Hi"})
+    assert res.status_code == 503
+
+
+def test_export_pdf_empty_content(client):
+    res = client.post("/api/export/pdf", json={"content": "   "})
+    assert res.status_code == 400

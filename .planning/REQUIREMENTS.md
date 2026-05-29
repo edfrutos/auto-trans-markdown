@@ -15,10 +15,10 @@
 
 ### PDF export (Phase 7)
 
-- [ ] **PDF-01**: Módulo `pdf_export.py` convierte Markdown traducido a PDF (WeasyPrint o pandoc vía CLI documentado)
-- [ ] **PDF-02**: CLI `md-translate export-pdf` (o subcomando `export --format pdf`) genera `.pdf` autocontenido
-- [ ] **PDF-03**: Botón «Export PDF» en UI web (mismo flujo que export HTML)
-- [ ] **PDF-04**: Tests unitarios del exportador + entrada en README (dependencias opcionales)
+- [x] **PDF-01**: Módulo `pdf_export.py` convierte Markdown traducido a PDF (WeasyPrint o pandoc vía CLI documentado)
+- [x] **PDF-02**: CLI `md-translate export-pdf` (o subcomando `export --format pdf`) genera `.pdf` autocontenido
+- [x] **PDF-03**: Botón «Export PDF» en UI web (mismo flujo que export HTML)
+- [x] **PDF-04**: Tests unitarios del exportador + entrada en README (dependencias opcionales)
 
 ## Future Requirements (v2.1+)
 
@@ -44,10 +44,10 @@
 | DEBT-02 | 6 | Complete |
 | DEBT-03 | 6 | Complete |
 | DEBT-04 | 6 | Complete |
-| PDF-01 | 7 | Pending |
-| PDF-02 | 7 | Pending |
-| PDF-03 | 7 | Pending |
-| PDF-04 | 7 | Pending |
+| PDF-01 | 7 | Complete |
+| PDF-02 | 7 | Complete |
+| PDF-03 | 7 | Complete |
+| PDF-04 | 7 | Complete |
 
 ---
 *Requirements defined: 2026-05-29 — v2.0 focused milestone*

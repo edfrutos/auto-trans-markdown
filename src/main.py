@@ -15,7 +15,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -31,6 +31,7 @@ from .estimate import EstimateResult, estimate_files, estimate_markdown
 from .glossary import glossary_from_dict, glossary_to_dict, load_glossary, save_glossary
 from .jobs import JobState, cancel_job, create_batch_job, get_job, start_batch_job
 from .memory import TranslationMemory, default_memory_path
+from .pdf_export import markdown_to_pdf
 from .pipeline import DEFAULT_GLOSSARY_PATH, TranslateOptions, translate_markdown
 from .review import build_draft, finalize_draft
 from .target_langs import (
@@ -169,6 +170,11 @@ class BatchJobCreateResponse(BaseModel):
 
 class BatchJobCancelResponse(BaseModel):
     cancelled: bool
+
+
+class ExportPdfRequest(BaseModel):
+    content: str
+    title: str = "Document"
 
 
 def _decode_upload(raw: bytes, filename: str) -> str:
@@ -425,6 +431,28 @@ async def clear_memory():
     tm = TranslationMemory(default_memory_path())
     deleted = tm.clear()
     return {"deleted": deleted}
+
+
+@app.post("/api/export/pdf")
+async def export_pdf(
+    body: ExportPdfRequest,
+    _: None = Depends(_require_api_token),
+):
+    """Exporta Markdown a PDF (requiere WeasyPrint en el servidor)."""
+    if not body.content.strip():
+        raise HTTPException(400, "El contenido está vacío")
+    try:
+        pdf_bytes = markdown_to_pdf(body.content, title=body.title)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e)) from e
+    safe_name = body.title.replace('"', "").strip()[:100] or "document"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_name}.pdf"',
+        },
+    )
 
 
 @app.post("/api/translate")

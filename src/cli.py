@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from .gitignore_filter import iter_markdown_files
 from .html_export import markdown_to_html
+from .pdf_export import markdown_to_pdf
 from .memory import TranslationMemory, default_memory_path
 from .pipeline import TranslateOptions, translate_markdown
 from .target_langs import out_name_for_lang, validation_sidecar_name
@@ -347,11 +348,27 @@ def batch_cmd(
 @app.command("export")
 def export_cmd(
     input_path: Path = typer.Argument(..., exists=True, readable=True),
-    output: Path = typer.Option(..., "--output", "-o", help="Archivo .html salida"),
+    output: Path = typer.Option(..., "--output", "-o", help="Archivo .html o .pdf salida"),
+    export_format: str = typer.Option(
+        "html",
+        "--format",
+        help="Formato de salida: html o pdf",
+    ),
 ) -> None:
-    """Exporta Markdown a HTML autocontenido."""
+    """Exporta Markdown a HTML autocontenido o PDF."""
+    if export_format not in ("html", "pdf"):
+        _exit_config("Formato debe ser html o pdf")
     content = input_path.read_text(encoding="utf-8")
-    html = markdown_to_html(content, title=input_path.stem)
+    title = input_path.stem
+    if export_format == "pdf":
+        try:
+            pdf_bytes = markdown_to_pdf(content, title=title)
+        except RuntimeError as e:
+            _exit_config(str(e))
+        output.write_bytes(pdf_bytes)
+        typer.echo(f"PDF → {output}")
+        return
+    html = markdown_to_html(content, title=title)
     output.write_text(html, encoding="utf-8")
     typer.echo(f"HTML → {output}")
 

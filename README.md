@@ -5,7 +5,7 @@ Traductor de archivos Markdown que preserva el formato original, protege bloques
 ## Características
 
 - **Cualquier idioma → idioma seleccionado** (30+ idiomas o detección automática); **multi-destino** en una pasada
-- **Salida .md** lista para usar, con la misma estructura que el original; export **HTML** opcional
+- **Salida .md** lista para usar, con la misma estructura que el original; export **HTML** y **PDF** opcionales
 - **Código intacto**: bloques ` ``` `, inline `` ` ``, frontmatter YAML, bloques indentados
 - **Formato preservado**: encabezados, listas, tablas, enlaces, imágenes, citas
 - **Traducción contextual** vía LLM; **tono** auto / formal / informal; fallback DeepL → OpenAI
@@ -14,7 +14,7 @@ Traductor de archivos Markdown que preserva el formato original, protege bloques
 - **Lote con SSE**: progreso real, cancelación, estimación de coste, ZIP parcial + `errors.json`
 - **Modo revisión**: edición por segmentos, diff resaltado, historial opt-in (solo metadatos)
 - **Tres modos web**: editor en vivo, archivo único, lote (ZIP)
-- **CLI** `md-translate`: file, dir, batch, watch, export; respeta `.gitignore`
+- **CLI** `md-translate`: file, dir, batch, watch, export (HTML/PDF); respeta `.gitignore`
 - **Docker** multi-stage + `docker-compose` para despliegue en equipo
 
 ## Requisitos
@@ -90,6 +90,7 @@ En VPS o LAN, ajusta `CORS_ORIGINS` y `HOST=0.0.0.0` (ya en compose). Ver variab
 | `POST` | `/api/translate/batch` | Sube varios archivos, devuelve ZIP (síncrono) |
 | `POST` | `/api/translate/batch/jobs` | Crea job de lote con progreso SSE |
 | `POST` | `/api/translate/estimate` | Estima segmentos, caracteres y coste |
+| `POST` | `/api/export/pdf` | Exporta Markdown a PDF `{ content, title? }` (requiere WeasyPrint en servidor) |
 
 Endpoints de traducción pueden requerir `Authorization: Bearer <API_TOKEN>` si `API_TOKEN` está configurado.
 
@@ -196,6 +197,7 @@ md-translate batch ./articles/*.md -t fr,de --zip out.zip
 md-translate dir docs/ -t en -o docs-en/ --recursive --respect-gitignore
 md-translate watch docs/ -o docs-en/ -t es
 md-translate export README.es.md -o README.es.html
+md-translate export README.es.md -o README.es.pdf --format pdf
 md-translate file doc.md -t es --tone formal
 md-translate file doc.md -t es --dry-run
 md-translate memory clear
@@ -208,7 +210,36 @@ md-translate serve
 - **Modo revisión:** borrador por segmentos con marcado de dudosos; confirmar vía `/api/translate/finalize`.
 - **Diff:** pestaña Diff con resaltado por segmento (`diff-match-patch`).
 - **Historial:** opt-in en localStorage (solo metadatos: idioma, modo, fecha).
-- **Export HTML:** botón en UI o `md-translate export`.
+- **Export HTML:** botón en UI (client-side) o `md-translate export` (default `--format html`).
+- **Export PDF:** botón en UI o `md-translate export … --format pdf` — requiere **WeasyPrint** en el servidor.
+
+### Export PDF (opcional)
+
+WeasyPrint no está en `requirements.txt` por defecto (dependencias nativas Cairo/Pango).
+
+```bash
+pip install weasyprint
+# o
+pip install -e ".[pdf]"
+```
+
+**macOS (Homebrew):**
+
+```bash
+brew install pango cairo gdk-pixbuf libffi
+pip install weasyprint
+```
+
+**Debian/Ubuntu:**
+
+```bash
+sudo apt install libpango-1.0-0 libpangocairo-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 libffi-dev
+pip install weasyprint
+```
+
+**Docker:** la imagen por defecto no incluye WeasyPrint. Para PDF en contenedor, instala las libs anteriores en el `Dockerfile` y añade `pip install weasyprint` en la etapa builder.
+
+Sin WeasyPrint: la CLI y la API responden con error claro (`503` en web).
 
 Variables opcionales: `TRANSLATION_FALLBACK=openai` (DeepL → OpenAI si falla cuota/idioma). Ver `.env.example`.
 
@@ -226,6 +257,7 @@ src/cli.py         → CLI Typer md-translate
 src/review.py      → Modo revisión draft/finalize
 src/gitignore_filter.py → Filtro .gitignore para dir/batch
 src/html_export.py → Export Markdown → HTML autocontenido
+src/pdf_export.py  → Export Markdown → PDF (WeasyPrint opcional)
 src/main.py        → API FastAPI + archivos estáticos
 static/            → Interfaz web (Tailwind + Plus Jakarta Sans)
 ```

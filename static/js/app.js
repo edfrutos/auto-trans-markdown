@@ -124,6 +124,7 @@ const els = {
   previewGrid: $('#preview-grid'),
   diffPanel: $('#diff-panel'),
   btnExportHtml: $('#btn-export-html'),
+  btnExportPdf: $('#btn-export-pdf'),
   historyEnabled: $('#history-enabled'),
   btnClearHistory: $('#btn-clear-history'),
   apiTokenToggle: $('#api-token-toggle'),
@@ -252,6 +253,8 @@ function showTranslationForLang(lang) {
   renderDiff(state.sourceContent, result.content);
   renderValidationPanel(result.validation);
   renderResultLangTabs();
+  els.btnExportHtml?.classList.remove('hidden');
+  els.btnExportPdf?.classList.remove('hidden');
 }
 
 function debounce(fn, ms) {
@@ -353,6 +356,36 @@ function exportHtml() {
   a.click();
   URL.revokeObjectURL(url);
   showStatus('HTML exportado.');
+}
+
+async function exportPdf() {
+  const md = els.outputMd?.value?.trim();
+  if (!md) {
+    showStatus('No hay traducción para exportar.', 'error');
+    return;
+  }
+  const title = state.downloadName?.replace(/\.md$/i, '') || 'traduccion';
+  try {
+    const res = await apiFetch('/api/export/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: md, title }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(apiErrorMessage(err, 'Error al exportar PDF'));
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus('PDF exportado.');
+  } catch (err) {
+    showStatus(err.message, 'error');
+  }
 }
 
 function escapeHtml(s) {
@@ -470,6 +503,7 @@ async function finalizeReview() {
     state.downloadName = `traduccion.${primary}.md`;
     els.btnDownload?.classList.remove('hidden');
     els.btnExportHtml?.classList.remove('hidden');
+    els.btnExportPdf?.classList.remove('hidden');
     renderPreview(state.sourceContent, els.previewSource);
     renderPreview(data.content, els.previewResult);
     renderDiff(state.sourceContent, data.content);
@@ -492,6 +526,7 @@ async function finalizeReview() {
 function onTranslateSuccess({ content, source, validation, segmentsTranslated, multiLang, skipRender }) {
   state.sourceContent = source || state.sourceContent;
   els.btnExportHtml?.classList.remove('hidden');
+  els.btnExportPdf?.classList.remove('hidden');
   if (!skipRender) {
     renderPreview(source, els.previewSource);
     renderPreview(content, els.previewResult);
@@ -1026,6 +1061,7 @@ function switchTab(mode) {
   els.reviewSection?.classList.toggle('hidden', mode !== 'editor');
   els.btnDownload?.classList.add('hidden');
   els.btnExportHtml?.classList.add('hidden');
+  els.btnExportPdf?.classList.add('hidden');
   clearResultLangTabs();
   hideStatus();
 }
@@ -1066,6 +1102,7 @@ async function translateEditor() {
       state.downloadName = `traduccion.${state.targetLangs[0]}.md`;
       els.btnDownload.classList.remove('hidden');
       els.btnExportHtml?.classList.remove('hidden');
+      els.btnExportPdf?.classList.remove('hidden');
       renderPreview(content, els.previewSource);
       renderPreview(data.content, els.previewResult);
       renderDiff(content, data.content);
@@ -1198,6 +1235,7 @@ async function translateFile() {
     els.btnDownload.classList.remove('hidden');
     if (!contentType.includes('zip')) {
       els.btnExportHtml?.classList.remove('hidden');
+      els.btnExportPdf?.classList.remove('hidden');
     }
   } catch (err) {
     showStatus(err.message, 'error');
@@ -1424,6 +1462,7 @@ els.btnAddGlossary?.addEventListener('click', () => {
 els.btnSaveGlossary?.addEventListener('click', saveGlossary);
 els.btnClearMemory?.addEventListener('click', clearMemory);
 els.btnExportHtml?.addEventListener('click', exportHtml);
+els.btnExportPdf?.addEventListener('click', exportPdf);
 els.btnFinalizeReview?.addEventListener('click', finalizeReview);
 els.tabPreview?.addEventListener('click', () => switchPreviewTab('preview'));
 els.tabDiff?.addEventListener('click', () => switchPreviewTab('diff'));

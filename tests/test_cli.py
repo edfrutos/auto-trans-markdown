@@ -270,6 +270,34 @@ def test_export_html(tmp_path):
     assert "<title>doc</title>" in html
 
 
+def test_export_pdf(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "src.cli.markdown_to_pdf",
+        lambda content, title="Document": b"%PDF-test-content",
+    )
+    md = tmp_path / "doc.md"
+    md.write_text("# Hello", encoding="utf-8")
+    pdf_out = tmp_path / "doc.pdf"
+    result = runner.invoke(
+        app,
+        ["export", str(md), "-o", str(pdf_out), "--format", "pdf"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert pdf_out.read_bytes().startswith(b"%PDF")
+
+
+def test_export_invalid_format(tmp_path):
+    md = tmp_path / "doc.md"
+    md.write_text("# Hi", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["export", str(md), "-o", str(tmp_path / "out.bin"), "--format", "docx"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 2
+
+
 def test_help_lists_watch_and_export():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0

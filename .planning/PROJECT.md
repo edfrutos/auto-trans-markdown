@@ -71,8 +71,8 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 
 ### Active (v2.0)
 
-- [ ] Tech debt closure — DEBT-01 … DEBT-04
-- [ ] PDF export — PDF-01 … PDF-04
+- [x] Tech debt closure — DEBT-01 … DEBT-04
+- [x] PDF export — PDF-01 … PDF-04
 
 ### Active (v2.1+ / future)
 
