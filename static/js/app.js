@@ -40,6 +40,15 @@ const state = {
   languagesLoaded: false,
   glossary: { loaded: false, entries: [], dirty: false, expanded: false },
   lastValidation: null,
+  batchJobId: null,
+  batchJobActive: false,
+  eventSource: null,
+  estimateController: null,
+  batchFileStates: [],
+  batchCompletedFiles: 0,
+  batchActiveProgress: { done: 0, total: 1 },
+  targetLangs: [],
+  langNames: {},
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -52,6 +61,7 @@ function setHtml(el, html) {
 const els = {
   sourceLang: $('#source-lang'),
   targetLang: $('#target-lang'),
+  targetLangChips: $('#target-lang-chips'),
   inputMd: $('#input-md'),
   outputMd: $('#output-md'),
   btnTranslate: $('#btn-translate'),
@@ -69,6 +79,15 @@ const els = {
   batchInput: $('#batch-input'),
   dropZoneBatch: $('#drop-zone-batch'),
   batchList: $('#batch-list'),
+  estimateBatch: $('#estimate-batch'),
+  estimateWarn: $('#estimate-warn'),
+  estimateFile: $('#estimate-file'),
+  estimateWarnFile: $('#estimate-warn-file'),
+  batchProgressSection: $('#batch-progress-section'),
+  batchProgressBar: $('#batch-progress-bar'),
+  batchProgressText: $('#batch-progress-text'),
+  batchFileProgressList: $('#batch-file-progress-list'),
+  btnCancelJob: $('#btn-cancel-job'),
   themeToggle: $('#theme-toggle'),
   iconSun: $('#icon-sun'),
   iconMoon: $('#icon-moon'),
@@ -114,6 +133,237 @@ function hideStatus() {
   els.status?.classList.add('hidden');
 }
 
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
+function renderEstimateBlock(el, warnEl, data) {
+  if (!el) return;
+  if (!data) {
+    el.classList.add('hidden');
+    warnEl?.classList.add('hidden');
+    return;
+  }
+  el.classList.remove('hidden');
+  const langNote =
+    data.language_count > 1 ? ` · ${data.language_count} idiomas` : '';
+  el.textContent = `~${data.segments} segmentos · ~${data.characters} chars · ~$${Number(data.estimated_cost_usd).toFixed(2)} (${data.model})${langNote}`;
+  if (warnEl) {
+    if (data.exceeds_threshold) {
+      warnEl.textContent = `Estimación por encima del umbral ($${Number(data.threshold_usd).toFixed(2)})`;
+      warnEl.classList.remove('hidden');
+    } else {
+      warnEl.classList.add('hidden');
+    }
+  }
+}
+
+function appendTargetLangsToForm(form) {
+  if (!state.targetLangs.length) return;
+  form.append('target_lang', state.targetLangs[0]);
+  state.targetLangs.forEach((lang) => form.append('target_langs', lang));
+}
+
+function renderTargetChips() {
+  if (!els.targetLangChips) return;
+  setHtml(
+    els.targetLangChips,
+    state.targetLangs
+      .map((code) => {
+        const name = state.langNames[code] || code;
+        const removable = state.targetLangs.length > 1;
+        return `<span class="lang-chip" data-lang="${code}"><span>${name}</span>${
+          removable
+            ? `<button type="button" class="lang-chip-remove" aria-label="Quitar ${name}">×</button>`
+            : ''
+        }</span>`;
+      })
+      .join('')
+  );
+  els.targetLangChips.querySelectorAll('.lang-chip-remove').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const chip = e.target.closest('.lang-chip');
+      const code = chip?.getAttribute('data-lang');
+      if (!code || state.targetLangs.length <= 1) return;
+      state.targetLangs = state.targetLangs.filter((l) => l !== code);
+      renderTargetChips();
+      if (state.glossary.loaded) loadGlossary();
+      scheduleEstimateBatch();
+      scheduleEstimateFile();
+    });
+  });
+}
+
+function addTargetLang(code) {
+  if (!code || state.targetLangs.includes(code)) return;
+  state.targetLangs.push(code);
+  renderTargetChips();
+  if (state.glossary.loaded) loadGlossary();
+  scheduleEstimateBatch();
+  scheduleEstimateFile();
+}
+
+async function fetchEstimateBatch() {
+  if (!els.estimateBatch) return;
+  if (!state.batchFiles.length) {
+    renderEstimateBlock(els.estimateBatch, els.estimateWarn, null);
+    return;
+  }
+  state.estimateController?.abort();
+  state.estimateController = new AbortController();
+  const form = new FormData();
+  state.batchFiles.forEach((f) => form.append('files', f));
+  appendTargetLangsToForm(form);
+  form.append('source_lang', els.sourceLang.value);
+  try {
+    const res = await fetch('/api/translate/estimate', {
+      method: 'POST',
+      body: form,
+      signal: state.estimateController.signal,
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    renderEstimateBlock(els.estimateBatch, els.estimateWarn, data);
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      renderEstimateBlock(els.estimateBatch, els.estimateWarn, null);
+    }
+  }
+}
+
+async function fetchEstimateFile() {
+  if (!els.estimateFile) return;
+  if (!state.selectedFile) {
+    renderEstimateBlock(els.estimateFile, els.estimateWarnFile, null);
+    return;
+  }
+  state.estimateController?.abort();
+  state.estimateController = new AbortController();
+  const form = new FormData();
+  form.append('files', state.selectedFile);
+  appendTargetLangsToForm(form);
+  form.append('source_lang', els.sourceLang.value);
+  try {
+    const res = await fetch('/api/translate/estimate', {
+      method: 'POST',
+      body: form,
+      signal: state.estimateController.signal,
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    renderEstimateBlock(els.estimateFile, els.estimateWarnFile, data);
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      renderEstimateBlock(els.estimateFile, els.estimateWarnFile, null);
+    }
+  }
+}
+
+const scheduleEstimateBatch = debounce(fetchEstimateBatch, 300);
+const scheduleEstimateFile = debounce(fetchEstimateFile, 300);
+
+function resetBatchJobUI() {
+  state.batchJobId = null;
+  state.batchJobActive = false;
+  state.batchFileStates = [];
+  state.batchCompletedFiles = 0;
+  state.batchActiveProgress = { done: 0, total: 1 };
+  if (state.eventSource) {
+    state.eventSource.close();
+    state.eventSource = null;
+  }
+  els.batchProgressSection?.classList.add('hidden');
+  if (els.batchProgressBar) {
+    els.batchProgressBar.style.width = '0%';
+    els.batchProgressBar.setAttribute('aria-valuenow', '0');
+  }
+  if (els.batchProgressText) els.batchProgressText.textContent = '';
+  setHtml(els.batchFileProgressList, '');
+  if (els.btnTranslate) els.btnTranslate.disabled = !state.languagesLoaded;
+}
+
+function updateBatchGlobalProgress() {
+  const langCount = state.targetLangs.length || 1;
+  const total = (state.batchFiles.length || 1) * langCount;
+  const activeFrac =
+    state.batchActiveProgress.total > 0
+      ? state.batchActiveProgress.done / state.batchActiveProgress.total
+      : 0;
+  const pct = ((state.batchCompletedFiles + activeFrac) / total) * 100;
+  if (els.batchProgressBar) {
+    els.batchProgressBar.style.width = `${Math.min(100, pct)}%`;
+    els.batchProgressBar.setAttribute('aria-valuenow', String(Math.round(pct)));
+  }
+}
+
+function initBatchFileList() {
+  if (!els.batchFileProgressList) return;
+  state.batchFileStates = state.batchFiles.map((f) => ({
+    name: f.name,
+    langs: state.targetLangs.map((lang) => ({
+      lang,
+      status: 'pending',
+    })),
+  }));
+  setHtml(
+    els.batchFileProgressList,
+    state.batchFileStates
+      .map(
+        (f) =>
+          `<li class="batch-file-pending" data-file="${f.name}">${f.name}<ul class="batch-lang-list">${f.langs
+            .map(
+              (l) =>
+                `<li class="batch-lang-pending" data-lang="${l.lang}">${state.langNames[l.lang] || l.lang}</li>`
+            )
+            .join('')}</ul></li>`
+      )
+      .join('')
+  );
+}
+
+function setBatchLangStatus(filename, lang, status) {
+  const li = els.batchFileProgressList?.querySelector(
+    `[data-file="${CSS.escape(filename)}"] [data-lang="${CSS.escape(lang)}"]`
+  );
+  if (!li) return;
+  li.className = `batch-lang-${status}`;
+}
+
+function setBatchFileStatus(filename, status) {
+  const li = els.batchFileProgressList?.querySelector(
+    `[data-file="${CSS.escape(filename)}"]`
+  );
+  if (!li) return;
+  li.className = `batch-file-${status}`;
+}
+
+async function downloadBatchJobResult(jobId) {
+  const res = await fetch(`/api/translate/batch/jobs/${jobId}/download`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(apiErrorMessage(err, 'No se pudo descargar el ZIP'));
+  }
+  state.downloadBlob = await res.blob();
+  state.downloadName = 'traducciones.zip';
+  els.btnDownload?.classList.remove('hidden');
+}
+
+async function cancelBatchJob() {
+  if (!state.batchJobId) return;
+  if (!confirm('¿Cancelar la traducción en curso?')) return;
+  try {
+    await fetch(`/api/translate/batch/jobs/${state.batchJobId}`, {
+      method: 'DELETE',
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 function setLoading(loading, text = 'Traduciendo…') {
   state.loading = loading;
   if (els.btnTranslate) {
@@ -149,7 +399,7 @@ function apiErrorMessage(err, fallback) {
 
 function pairKey() {
   const src = els.sourceLang.value || 'auto';
-  const tgt = els.targetLang.value;
+  const tgt = state.targetLangs[0] || els.targetLang.value;
   return `${src}-${tgt}`;
 }
 
@@ -159,7 +409,7 @@ function flattenGlossary(data) {
     entries.push({ term, translation: '', dnt: true });
   }
   const pk = pairKey();
-  const pairs = data.pairs?.[pk] || data.pairs?.[`auto-${els.targetLang.value}`] || {};
+  const pairs = data.pairs?.[pk] || data.pairs?.[`auto-${state.targetLangs[0] || els.targetLang.value}`] || {};
   for (const [term, translation] of Object.entries(pairs)) {
     entries.push({ term, translation, dnt: false });
   }
@@ -376,28 +626,36 @@ async function loadLanguages() {
     const res = await fetch('/api/languages');
     if (!res.ok) throw new Error('No se pudieron cargar los idiomas');
     const langs = await res.json();
+    state.langNames = {};
     setHtml(els.targetLang, '');
+    const addOpt = document.createElement('option');
+    addOpt.value = '';
+    addOpt.textContent = 'Añadir idioma…';
+    addOpt.disabled = true;
+    addOpt.selected = true;
+    els.targetLang.appendChild(addOpt);
     setHtml(els.sourceLang, '<option value="auto">Detectar automáticamente</option>');
-    let defaultSet = false;
+    let defaultCode = null;
     for (const { code, name } of langs) {
       if (code === 'auto') continue;
+      state.langNames[code] = name;
       const optTarget = document.createElement('option');
       optTarget.value = code;
       optTarget.textContent = name;
-      if (code === 'es') {
-        optTarget.selected = true;
-        defaultSet = true;
-      }
       els.targetLang.appendChild(optTarget);
+      if (code === 'es') defaultCode = code;
 
       const optSource = document.createElement('option');
       optSource.value = code;
       optSource.textContent = name;
       els.sourceLang.appendChild(optSource);
     }
-    if (!defaultSet && els.targetLang.options.length > 0) {
-      els.targetLang.options[0].selected = true;
+    if (!defaultCode) {
+      const first = langs.find((l) => l.code !== 'auto');
+      defaultCode = first?.code || null;
     }
+    state.targetLangs = defaultCode ? [defaultCode] : [];
+    renderTargetChips();
     state.languagesLoaded = true;
     if (els.btnTranslate) els.btnTranslate.disabled = false;
     els.targetLang.removeAttribute('aria-busy');
@@ -442,22 +700,30 @@ async function translateEditor() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content,
-        target_lang: els.targetLang.value,
+        target_lang: state.targetLangs[0],
+        target_langs: state.targetLangs,
         source_lang: els.sourceLang.value,
       }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorMessage(data, 'Error de traducción'));
-    els.outputMd.value = data.content;
+    const primary = state.targetLangs[0];
+    const result = data.translations?.[primary] || data;
+    els.outputMd.value = result.content;
     els.btnCopy.disabled = false;
-    const blob = new Blob([data.content], { type: 'text/markdown;charset=utf-8' });
+    const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
     state.downloadBlob = blob;
-    state.downloadName = `traduccion.${els.targetLang.value}.md`;
+    state.downloadName = `traduccion.${primary}.md`;
     els.btnDownload.classList.remove('hidden');
     renderPreview(content, els.previewSource);
-    renderPreview(data.content, els.previewResult);
-    renderValidationPanel(data.validation);
-    showStatus(`Listo — ${data.segments_translated} segmentos traducidos.`);
+    renderPreview(result.content, els.previewResult);
+    renderValidationPanel(result.validation);
+    const langCount = data.translations ? state.targetLangs.length : 1;
+    showStatus(
+      langCount > 1
+        ? `Listo — ${langCount} idiomas traducidos (mostrando ${state.langNames[primary] || primary}).`
+        : `Listo — ${result.segments_translated} segmentos traducidos.`
+    );
   } catch (err) {
     showStatus(err.message, 'error');
   } finally {
@@ -474,7 +740,7 @@ async function translateFile() {
   setLoading(true);
   const form = new FormData();
   form.append('file', state.selectedFile);
-  form.append('target_lang', els.targetLang.value);
+  appendTargetLangsToForm(form);
   form.append('source_lang', els.sourceLang.value);
   try {
     const res = await fetch('/api/translate/file', { method: 'POST', body: form });
@@ -486,22 +752,36 @@ async function translateFile() {
     const disposition = res.headers.get('Content-Disposition') || '';
     const match = disposition.match(/filename="?([^"]+)"?/);
     state.downloadBlob = blob;
-    state.downloadName = match ? match[1] : `traduccion.${els.targetLang.value}.md`;
-    const text = await blob.text();
-    els.outputMd.value = text;
-    els.btnCopy.disabled = false;
-    els.btnDownload.classList.remove('hidden');
-    renderPreview(await state.selectedFile.text(), els.previewSource);
-    renderPreview(text, els.previewResult);
-    const valHeader = res.headers.get('X-Validation-Report');
-    if (valHeader) {
-      try {
-        renderValidationPanel(JSON.parse(valHeader));
-      } catch {
-        renderValidationPanel(null);
+    state.downloadName = match
+      ? match[1]
+      : `traduccion.${state.targetLangs[0]}.md`;
+    const contentType = res.headers.get('Content-Type') || '';
+    if (contentType.includes('zip')) {
+      els.outputMd.value = '';
+      els.btnCopy.disabled = true;
+      renderPreview(await state.selectedFile.text(), els.previewSource);
+      renderPreview('', els.previewResult);
+      renderValidationPanel(null);
+      showStatus(
+        `ZIP listo (${state.targetLangs.length} idiomas): ${state.downloadName}`
+      );
+    } else {
+      const text = await blob.text();
+      els.outputMd.value = text;
+      els.btnCopy.disabled = false;
+      renderPreview(await state.selectedFile.text(), els.previewSource);
+      renderPreview(text, els.previewResult);
+      const valHeader = res.headers.get('X-Validation-Report');
+      if (valHeader) {
+        try {
+          renderValidationPanel(JSON.parse(valHeader));
+        } catch {
+          renderValidationPanel(null);
+        }
       }
+      showStatus(`Archivo traducido: ${state.downloadName}`);
     }
-    showStatus(`Archivo traducido: ${state.downloadName}`);
+    els.btnDownload.classList.remove('hidden');
   } catch (err) {
     showStatus(err.message, 'error');
   } finally {
@@ -515,26 +795,123 @@ async function translateBatch() {
     return;
   }
   hideStatus();
-  setLoading(true, `Traduciendo ${state.batchFiles.length} archivos…`);
+  resetBatchJobUI();
+  state.batchJobActive = true;
+  if (els.btnTranslate) els.btnTranslate.disabled = true;
+  els.batchProgressSection?.classList.remove('hidden');
+  initBatchFileList();
+  if (els.batchProgressText) {
+    els.batchProgressText.textContent = 'Iniciando lote…';
+  }
+
   const form = new FormData();
   state.batchFiles.forEach((f) => form.append('files', f));
-  form.append('target_lang', els.targetLang.value);
+  appendTargetLangsToForm(form);
   form.append('source_lang', els.sourceLang.value);
+
   try {
-    const res = await fetch('/api/translate/batch', { method: 'POST', body: form });
+    const res = await fetch('/api/translate/batch/jobs', {
+      method: 'POST',
+      body: form,
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(apiErrorMessage(err, 'Error en traducción por lote'));
+      throw new Error(apiErrorMessage(err, 'Error al iniciar lote'));
     }
-    const blob = await res.blob();
-    state.downloadBlob = blob;
-    state.downloadName = 'traducciones.zip';
-    els.btnDownload.classList.remove('hidden');
-    showStatus(`${state.batchFiles.length} archivos traducidos — validation.json incluido en ZIP.`);
+    const { job_id: jobId } = await res.json();
+    state.batchJobId = jobId;
+
+    await new Promise((resolve, reject) => {
+      const es = new EventSource(
+        `/api/translate/batch/jobs/${jobId}/events`
+      );
+      state.eventSource = es;
+
+      es.onmessage = async (msg) => {
+        let event;
+        try {
+          event = JSON.parse(msg.data);
+        } catch {
+          return;
+        }
+        const type = event.type;
+        if (type === 'file_start') {
+          setBatchFileStatus(event.filename, 'active');
+          if (event.target_lang) {
+            setBatchLangStatus(event.filename, event.target_lang, 'active');
+          }
+          state.batchActiveProgress = { done: 0, total: event.total_files || 1 };
+          if (els.batchProgressText) {
+            const langLabel = event.target_lang
+              ? ` · ${state.langNames[event.target_lang] || event.target_lang}`
+              : '';
+            els.batchProgressText.textContent = `Traduciendo ${event.filename}${langLabel} (${event.file_index + 1}/${event.total_files})…`;
+          }
+          updateBatchGlobalProgress();
+        } else if (type === 'segment_progress') {
+          state.batchActiveProgress = {
+            done: event.done,
+            total: event.total || 1,
+          };
+          if (els.batchProgressText) {
+            const langLabel = event.target_lang
+              ? ` (${state.langNames[event.target_lang] || event.target_lang})`
+              : '';
+            els.batchProgressText.textContent = `${event.filename}${langLabel}: ${event.done}/${event.total} segmentos`;
+          }
+          updateBatchGlobalProgress();
+        } else if (type === 'file_done') {
+          if (event.target_lang) {
+            setBatchLangStatus(event.filename, event.target_lang, 'ok');
+          }
+          state.batchCompletedFiles += 1;
+          state.batchActiveProgress = { done: 0, total: 1 };
+          updateBatchGlobalProgress();
+        } else if (type === 'error') {
+          if (event.target_lang) {
+            setBatchLangStatus(event.filename, event.target_lang, 'error');
+          } else {
+            setBatchFileStatus(event.filename, 'error');
+          }
+          state.batchCompletedFiles += 1;
+          updateBatchGlobalProgress();
+        } else if (type === 'complete') {
+          es.close();
+          state.eventSource = null;
+          const ok = event.ok_count ?? 0;
+          const total = event.total_files ?? state.batchFiles.length;
+          const errors = event.error_count ?? 0;
+          if (event.cancelled) {
+            showStatus(
+              `Cancelado: ${ok}/${total} archivos OK${errors ? ` — ${errors} errores` : ''}. Puedes descargar el ZIP parcial.`,
+              errors ? 'warning' : 'success'
+            );
+          } else if (errors > 0) {
+            showStatus(
+              `${ok}/${total} OK — ${errors} errores. Revisa errors.json en el ZIP.`,
+              'warning'
+            );
+          } else {
+            showStatus(`${ok} archivos traducidos — validation.json incluido en ZIP.`);
+          }
+          try {
+            await downloadBatchJobResult(jobId);
+          } catch (err) {
+            showStatus(err.message, 'error');
+          }
+          resetBatchJobUI();
+          resolve();
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        reject(new Error('Conexión SSE interrumpida'));
+      };
+    });
   } catch (err) {
     showStatus(err.message, 'error');
-  } finally {
-    setLoading(false);
+    resetBatchJobUI();
   }
 }
 
@@ -632,10 +1009,16 @@ els.btnClearMemory?.addEventListener('click', clearMemory);
 
 els.sourceLang.addEventListener('change', () => {
   if (state.glossary.loaded) loadGlossary();
+  scheduleEstimateBatch();
+  scheduleEstimateFile();
 });
 els.targetLang.addEventListener('change', () => {
-  if (state.glossary.loaded) loadGlossary();
+  const code = els.targetLang.value;
+  if (code) addTargetLang(code);
+  els.targetLang.selectedIndex = 0;
 });
+
+els.btnCancelJob?.addEventListener('click', cancelBatchJob);
 
 if (els.dropZone && els.fileInput) {
   setupDropZone(els.dropZone, els.fileInput, (files) => {
@@ -646,6 +1029,7 @@ if (els.dropZone && els.fileInput) {
       els.fileName.textContent = f.name;
       els.fileName.classList.remove('hidden');
     }
+    scheduleEstimateFile();
   });
 }
 
@@ -659,6 +1043,7 @@ if (els.dropZoneBatch && els.batchInput) {
       state.batchFiles.map((f) => `<li>${f.name}</li>`).join('')
     );
     els.batchList?.classList.toggle('hidden', !state.batchFiles.length);
+    scheduleEstimateBatch();
   });
 }
 

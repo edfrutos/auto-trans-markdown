@@ -173,3 +173,40 @@ def test_file_strict_allows_pass(tmp_path, mock_pipeline):
     )
     assert result.exit_code == 0
     assert out.exists()
+
+
+def test_parse_targets_comma_list(tmp_path, mock_pipeline):
+    md = tmp_path / "doc.md"
+    md.write_text("# Hello\n", encoding="utf-8")
+    result = runner.invoke(
+        app, ["file", str(md), "-t", "es,en"], catch_exceptions=False
+    )
+    assert result.exit_code == 0
+    assert (tmp_path / "doc.es.md").exists()
+    assert (tmp_path / "doc.en.md").exists()
+
+
+def test_parse_targets_rejects_invalid(tmp_path, monkeypatch):
+    monkeypatch.setenv("TRANSLATION_PROVIDER", "openai")
+    md = tmp_path / "doc.md"
+    md.write_text("# Hi", encoding="utf-8")
+    result = runner.invoke(
+        app, ["file", str(md), "-t", "es,notalang"], catch_exceptions=False
+    )
+    assert result.exit_code == 2
+
+
+def test_batch_multi_lang_zip(tmp_path, mock_pipeline):
+    md = tmp_path / "doc.md"
+    md.write_text("# Doc", encoding="utf-8")
+    zpath = tmp_path / "out.zip"
+    result = runner.invoke(
+        app,
+        ["batch", str(md), "-t", "es,en", "--zip", str(zpath)],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    with zipfile.ZipFile(zpath) as zf:
+        names = zf.namelist()
+        assert "doc.es.md" in names
+        assert "doc.en.md" in names

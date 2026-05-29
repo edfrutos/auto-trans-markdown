@@ -12,11 +12,13 @@ from dotenv import load_dotenv
 
 from .memory import TranslationMemory, default_memory_path
 from .pipeline import TranslateOptions, translate_markdown
+from .target_langs import out_name_for_lang, validation_sidecar_name
 from .translator import (
     IncompleteTranslationError,
     is_valid_source_lang,
     is_valid_target_lang,
 )
+from .validator import validation_to_dict
 
 load_dotenv()
 
@@ -39,6 +41,22 @@ def _exit_config(msg: str) -> None:
 def _exit_translation(msg: str) -> None:
     typer.echo(msg, err=True)
     raise typer.Exit(1)
+
+
+def _parse_targets(target: str) -> list[str]:
+    raw = [t.strip() for t in target.split(",") if t.strip()]
+    if not raw:
+        _exit_config("Se requiere al menos un idioma destino")
+    seen: set[str] = set()
+    langs: list[str] = []
+    for code in raw:
+        if code in seen:
+            continue
+        if not is_valid_target_lang(code):
+            _exit_config(f"Idioma destino no soportado: {code}")
+        seen.add(code)
+        langs.append(code)
+    return langs
 
 
 def _build_options(
@@ -123,7 +141,7 @@ def serve_cmd(
 @app.command("file")
 def file_cmd(
     input_path: Path = typer.Argument(..., exists=True, readable=True),
-    target: str = typer.Option(..., "--target", "-t", help="Idioma destino"),
+    target: str = typer.Option(..., "--target", "-t", help="Idioma destino (es o es,en,fr)"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Archivo salida"),
     source: str = typer.Option("auto", "--source", "-s", help="Idioma origen"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Listar segmentos sin traducir"),
@@ -137,25 +155,40 @@ def file_cmd(
     ),
 ) -> None:
     """Traduce un archivo Markdown."""
+    targets = _parse_targets(target)
+    if len(targets) > 1 and output is not None:
+        _exit_config("Usa --output solo con un único idioma destino")
+
     content = input_path.read_text(encoding="utf-8")
-    options = _build_options(
-        target, source, dry_run, no_memory, no_glossary, glossary_path
-    )
-    result = _translate_content(content, options)
+    written = 0
+    for lang in targets:
+        options = _build_options(
+            lang, source, dry_run, no_memory, no_glossary, glossary_path
+        )
+        result = _translate_content(content, options)
 
-    if dry_run:
-        for idx, text in result.dry_run_segments or []:
-            typer.echo(json.dumps({"index": idx, "text": text}, ensure_ascii=False))
-        return
+        if dry_run:
+            for idx, text in result.dry_run_segments or []:
+                typer.echo(
+                    json.dumps(
+                        {"index": idx, "text": text, "target_lang": lang},
+                        ensure_ascii=False,
+                    )
+                )
+            continue
 
-    if _strict_validation_failed(result, strict):
-        _abort_strict()
+        if _strict_validation_failed(result, strict):
+            _abort_strict()
 
-    out_path = output or input_path.with_name(
-        f"{input_path.stem}.{target}{input_path.suffix or '.md'}"
-    )
-    out_path.write_text(result.content, encoding="utf-8")
-    typer.echo(f"Traducido → {out_path}")
+        out_path = output or input_path.with_name(
+            f"{input_path.stem}.{lang}{input_path.suffix or '.md'}"
+        )
+        out_path.write_text(result.content, encoding="utf-8")
+        typer.echo(f"Traducido ({lang}) → {out_path}")
+        written += 1
+
+    if not dry_run and written == 0:
+        _exit_config("No se generó ninguna salida")
 
 
 @app.command("dir")
@@ -180,26 +213,35 @@ def dir_cmd(
         _exit_config("No se encontraron archivos Markdown")
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    options = _build_options(
-        target, source, dry_run, no_memory, no_glossary, glossary_path
-    )
+    targets = _parse_targets(target)
     errors = 0
     for md_file in files:
         rel = md_file.relative_to(path)
-        out_file = output_dir / rel.parent / f"{rel.stem}.{target}{rel.suffix}"
-        out_file.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            result = _translate_content(md_file.read_text(encoding="utf-8"), options)
-            if dry_run:
-                typer.echo(f"{rel}: {len(result.dry_run_segments or [])} segmentos")
-            elif _strict_validation_failed(result, strict):
-                typer.secho(f"✗ {rel} (validación fallida)", fg=typer.colors.RED, err=True)
+        content = md_file.read_text(encoding="utf-8")
+        for lang in targets:
+            options = _build_options(
+                lang, source, dry_run, no_memory, no_glossary, glossary_path
+            )
+            out_file = output_dir / rel.parent / f"{rel.stem}.{lang}{rel.suffix}"
+            out_file.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                result = _translate_content(content, options)
+                if dry_run:
+                    typer.echo(
+                        f"{rel} ({lang}): {len(result.dry_run_segments or [])} segmentos"
+                    )
+                elif _strict_validation_failed(result, strict):
+                    typer.secho(
+                        f"✗ {rel} ({lang}) (validación fallida)",
+                        fg=typer.colors.RED,
+                        err=True,
+                    )
+                    errors += 1
+                else:
+                    out_file.write_text(result.content, encoding="utf-8")
+                    typer.echo(f"✓ {rel} ({lang})")
+            except typer.Exit:
                 errors += 1
-            else:
-                out_file.write_text(result.content, encoding="utf-8")
-                typer.echo(f"✓ {rel}")
-        except typer.Exit:
-            errors += 1
     if errors:
         raise typer.Exit(1)
 
@@ -232,65 +274,61 @@ def batch_cmd(
     if not md_files:
         _exit_config("No hay archivos Markdown válidos")
 
-    options = _build_options(
-        target, source, dry_run, no_memory, no_glossary, glossary_path
-    )
+    targets = _parse_targets(target)
     errors = 0
+    used_names: set[str] = set()
 
     if zip_path:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for md_file in md_files:
-                try:
-                    result = _translate_content(
-                        md_file.read_text(encoding="utf-8"), options
+                content = md_file.read_text(encoding="utf-8")
+                for lang in targets:
+                    options = _build_options(
+                        lang, source, dry_run, no_memory, no_glossary, glossary_path
                     )
-                    if dry_run:
-                        continue
-                    if _strict_validation_failed(result, strict):
+                    try:
+                        result = _translate_content(content, options)
+                        if dry_run:
+                            continue
+                        if _strict_validation_failed(result, strict):
+                            errors += 1
+                            continue
+                        name = out_name_for_lang(md_file.name, lang, used_names)
+                        zf.writestr(name, result.content.encode("utf-8"))
+                        if result.validation is not None:
+                            val_name = validation_sidecar_name(md_file.name, lang)
+                            zf.writestr(
+                                val_name,
+                                json.dumps(
+                                    validation_to_dict(result.validation),
+                                    ensure_ascii=False,
+                                    indent=2,
+                                ).encode("utf-8"),
+                            )
+                    except typer.Exit:
                         errors += 1
-                        continue
-                    name = f"{md_file.stem}.{target}{md_file.suffix}"
-                    zf.writestr(name, result.content.encode("utf-8"))
-                    if result.validation is not None:
-                        zf.writestr(
-                            f"{md_file.stem}.validation.json",
-                            json.dumps(
-                                {
-                                    "overall": result.validation.overall,
-                                    "checks": [
-                                        {
-                                            "id": c.id,
-                                            "status": c.status,
-                                            "message": c.message,
-                                        }
-                                        for c in result.validation.checks
-                                    ],
-                                },
-                                ensure_ascii=False,
-                                indent=2,
-                            ).encode("utf-8"),
-                        )
-                except typer.Exit:
-                    errors += 1
         if not dry_run:
             typer.echo(f"ZIP → {zip_path}")
     else:
         assert output_dir is not None
         output_dir.mkdir(parents=True, exist_ok=True)
         for md_file in md_files:
-            out = output_dir / f"{md_file.stem}.{target}{md_file.suffix}"
-            try:
-                result = _translate_content(
-                    md_file.read_text(encoding="utf-8"), options
+            content = md_file.read_text(encoding="utf-8")
+            for lang in targets:
+                options = _build_options(
+                    lang, source, dry_run, no_memory, no_glossary, glossary_path
                 )
-                if dry_run:
-                    continue
-                if _strict_validation_failed(result, strict):
+                out = output_dir / f"{md_file.stem}.{lang}{md_file.suffix}"
+                try:
+                    result = _translate_content(content, options)
+                    if dry_run:
+                        continue
+                    if _strict_validation_failed(result, strict):
+                        errors += 1
+                        continue
+                    out.write_text(result.content, encoding="utf-8")
+                except typer.Exit:
                     errors += 1
-                    continue
-                out.write_text(result.content, encoding="utf-8")
-            except typer.Exit:
-                errors += 1
 
     if errors:
         raise typer.Exit(1)

@@ -18,6 +18,7 @@ from .parser import collect_translatable, reassemble, segment_markdown
 from .translator import (
     ProgressCallback,
     get_provider,
+    get_provider_used,
     is_valid_source_lang,
     is_valid_target_lang,
     translate_segments,
@@ -49,6 +50,7 @@ class TranslateResult:
     cache_misses: int = 0
     dry_run_segments: list[tuple[int, str]] | None = None
     validation: ValidationReport | None = None
+    provider_used: str | None = None
 
 
 def _resolve_source(source_lang: str | None) -> str | None:
@@ -155,4 +157,5 @@ def translate_markdown(content: str, options: TranslateOptions) -> TranslateResu
         cache_hits=len(hits),
         cache_misses=miss_count,
         validation=validation,
+        provider_used=get_provider_used(),
     )

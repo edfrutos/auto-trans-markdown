@@ -82,9 +82,11 @@
       </div>
       <div>
         <label for="target-lang" class="block text-sm font-medium text-ink mb-1.5">Idioma destino</label>
-        <select id="target-lang" class="input-select" required>
+        <select id="target-lang" class="input-select" aria-describedby="target-lang-hint">
           <option value="" disabled selected>Cargando idiomas…</option>
         </select>
+        <div id="target-lang-chips" class="target-lang-chips mt-2 flex flex-wrap gap-2" aria-live="polite"></div>
+        <p id="target-lang-hint" class="text-xs text-ink-muted mt-1">Elige un idioma para añadirlo; al menos uno destino requerido</p>
       </div>
     </section>
 
@@ -180,6 +182,8 @@
         <p class="text-sm text-ink-muted">o <span class="text-primary font-medium">haz clic para seleccionar</span></p>
         <p id="file-name" class="text-sm text-primary mt-3 font-medium hidden"></p>
       </div>
+      <div id="estimate-file" class="estimate-block hidden mt-4 rounded-xl border border-teal-100 bg-white px-4 py-3 text-sm text-ink-muted" aria-live="polite"></div>
+      <p id="estimate-warn-file" class="hidden mt-2 text-sm text-amber-700 dark:text-amber-400"></p>
     </div>
 
     <!-- Batch panel -->
@@ -193,6 +197,18 @@
         <p class="text-sm text-ink-muted">Recibirás un ZIP con todas las traducciones</p>
         <ul id="batch-list" class="text-sm text-ink-muted mt-3 space-y-1 hidden"></ul>
       </div>
+      <div id="estimate-batch" class="estimate-block hidden mt-4 rounded-xl border border-teal-100 bg-white px-4 py-3 text-sm text-ink-muted" aria-live="polite"></div>
+      <p id="estimate-warn" class="hidden mt-2 text-sm text-amber-700 dark:text-amber-400"></p>
+      <section id="batch-progress-section" class="hidden mt-4 flex flex-col gap-3" aria-live="polite">
+        <div class="batch-progress-track h-2 min-h-[8px] bg-teal-100 rounded-full overflow-hidden">
+          <div id="batch-progress-bar" class="batch-progress-fill h-full bg-primary transition-all duration-300 ease-out rounded-full" style="width: 0%" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+        </div>
+        <p id="batch-progress-text" class="text-xs text-ink-muted"></p>
+        <ul id="batch-file-progress-list" class="batch-file-progress-list max-h-48 overflow-y-auto space-y-1 text-sm"></ul>
+        <button type="button" id="btn-cancel-job" class="btn-secondary self-start text-sm border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300">
+          Cancelar traducción
+        </button>
+      </section>
     </div>
 
     <!-- Validación -->

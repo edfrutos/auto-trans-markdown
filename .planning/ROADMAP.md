@@ -13,8 +13,8 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 - [x] **Phase 0: MVP Hardening** - Contratos fiables, UTF-8 estricto, idiomas por proveedor, tests de integración
 - [ ] **Phase 1: Production Table Stakes** - Pipeline unificado, glosario, memoria SQLite, CLI `md-translate`
 - [x] **Phase 2: Trust & QA** - Validación post-traducción, preview renderizada, parser ampliado, frontmatter selectivo
-- [ ] **Phase 3: Batch UX & Cost Control** - Jobs SSE con progreso real, cancelación, lotes parciales, estimación de coste
-- [ ] **Phase 4: Team Scale** - Multi-destino, Docker, hardening de despliegue (CORS, límites, TTL)
+- [x] **Phase 3: Batch UX & Cost Control** - Jobs SSE con progreso real, cancelación, lotes parciales, estimación de coste
+- [x] **Phase 4: Team Scale** - Multi-destino, Docker, hardening de despliegue (CORS, límites, TTL)
 - [ ] **Phase 5: Editorial & Pro Workflow** - Revisión, fallback, diff, watch, árbol de docs, tono, historial, export HTML
 
 ## Phase Details
@@ -104,11 +104,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — target_langs + API/jobs/estimate multi-idioma (MULTI-01, MULTI-02)
-- [ ] 04-02-PLAN.md — deployment.py CORS/upload/TTL (SEC-01, SEC-02)
-- [ ] 04-03-PLAN.md — UI chips + progreso anidado (MULTI-01 UI)
-- [ ] 04-04-PLAN.md — CLI `-t es,en,fr` paridad (MULTI-01, MULTI-02)
-- [ ] 04-05-PLAN.md — Docker + README + integración (DOCKER-*, traceability)
+- [x] 04-01-PLAN.md — target_langs + API/jobs/estimate multi-idioma (MULTI-01, MULTI-02)
+- [x] 04-02-PLAN.md — deployment.py CORS/upload/TTL (SEC-01, SEC-02)
+- [x] 04-03-PLAN.md — UI chips + progreso anidado (MULTI-01 UI)
+- [x] 04-04-PLAN.md — CLI `-t es,en,fr` paridad (MULTI-01, MULTI-02)
+- [x] 04-05-PLAN.md — Docker + README + integración (DOCKER-*, traceability)
 **UI hint**: yes
 
 ### Phase 5: Editorial & Pro Workflow
@@ -121,7 +121,15 @@ Plans:
   3. Usuario compara original vs traducción con diff lado a lado (texto traducible resaltado)
   4. Usuario ejecuta `md-translate watch` o traduce árbol de docs respetando `.gitignore` del proyecto
   5. Usuario elige tono formal/informal; historial opt-in sin secretos; export HTML autocontenido opcional
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [x] 05-01-PLAN.md — Fallback DeepL→OpenAI (FALL-01)
+- [ ] 05-02-PLAN.md — Tono formal/informal API/CLI/UI (TONE-01)
+- [ ] 05-03-PLAN.md — Modo revisión draft/finalize (REV-01, REV-02)
+- [ ] 05-04-PLAN.md — Vista diff lado a lado (DIFF-01)
+- [ ] 05-05-PLAN.md — CLI watch + gitignore tree (WATCH-01, TREE-01)
+- [ ] 05-06-PLAN.md — Historial opt-in + export HTML (HIST-01, EXPORT-01)
 **UI hint**: yes
 
 ## Progress
@@ -134,9 +142,9 @@ Plans:
 | 0. MVP Hardening | 4/4 | Complete    | 2026-05-28 |
 | 1. Production Table Stakes | 0/5 | Not started | - |
 | 2. Trust & QA | 5/5 | Complete | 2026-05-29 |
-| 3. Batch UX & Cost Control | 0/4 | Planned | - |
-| 4. Team Scale | 0/5 | Planned | - |
-| 5. Editorial & Pro Workflow | 0/TBD | Not started | - |
+| 3. Batch UX & Cost Control | 4/4 | Complete | 2026-05-29 |
+| 4. Team Scale | 5/5 | Complete | 2026-05-29 |
+| 5. Editorial & Pro Workflow | 0/6 | Planned | - |
 
 ---
 *Roadmap created: 2026-05-28 — NOTEBOOK milestone (brownfield)*

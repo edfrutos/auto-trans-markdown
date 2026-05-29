@@ -357,3 +357,118 @@ html.dark .prose-preview pre {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Batch progress (Phase 3) */
+#batch-progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.batch-file-progress-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.batch-file-pending::before {
+  content: '○';
+  color: var(--ink-muted, #64748b);
+}
+
+.batch-file-active::before {
+  content: '◐';
+  color: var(--primary, #0d9488);
+}
+
+.batch-file-ok::before {
+  content: '✓';
+  color: #059669;
+}
+
+.batch-file-error::before {
+  content: '✕';
+  color: #dc2626;
+}
+
+.batch-file-cancelled::before {
+  content: '—';
+  color: #94a3b8;
+}
+
+#btn-cancel-job {
+  border-color: rgba(220, 38, 38, 0.4);
+  color: #b91c1c;
+}
+
+html.dark #btn-cancel-job {
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
+}
+
+/* Multi-destino chips (Phase 4) */
+.target-lang-chips:empty {
+  display: none;
+}
+
+.lang-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--primary, #0d9488);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+}
+
+.lang-chip button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  opacity: 0.75;
+}
+
+.lang-chip button:hover {
+  opacity: 1;
+}
+
+.batch-lang-list {
+  list-style: none;
+  margin: 0.25rem 0 0 1.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8125rem;
+}
+
+.batch-lang-list li::before {
+  margin-right: 0.35rem;
+}
+
+.batch-lang-pending::before {
+  content: '○';
+  color: var(--ink-muted, #64748b);
+}
+
+.batch-lang-active::before {
+  content: '◐';
+  color: var(--primary, #0d9488);
+}
+
+.batch-lang-ok::before {
+  content: '✓';
+  color: #059669;
+}
+
+.batch-lang-error::before {
+  content: '✕';
+  color: #dc2626;
+}

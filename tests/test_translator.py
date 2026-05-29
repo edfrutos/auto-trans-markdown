@@ -11,6 +11,8 @@ import pytest
 from src.parser import collect_translatable, reassemble, segment_markdown
 from src.translator import (
     IncompleteTranslationError,
+    get_fallback_provider,
+    get_provider_used,
     get_supported_language_codes,
     is_valid_source_lang,
     is_valid_target_lang,
@@ -123,3 +125,46 @@ def test_is_valid_target_lang_deepl_excludes_ca(monkeypatch):
     monkeypatch.setenv("TRANSLATION_PROVIDER", "deepl")
     assert is_valid_target_lang("ca", "deepl") is False
     assert is_valid_target_lang("es", "deepl") is True
+
+
+def test_deepl_fallback_to_openai(monkeypatch):
+    monkeypatch.setenv("TRANSLATION_PROVIDER", "deepl")
+    monkeypatch.setenv("TRANSLATION_FALLBACK", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    def fail_deepl(texts, target_lang, source_lang, client=None):
+        raise ValueError("DeepL no soporta el idioma destino 'catalán'.")
+
+    openai_calls: list[list[str]] = []
+
+    def ok_openai(texts, target_lang, source_lang, client=None, glossary_prompt=None):
+        openai_calls.append(texts)
+        return [f"TR:{t}" for t in texts]
+
+    monkeypatch.setattr("src.translator._translate_deepl_batch", fail_deepl)
+    monkeypatch.setattr("src.translator._translate_openai_batch", ok_openai)
+
+    result = translate_segments([(0, "Hello")], "ca", None)
+    assert result[0] == "TR:Hello"
+    assert get_provider_used() == "openai"
+    assert openai_calls == [["Hello"]]
+
+
+def test_deepl_no_fallback_without_env(monkeypatch):
+    monkeypatch.setenv("TRANSLATION_PROVIDER", "deepl")
+    monkeypatch.delenv("TRANSLATION_FALLBACK", raising=False)
+
+    def fail_deepl(texts, target_lang, source_lang, client=None):
+        raise ValueError("DeepL no soporta el idioma destino.")
+
+    monkeypatch.setattr("src.translator._translate_deepl_batch", fail_deepl)
+
+    with pytest.raises(ValueError, match="no soporta"):
+        translate_segments([(0, "Hi")], "ca", None)
+
+
+def test_get_fallback_provider_requires_openai_key(monkeypatch):
+    monkeypatch.setenv("TRANSLATION_PROVIDER", "deepl")
+    monkeypatch.setenv("TRANSLATION_FALLBACK", "openai")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert get_fallback_provider() is None

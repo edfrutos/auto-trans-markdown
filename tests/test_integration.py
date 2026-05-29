@@ -37,3 +37,35 @@ def test_api_translate_text_integration(client: TestClient, mock_translate_succe
     data = res.json()
     assert data["segments_total"] >= data["segments_translated"] >= 1
     assert "TR:" in data["content"]
+
+
+def test_api_estimate_integration(client):
+    res = client.post(
+        "/api/translate/estimate",
+        json={
+            "content": "# Title\n\nSome text.\n",
+            "target_lang": "es",
+            "source_lang": "auto",
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["segments"] >= 1
+    assert body["estimated_cost_usd"] >= 0
+
+
+def test_api_translate_multi_integration(client, mock_translate_success):
+    """MULTI-01: API multi-destino devuelve traducciones por idioma."""
+    res = client.post(
+        "/api/translate",
+        json={
+            "content": "# Title\n\nParagraph.\n",
+            "target_langs": ["es", "en"],
+            "source_lang": "auto",
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "translations" in data
+    assert "es" in data["translations"]
+    assert "TR:" in data["translations"]["es"]["content"]

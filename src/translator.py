@@ -131,6 +131,47 @@ def get_provider() -> str:
     return os.getenv("TRANSLATION_PROVIDER", "openai").strip().lower()
 
 
+def get_fallback_provider() -> str | None:
+    """Proveedor secundario si el primario falla (p. ej. deepl → openai)."""
+    if get_provider() != "deepl":
+        return None
+    fallback = os.getenv("TRANSLATION_FALLBACK", "").strip().lower()
+    if fallback != "openai":
+        return None
+    if not os.getenv("OPENAI_API_KEY", "").strip():
+        return None
+    return "openai"
+
+
+_provider_used: str | None = None
+
+
+def get_provider_used() -> str:
+    """Proveedor efectivo de la última llamada a translate_segments."""
+    return _provider_used or get_provider()
+
+
+def _openai_fallback_available() -> bool:
+    return get_fallback_provider() == "openai"
+
+
+def _deepl_error_fallbackable(exc: BaseException) -> bool:
+    if isinstance(exc, ValueError):
+        return True
+    msg = str(exc).lower()
+    markers = (
+        "429",
+        "456",
+        "quota",
+        "too many",
+        "limit",
+        "not support",
+        "no soporta",
+        "unsupported",
+    )
+    return any(m in msg for m in markers)
+
+
 def get_supported_language_codes(provider: str | None = None) -> frozenset[str]:
     provider = (provider or get_provider()).lower()
     if provider == "deepl":
@@ -401,6 +442,36 @@ def _translate_deepl_batch(
     raise RuntimeError("No se pudo completar la traducción DeepL")
 
 
+def _translate_batch_with_fallback(
+    texts: list[str],
+    target_lang: str,
+    source_lang: str | None,
+    *,
+    client=None,
+    glossary_prompt: str | None = None,
+) -> list[str]:
+    """DeepL con fallback opcional a OpenAI."""
+    global _provider_used
+    try:
+        _provider_used = "deepl"
+        return _translate_deepl_batch(texts, target_lang, source_lang, client=client)
+    except Exception as exc:
+        if not _openai_fallback_available() or not _deepl_error_fallbackable(exc):
+            raise
+        logger.warning(
+            "DeepL falló (%s); reintentando con OpenAI (TRANSLATION_FALLBACK)",
+            exc,
+        )
+        _provider_used = "openai"
+        return _translate_openai_batch(
+            texts,
+            target_lang,
+            source_lang,
+            client=client,
+            glossary_prompt=glossary_prompt,
+        )
+
+
 def translate_segments(
     items: list[tuple[int, str]],
     target_lang: str,
@@ -411,10 +482,12 @@ def translate_segments(
     client=None,
 ) -> dict[int, str]:
     """Traduce segmentos en lotes y devuelve mapa index -> texto traducido."""
+    global _provider_used
     if not items:
         return {}
 
     provider = get_provider()
+    _provider_used = provider
     if provider == "deepl":
         max_items, max_chars = DEEPL_BATCH_SIZE, MAX_BATCH_CHARS
     else:
@@ -429,8 +502,12 @@ def translate_segments(
         indices = [idx for idx, _ in chunk]
 
         if provider == "deepl":
-            translations = _translate_deepl_batch(
-                texts, target_lang, source_lang, client=client
+            translations = _translate_batch_with_fallback(
+                texts,
+                target_lang,
+                source_lang,
+                client=client,
+                glossary_prompt=glossary_prompt,
             )
         elif provider == "openai":
             translations = _translate_openai_batch(
