@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import logging
 import os
 import uuid
@@ -27,6 +28,7 @@ from .translator import (
     is_valid_source_lang,
     is_valid_target_lang,
 )
+from .validator import validation_to_dict
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -61,10 +63,24 @@ class TranslateTextRequest(BaseModel):
     source_lang: str = "auto"
 
 
+class ValidationCheckModel(BaseModel):
+    id: str
+    status: str
+    message: str
+    expected: int | None = None
+    actual: int | None = None
+
+
+class ValidationReportModel(BaseModel):
+    overall: str
+    checks: list[ValidationCheckModel]
+
+
 class TranslateResponse(BaseModel):
     content: str
     segments_total: int
     segments_translated: int
+    validation: ValidationReportModel | None = None
 
 
 class LanguageItem(BaseModel):
@@ -146,16 +162,23 @@ def _unique_zip_name(filename: str, target_lang: str, used: set[str]) -> str:
         n += 1
 
 
-async def _run_translate(
+def _validation_model(result) -> ValidationReportModel | None:
+    if result.validation is None:
+        return None
+    data = validation_to_dict(result.validation)
+    return ValidationReportModel.model_validate(data)
+
+
+async def _translate_content(
     content: str,
     target_lang: str,
     source_lang: str,
-) -> TranslateResponse:
+):
     source = None if source_lang == "auto" else source_lang
     options = TranslateOptions(target_lang=target_lang, source_lang=source)
     loop = asyncio.get_running_loop()
     try:
-        result = await loop.run_in_executor(
+        return await loop.run_in_executor(
             None,
             partial(translate_markdown, content, options),
         )
@@ -163,11 +186,24 @@ async def _run_translate(
         raise
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
+
+
+def _to_response(result) -> TranslateResponse:
     return TranslateResponse(
         content=result.content,
         segments_total=result.segments_total,
         segments_translated=result.segments_translated,
+        validation=_validation_model(result),
     )
+
+
+async def _run_translate(
+    content: str,
+    target_lang: str,
+    source_lang: str,
+) -> TranslateResponse:
+    result = await _translate_content(content, target_lang, source_lang)
+    return _to_response(result)
 
 
 @app.get("/")
@@ -254,7 +290,7 @@ async def translate_file(
         raise HTTPException(400, str(e)) from e
 
     try:
-        response = await _run_translate(content, target_lang, source_lang)
+        result = await _translate_content(content, target_lang, source_lang)
     except IncompleteTranslationError as e:
         raise _translation_http_exception(e) from e
     except RuntimeError as e:
@@ -267,12 +303,22 @@ async def translate_file(
     suffix = Path(file.filename).suffix or ".md"
     out_name = f"{stem}.{target_lang}{suffix}"
     out_path = OUTPUT_DIR / f"{uuid.uuid4().hex}_{out_name}"
-    out_path.write_text(response.content, encoding="utf-8")
+    out_path.write_text(result.content, encoding="utf-8")
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{out_name}"',
+    }
+    if result.validation is not None:
+        headers["X-Validation-Report"] = json.dumps(
+            validation_to_dict(result.validation),
+            ensure_ascii=True,
+        )
 
     return FileResponse(
         path=out_path,
         filename=out_name,
         media_type="text/markdown; charset=utf-8",
+        headers=headers,
     )
 
 
@@ -310,7 +356,7 @@ async def translate_batch(
                 raise HTTPException(400, str(e)) from e
 
             try:
-                response = await _run_translate(content, target_lang, source_lang)
+                result = await _translate_content(content, target_lang, source_lang)
             except IncompleteTranslationError as e:
                 raise _translation_http_exception(e) from e
             except RuntimeError as e:
@@ -322,7 +368,18 @@ async def translate_batch(
                 ) from e
 
             out_name = _unique_zip_name(upload.filename, target_lang, used_names)
-            zf.writestr(out_name, response.content.encode("utf-8"))
+            zf.writestr(out_name, result.content.encode("utf-8"))
+            if result.validation is not None:
+                rel = Path(upload.filename)
+                val_name = rel.with_suffix(".validation.json").as_posix()
+                zf.writestr(
+                    val_name,
+                    json.dumps(
+                        validation_to_dict(result.validation),
+                        ensure_ascii=False,
+                        indent=2,
+                    ).encode("utf-8"),
+                )
             translated_count += 1
 
     if translated_count == 0:

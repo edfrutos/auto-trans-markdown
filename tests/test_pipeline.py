@@ -18,7 +18,8 @@ def test_translate_markdown_success(mock_translate_segments):
     )
     assert "TR:" in result.content
     assert result.segments_translated >= 1
-    assert result.segments_translated >= 1
+    assert result.validation is not None
+    assert len(result.validation.checks) >= 1
     mock_translate_segments.assert_called()
 
 

@@ -52,6 +52,8 @@ def test_translate_text_success(client, mock_translate_success):
     data = res.json()
     assert "TR:" in data["content"]
     assert data["segments_translated"] >= 1
+    assert data["validation"] is not None
+    assert len(data["validation"]["checks"]) >= 1
 
 
 def test_translate_incomplete_returns_502(client, mock_translate_raises_incomplete):
@@ -149,3 +151,19 @@ def test_translate_batch_success(client, mock_translate_success):
     zf = zipfile.ZipFile(io.BytesIO(res.content))
     names = zf.namelist()
     assert any(name.endswith(".es.md") for name in names)
+    assert any(name.endswith(".validation.json") for name in names)
+
+
+def test_translate_file_includes_validation_header(client, mock_translate_success):
+    res = client.post(
+        "/api/translate/file",
+        files={"file": ("doc.md", make_md_bytes("# Hello"), "text/markdown")},
+        data={"target_lang": "es", "source_lang": "auto"},
+    )
+    assert res.status_code == 200
+    assert "X-Validation-Report" in res.headers
+    import json
+
+    report = json.loads(res.headers["X-Validation-Report"])
+    assert "overall" in report
+    assert "checks" in report

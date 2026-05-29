@@ -22,6 +22,7 @@ from .translator import (
     is_valid_target_lang,
     translate_segments,
 )
+from .validator import ValidationReport, validate_translation
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_GLOSSARY_PATH = ROOT / "glossary.yaml"
@@ -47,6 +48,7 @@ class TranslateResult:
     cache_hits: int = 0
     cache_misses: int = 0
     dry_run_segments: list[tuple[int, str]] | None = None
+    validation: ValidationReport | None = None
 
 
 def _resolve_source(source_lang: str | None) -> str | None:
@@ -145,10 +147,12 @@ def translate_markdown(content: str, options: TranslateOptions) -> TranslateResu
         tm.store_batch(store_entries, source, options.target_lang)
 
     output = reassemble(segments, translations)
+    validation = validate_translation(content, output)
     return TranslateResult(
         content=output,
         segments_total=total,
         segments_translated=count,
         cache_hits=len(hits),
         cache_misses=miss_count,
+        validation=validation,
     )
