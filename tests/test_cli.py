@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 
 from src.cli import app
 from src.pipeline import TranslateResult
+from src.validator import ValidationCheck, ValidationReport
 
 runner = CliRunner()
 
@@ -29,6 +30,30 @@ def mock_pipeline(monkeypatch):
             content=f"# TR\n{content}",
             segments_total=1,
             segments_translated=1,
+            validation=ValidationReport(overall="pass", checks=[]),
+        )
+
+    monkeypatch.setattr("src.cli.translate_markdown", _fake)
+    return _fake
+
+
+@pytest.fixture
+def mock_pipeline_validation_error(monkeypatch):
+    def _fake(content, options):
+        return TranslateResult(
+            content=f"# TR\n{content}",
+            segments_total=1,
+            segments_translated=1,
+            validation=ValidationReport(
+                overall="error",
+                checks=[
+                    ValidationCheck(
+                        id="fences",
+                        status="error",
+                        message="mismatch",
+                    )
+                ],
+            ),
         )
 
     monkeypatch.setattr("src.cli.translate_markdown", _fake)
@@ -117,4 +142,34 @@ def test_batch_zip(tmp_path, mock_pipeline):
     )
     assert result.exit_code == 0
     with zipfile.ZipFile(zpath) as zf:
-        assert len(zf.namelist()) == 2
+        names = zf.namelist()
+        assert len([n for n in names if n.endswith(".es.md")]) == 2
+        assert len([n for n in names if n.endswith(".validation.json")]) == 2
+
+
+def test_file_strict_blocks_on_validation_error(
+    tmp_path, mock_pipeline_validation_error
+):
+    md = tmp_path / "doc.md"
+    out = tmp_path / "out.es.md"
+    md.write_text("# Hello\n", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["file", str(md), "-t", "es", "-o", str(out), "--strict"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 1
+    assert not out.exists()
+
+
+def test_file_strict_allows_pass(tmp_path, mock_pipeline):
+    md = tmp_path / "doc.md"
+    out = tmp_path / "out.es.md"
+    md.write_text("# Hello\n", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["file", str(md), "-t", "es", "-o", str(out), "--strict"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    assert out.exists()

@@ -74,6 +74,23 @@ def _translate_content(content: str, options: TranslateOptions):
         _exit_translation(str(e))
 
 
+def _strict_validation_failed(result, strict: bool) -> bool:
+    if not strict:
+        return False
+    if result.validation is None:
+        return False
+    return result.validation.overall == "error"
+
+
+def _abort_strict() -> None:
+    typer.secho(
+        "Validación fallida — salida no escrita",
+        fg=typer.colors.RED,
+        err=True,
+    )
+    raise typer.Exit(code=1)
+
+
 def _is_markdown(path: Path) -> bool:
     return path.suffix.lower() in MD_EXTENSIONS
 
@@ -113,6 +130,11 @@ def file_cmd(
     no_memory: bool = typer.Option(False, "--no-memory"),
     no_glossary: bool = typer.Option(False, "--no-glossary"),
     glossary_path: Path | None = typer.Option(None, "--glossary-path"),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="No escribir salida si la validación estructural falla",
+    ),
 ) -> None:
     """Traduce un archivo Markdown."""
     content = input_path.read_text(encoding="utf-8")
@@ -125,6 +147,9 @@ def file_cmd(
         for idx, text in result.dry_run_segments or []:
             typer.echo(json.dumps({"index": idx, "text": text}, ensure_ascii=False))
         return
+
+    if _strict_validation_failed(result, strict):
+        _abort_strict()
 
     out_path = output or input_path.with_name(
         f"{input_path.stem}.{target}{input_path.suffix or '.md'}"
@@ -144,6 +169,7 @@ def dir_cmd(
     no_memory: bool = typer.Option(False, "--no-memory"),
     no_glossary: bool = typer.Option(False, "--no-glossary"),
     glossary_path: Path | None = typer.Option(None, "--glossary-path"),
+    strict: bool = typer.Option(False, "--strict"),
 ) -> None:
     """Traduce archivos .md en un directorio."""
     pattern = "**/*" if recursive else "*"
@@ -166,6 +192,9 @@ def dir_cmd(
             result = _translate_content(md_file.read_text(encoding="utf-8"), options)
             if dry_run:
                 typer.echo(f"{rel}: {len(result.dry_run_segments or [])} segmentos")
+            elif _strict_validation_failed(result, strict):
+                typer.secho(f"✗ {rel} (validación fallida)", fg=typer.colors.RED, err=True)
+                errors += 1
             else:
                 out_file.write_text(result.content, encoding="utf-8")
                 typer.echo(f"✓ {rel}")
@@ -186,6 +215,7 @@ def batch_cmd(
     no_memory: bool = typer.Option(False, "--no-memory"),
     no_glossary: bool = typer.Option(False, "--no-glossary"),
     glossary_path: Path | None = typer.Option(None, "--glossary-path"),
+    strict: bool = typer.Option(False, "--strict"),
 ) -> None:
     """Traduce varios archivos a ZIP o directorio."""
     if bool(zip_path) == bool(output_dir):
@@ -214,9 +244,32 @@ def batch_cmd(
                     result = _translate_content(
                         md_file.read_text(encoding="utf-8"), options
                     )
-                    if not dry_run:
-                        name = f"{md_file.stem}.{target}{md_file.suffix}"
-                        zf.writestr(name, result.content.encode("utf-8"))
+                    if dry_run:
+                        continue
+                    if _strict_validation_failed(result, strict):
+                        errors += 1
+                        continue
+                    name = f"{md_file.stem}.{target}{md_file.suffix}"
+                    zf.writestr(name, result.content.encode("utf-8"))
+                    if result.validation is not None:
+                        zf.writestr(
+                            f"{md_file.stem}.validation.json",
+                            json.dumps(
+                                {
+                                    "overall": result.validation.overall,
+                                    "checks": [
+                                        {
+                                            "id": c.id,
+                                            "status": c.status,
+                                            "message": c.message,
+                                        }
+                                        for c in result.validation.checks
+                                    ],
+                                },
+                                ensure_ascii=False,
+                                indent=2,
+                            ).encode("utf-8"),
+                        )
                 except typer.Exit:
                     errors += 1
         if not dry_run:
@@ -230,8 +283,12 @@ def batch_cmd(
                 result = _translate_content(
                     md_file.read_text(encoding="utf-8"), options
                 )
-                if not dry_run:
-                    out.write_text(result.content, encoding="utf-8")
+                if dry_run:
+                    continue
+                if _strict_validation_failed(result, strict):
+                    errors += 1
+                    continue
+                out.write_text(result.content, encoding="utf-8")
             except typer.Exit:
                 errors += 1
 
