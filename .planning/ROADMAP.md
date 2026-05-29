@@ -84,7 +84,13 @@ Plans:
   2. Usuario cancela un job en curso desde la UI
   3. Lote con fallos parciales devuelve ZIP con archivos exitosos más `errors.json`
   4. Usuario ve estimación de segmentos, caracteres y coste antes de confirmar traducción grande
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — estimate.py + POST /api/translate/estimate (COST-01)
+- [ ] 03-02-PLAN.md — batch_zip + jobs SSE + cancel + partial ZIP (JOB-01, JOB-03, JOB-04)
+- [ ] 03-03-PLAN.md — UI progreso SSE + cancel + estimate inline (JOB-02, COST-02)
+- [ ] 03-04-PLAN.md — Tests integración + README (JOB-*, COST-*)
 **UI hint**: yes
 
 ### Phase 4: Team Scale
@@ -120,7 +126,7 @@ Plans:
 | 0. MVP Hardening | 4/4 | Complete    | 2026-05-28 |
 | 1. Production Table Stakes | 0/5 | Not started | - |
 | 2. Trust & QA | 5/5 | Complete | 2026-05-29 |
-| 3. Batch UX & Cost Control | 0/TBD | Not started | - |
+| 3. Batch UX & Cost Control | 0/4 | Planned | - |
 | 4. Team Scale | 0/TBD | Not started | - |
 | 5. Editorial & Pro Workflow | 0/TBD | Not started | - |
 
