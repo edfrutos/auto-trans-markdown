@@ -87,10 +87,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — estimate.py + POST /api/translate/estimate (COST-01)
-- [ ] 03-02-PLAN.md — batch_zip + jobs SSE + cancel + partial ZIP (JOB-01, JOB-03, JOB-04)
-- [ ] 03-03-PLAN.md — UI progreso SSE + cancel + estimate inline (JOB-02, COST-02)
-- [ ] 03-04-PLAN.md — Tests integración + README (JOB-*, COST-*)
+- [x] 03-01-PLAN.md — estimate.py + POST /api/translate/estimate (COST-01)
+- [x] 03-02-PLAN.md — batch_zip + jobs SSE + cancel + partial ZIP (JOB-01, JOB-03, JOB-04)
+- [x] 03-03-PLAN.md — UI progreso SSE + cancel + estimate inline (JOB-02, COST-02)
+- [x] 03-04-PLAN.md — Tests integración + README (JOB-*, COST-*)
 **UI hint**: yes
 
 ### Phase 4: Team Scale
@@ -101,7 +101,15 @@ Plans:
   1. Usuario selecciona varios idiomas destino y recibe ZIP con archivos `stem.{lang}.md`
   2. Usuario despliega con `Dockerfile` multi-stage y `docker-compose.yml` con volúmenes para `data/` y `output/`
   3. Instancia desplegada respeta allowlist CORS, bind address, límite de upload y TTL/limpieza de `output/` configurables
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — target_langs + API/jobs/estimate multi-idioma (MULTI-01, MULTI-02)
+- [ ] 04-02-PLAN.md — deployment.py CORS/upload/TTL (SEC-01, SEC-02)
+- [ ] 04-03-PLAN.md — UI chips + progreso anidado (MULTI-01 UI)
+- [ ] 04-04-PLAN.md — CLI `-t es,en,fr` paridad (MULTI-01, MULTI-02)
+- [ ] 04-05-PLAN.md — Docker + README + integración (DOCKER-*, traceability)
+**UI hint**: yes
 
 ### Phase 5: Editorial & Pro Workflow
 **Goal**: Usuario refina traducciones, automatiza flujos editoriales y exporta resultados enriquecidos
@@ -127,7 +135,7 @@ Plans:
 | 1. Production Table Stakes | 0/5 | Not started | - |
 | 2. Trust & QA | 5/5 | Complete | 2026-05-29 |
 | 3. Batch UX & Cost Control | 0/4 | Planned | - |
-| 4. Team Scale | 0/TBD | Not started | - |
+| 4. Team Scale | 0/5 | Planned | - |
 | 5. Editorial & Pro Workflow | 0/TBD | Not started | - |
 
 ---
