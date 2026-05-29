@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import re
+
+import yaml
+
 from dataclasses import dataclass
 from enum import Enum
 
@@ -22,7 +25,21 @@ class Segment:
 FENCE_PATTERN = re.compile(r"^(```+|~~~+)(.*)$")
 FRONTMATTER_DELIM = re.compile(r"^---\s*$")
 SHELL_LANGS = frozenset({"bash", "sh", "shell", "zsh", "fish"})
-SHELL_COMMENT = re.compile(r"^(\s*#\s?)(.*?)(\n?)$", re.DOTALL)
+HASH_COMMENT_LANGS = frozenset({"python"})
+SLASH_COMMENT_LANGS = frozenset({"javascript", "typescript", "js", "ts"})
+HTML_COMMENT_LANGS = frozenset({"html", "xml"})
+HASH_COMMENT = re.compile(r"^(\s*#\s?)(.*?)(\n?)$", re.DOTALL)
+SLASH_COMMENT = re.compile(r"^(\s*//\s?)(.*?)(\n?)$", re.DOTALL)
+HTML_COMMENT = re.compile(r"(^[\s]*)(<!--)(.*?)(-->)([\s]*)", re.DOTALL)
+FM_TRANSLATABLE_KEYS = frozenset({
+    "title",
+    "description",
+    "summary",
+    "tags",
+    "categories",
+    "keywords",
+})
+FM_PROTECTED_KEYS = frozenset({"date", "slug", "id", "layout", "author"})
 
 
 def _split_inline_code(line: str) -> list[tuple[SegmentKind, str]]:
@@ -74,18 +91,37 @@ def _append_inline_line(
     return idx
 
 
-def _is_shell_fence(info: str) -> bool:
-    lang = info.strip().lower().split()[0] if info.strip() else ""
-    return lang in SHELL_LANGS
+def _fence_lang(info: str) -> str | None:
+    if not info.strip():
+        return None
+    return info.strip().lower().split()[0]
 
 
-def _append_shell_line(
+def _comment_kind(lang: str | None) -> str | None:
+    if not lang:
+        return None
+    if lang in SHELL_LANGS or lang in HASH_COMMENT_LANGS:
+        return "hash"
+    if lang in SLASH_COMMENT_LANGS:
+        return "slash"
+    if lang in HTML_COMMENT_LANGS:
+        return "html"
+    return None
+
+
+def _is_url(value: str) -> bool:
+    stripped = value.strip()
+    return stripped.startswith("http://") or stripped.startswith("https://")
+
+
+def _append_hash_comment_line(
     segments: list[Segment],
     line: str,
     idx: int,
 ) -> int:
-    """Traduce comentarios # en bloques shell; preserva comandos."""
-    match = SHELL_COMMENT.match(line)
+    if line.lstrip().startswith("#!"):
+        return _append_segment(segments, SegmentKind.PROTECTED, line, idx)
+    match = HASH_COMMENT.match(line)
     if match and match.group(2).strip():
         idx = _append_segment(segments, SegmentKind.PROTECTED, match.group(1), idx)
         comment_text = match.group(2)
@@ -96,12 +132,118 @@ def _append_shell_line(
     return _append_segment(segments, SegmentKind.PROTECTED, line, idx)
 
 
+def _append_slash_comment_line(
+    segments: list[Segment],
+    line: str,
+    idx: int,
+) -> int:
+    match = SLASH_COMMENT.match(line)
+    if match and match.group(2).strip():
+        idx = _append_segment(segments, SegmentKind.PROTECTED, match.group(1), idx)
+        comment_text = match.group(2)
+        if match.group(3):
+            comment_text += match.group(3)
+        idx = _append_segment(segments, SegmentKind.TRANSLATABLE, comment_text, idx)
+        return idx
+    return _append_segment(segments, SegmentKind.PROTECTED, line, idx)
+
+
+def _append_html_comment_line(
+    segments: list[Segment],
+    line: str,
+    idx: int,
+) -> int:
+    match = HTML_COMMENT.match(line)
+    if match and match.group(3).strip():
+        idx = _append_segment(segments, SegmentKind.PROTECTED, match.group(1) + match.group(2), idx)
+        idx = _append_segment(segments, SegmentKind.TRANSLATABLE, match.group(3), idx)
+        idx = _append_segment(
+            segments,
+            SegmentKind.PROTECTED,
+            match.group(4) + match.group(5),
+            idx,
+        )
+        return idx
+    return _append_segment(segments, SegmentKind.PROTECTED, line, idx)
+
+
+def _append_comment_line(
+    segments: list[Segment],
+    line: str,
+    idx: int,
+    kind: str,
+) -> int:
+    if kind == "hash":
+        return _append_hash_comment_line(segments, line, idx)
+    if kind == "slash":
+        return _append_slash_comment_line(segments, line, idx)
+    if kind == "html":
+        return _append_html_comment_line(segments, line, idx)
+    return _append_segment(segments, SegmentKind.PROTECTED, line, idx)
+
+
+def _append_yaml_value(
+    segments: list[Segment],
+    key: str,
+    value,
+    idx: int,
+) -> int:
+    if key in FM_PROTECTED_KEYS or key not in FM_TRANSLATABLE_KEYS:
+        line = yaml.dump({key: value}, default_flow_style=True, allow_unicode=True).strip()
+        return _append_segment(segments, SegmentKind.PROTECTED, line + "\n", idx)
+
+    if isinstance(value, str):
+        if _is_url(value):
+            line = yaml.dump({key: value}, default_flow_style=True, allow_unicode=True).strip()
+            return _append_segment(segments, SegmentKind.PROTECTED, line + "\n", idx)
+        idx = _append_segment(segments, SegmentKind.PROTECTED, f"{key}: ", idx)
+        idx = _append_segment(segments, SegmentKind.TRANSLATABLE, value, idx)
+        return _append_segment(segments, SegmentKind.PROTECTED, "\n", idx)
+
+    if isinstance(value, list):
+        idx = _append_segment(segments, SegmentKind.PROTECTED, f"{key}:\n", idx)
+        for item in value:
+            if isinstance(item, str) and not _is_url(item):
+                idx = _append_segment(segments, SegmentKind.PROTECTED, "  - ", idx)
+                idx = _append_segment(segments, SegmentKind.TRANSLATABLE, item, idx)
+                idx = _append_segment(segments, SegmentKind.PROTECTED, "\n", idx)
+            else:
+                line = yaml.dump([item], default_flow_style=True, allow_unicode=True).strip()
+                idx = _append_segment(segments, SegmentKind.PROTECTED, "  " + line + "\n", idx)
+        return idx
+
+    line = yaml.dump({key: value}, default_flow_style=True, allow_unicode=True).strip()
+    return _append_segment(segments, SegmentKind.PROTECTED, line + "\n", idx)
+
+
+def _segment_frontmatter(block: str, segments: list[Segment], idx: int) -> int:
+    """Segmenta frontmatter YAML con whitelist selectiva."""
+    lines = block.splitlines(keepends=True)
+    if len(lines) < 2:
+        return _append_segment(segments, SegmentKind.PROTECTED, block, idx)
+
+    inner = "".join(lines[1:-1]) if len(lines) > 2 else ""
+    try:
+        data = yaml.safe_load(inner)
+    except yaml.YAMLError:
+        return _append_segment(segments, SegmentKind.PROTECTED, block, idx)
+
+    if not isinstance(data, dict):
+        return _append_segment(segments, SegmentKind.PROTECTED, block, idx)
+
+    idx = _append_segment(segments, SegmentKind.PROTECTED, lines[0], idx)
+    for key, value in data.items():
+        idx = _append_yaml_value(segments, key, value, idx)
+    idx = _append_segment(segments, SegmentKind.PROTECTED, lines[-1], idx)
+    return idx
+
+
 def segment_markdown(content: str) -> list[Segment]:
     """
     Divide el documento en segmentos protegidos y traducibles.
 
-    Protegido: frontmatter YAML, bloques ```/~~~ (salvo comentarios # en shell),
-    bloques HTML <pre>/<code>, código inline y bloques indentados.
+    Protegido: metadatos YAML técnicos, bloques ```/~~~ (salvo comentarios en
+    shell/python/js/html), bloques HTML <pre>/<code>, código inline e indentados.
     """
     lines = content.splitlines(keepends=True)
     segments: list[Segment] = []
@@ -125,7 +267,7 @@ def segment_markdown(content: str) -> list[Segment]:
                     i += 1
                     break
                 i += 1
-            idx = _append_segment(segments, SegmentKind.PROTECTED, block, idx)
+            idx = _segment_frontmatter(block, segments, idx)
             continue
 
         frontmatter_checked = True
@@ -152,7 +294,7 @@ def segment_markdown(content: str) -> list[Segment]:
             fence_char = fence_match.group(1)[0]
             fence_len = len(fence_match.group(1))
             fence_info = fence_match.group(2)
-            is_shell = _is_shell_fence(fence_info)
+            comment_kind = _comment_kind(_fence_lang(fence_info))
 
             idx = _append_segment(segments, SegmentKind.PROTECTED, line, idx)
             i += 1
@@ -164,8 +306,8 @@ def segment_markdown(content: str) -> list[Segment]:
                     idx = _append_segment(segments, SegmentKind.PROTECTED, inner, idx)
                     i += 1
                     break
-                if is_shell:
-                    idx = _append_shell_line(segments, inner, idx)
+                if comment_kind:
+                    idx = _append_comment_line(segments, inner, idx, comment_kind)
                 else:
                     idx = _append_segment(segments, SegmentKind.PROTECTED, inner, idx)
                 i += 1

@@ -72,3 +72,87 @@ def test_bash_comment_translation_reassembly():
     out = reassemble(segments, translations)
     assert "# Hola mundo" in out
     assert "Hello world" not in out
+
+
+def test_python_comment_translatable():
+    md = "```python\n# Install deps\nprint('x')\n```\n"
+    segments = segment_markdown(md)
+    translatable = [s.text for s in segments if s.kind == SegmentKind.TRANSLATABLE]
+    protected = [s.text for s in segments if s.kind == SegmentKind.PROTECTED]
+    assert any("Install deps" in t for t in translatable)
+    assert any("print('x')" in t for t in protected)
+
+
+def test_python_shebang_protected():
+    md = "```python\n#!/usr/bin/env python\n# note\n```\n"
+    segments = segment_markdown(md)
+    protected = "".join(s.text for s in segments if s.kind == SegmentKind.PROTECTED)
+    translatable = [s.text for s in segments if s.kind == SegmentKind.TRANSLATABLE]
+    assert "#!/usr/bin/env python" in protected
+    assert any("note" in t for t in translatable)
+
+
+def test_javascript_comment_translatable():
+    md = "```javascript\n// Setup API\nconst x = 1;\n```\n"
+    segments = segment_markdown(md)
+    translatable = [s.text for s in segments if s.kind == SegmentKind.TRANSLATABLE]
+    assert any("Setup API" in t for t in translatable)
+
+
+def test_typescript_fence_alias():
+    md = "```ts\n// Type hint\nlet n: number;\n```\n"
+    segments = segment_markdown(md)
+    assert any(
+        s.kind == SegmentKind.TRANSLATABLE and "Type hint" in s.text for s in segments
+    )
+
+
+def test_html_comment_translatable():
+    md = "```html\n<!-- Page title -->\n<div></div>\n```\n"
+    segments = segment_markdown(md)
+    translatable = [s.text for s in segments if s.kind == SegmentKind.TRANSLATABLE]
+    assert any("Page title" in t for t in translatable)
+
+
+def test_frontmatter_title_translatable_slug_protected():
+    md = "---\ntitle: Hello\nslug: my-post\n---\n\nBody\n"
+    segments = segment_markdown(md)
+    translatable = [s.text for s in segments if s.kind == SegmentKind.TRANSLATABLE]
+    protected = "".join(s.text for s in segments if s.kind == SegmentKind.PROTECTED)
+    assert any("Hello" in t for t in translatable)
+    assert "slug: my-post" in protected or "my-post" in protected
+
+
+def test_frontmatter_tags_list_translatable():
+    md = "---\ntags:\n  - alpha\n  - beta\n---\n"
+    segments = segment_markdown(md)
+    translatable = [s.text for s in segments if s.kind == SegmentKind.TRANSLATABLE]
+    assert "alpha" in translatable
+    assert "beta" in translatable
+
+
+def test_frontmatter_date_protected():
+    md = "---\ntitle: Hi\ndate: 2024-01-01\n---\n"
+    segments = segment_markdown(md)
+    protected = "".join(s.text for s in segments if s.kind == SegmentKind.PROTECTED)
+    assert "2024-01-01" in protected
+    translatable = collect_translatable(segments)
+    assert any("Hi" in t for _, t in translatable)
+
+
+def test_invalid_frontmatter_fully_protected():
+    md = "---\ntitle: [broken\n---\n"
+    segments = segment_markdown(md)
+    assert len(segments) == 1
+    assert segments[0].kind == SegmentKind.PROTECTED
+    assert segments[0].text.startswith("---")
+
+
+def test_frontmatter_reassembly():
+    md = "---\ntitle: Hello\nslug: post\n---\n"
+    segments = segment_markdown(md)
+    translatable = collect_translatable(segments)
+    translations = {idx: "Hola" for idx, text in translatable if "Hello" in text}
+    out = reassemble(segments, translations)
+    assert "title: Hola" in out or "Hola" in out
+    assert "slug: post" in out or "post" in out
