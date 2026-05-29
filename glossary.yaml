@@ -1,3 +1,7 @@
+# Glosario del proyecto (version 1).
+# - do_not_translate: términos que el traductor debe dejar intactos (marcas, productos).
+# - pairs: traducciones fijas por par de idiomas; clave "{origen}-{destino}" (ej. en-es, auto-es).
+#   Si source_lang es "auto", también se usa la clave auto-{destino}.
 version: 1
 do_not_translate:
 - API Gateway
