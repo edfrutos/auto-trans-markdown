@@ -58,9 +58,24 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 - ✓ Historial opt-in (metadatos) — HIST-01
 - ✓ Export HTML — EXPORT-01
 
-### Active (v2 / next milestone)
+## Current Milestone: v2.0 Production Polish & PDF
 
-- [ ] Export PDF — V2-01
+**Goal:** Cerrar deuda técnica del audit v1.0 y añadir export PDF sin reabrir arquitectura core.
+
+**Target features:**
+- Paridad `--tone` en CLI batch ZIP; UI con Bearer para despliegues protegidos
+- Editor multi-idioma usable (ver/descargar cada traducción)
+- Export PDF desde CLI y web (dependencia opcional documentada)
+
+**Deferred to v2.1+:** Redis jobs, multi-tenant, plugin editor.
+
+### Active (v2.0)
+
+- [ ] Tech debt closure — DEBT-01 … DEBT-04
+- [ ] PDF export — PDF-01 … PDF-04
+
+### Active (v2.1+ / future)
+
 - [ ] Plugin Obsidian o VS Code — V2-02
 - [ ] Multi-tenant con API key por usuario — V2-03
 - [ ] Redis job store para multi-worker — V2-04
@@ -110,14 +125,9 @@ This document evolves at phase transitions and milestone boundaries.
 - **Proveedores:** OpenAI (default), DeepL + fallback opcional
 - **Modos:** editor, archivo, lote SSE, CLI, watch, revisión editorial
 
-## Next Milestone Goals (v2 — draft)
+## Next Milestone Goals (v2.0 — active)
 
-Prioridades sugeridas desde REQUIREMENTS v2 y auditoría:
-
-- [ ] Export PDF (V2-01)
-- [ ] Cerrar tech debt: `--tone` en batch ZIP CLI, UI Bearer, editor multi-idioma
-- [ ] Redis job store para multi-worker (V2-04)
-- [ ] Plugin Obsidian/VS Code (V2-02) — evaluar alcance
+Ver `.planning/REQUIREMENTS.md` y `.planning/ROADMAP.md` fases 6–7.
 
 ---
-*Last updated: 2026-05-29 after v1.0 milestone shipped*
+*Last updated: 2026-05-29 — v2.0 milestone initialized*

@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: NOTEBOOK A→E
-status: shipped
-stopped_at: Milestone v1.0 archived
-last_updated: "2026-05-29T21:00:00.000Z"
-last_activity: 2026-05-29 -- Milestone v1.0 complete and tagged
+milestone: v2.0
+milestone_name: Production Polish & PDF
+status: planning
+stopped_at: Milestone v2.0 requirements + roadmap defined
+last_updated: "2026-05-29T22:00:00.000Z"
+last_activity: 2026-05-29 -- v2.0 milestone started (focused scope)
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
-  total_plans: 0
+  total_plans: 7
   completed_plans: 0
   percent: 0
 ---
@@ -18,23 +18,29 @@ progress:
 
 ## Current Position
 
-**Shipped:** v1.0 NOTEBOOK A→E (2026-05-29)  
-**Tag:** `v1.0`
+**Shipped:** v1.0 NOTEBOOK A→E (tag `v1.0`)  
+**Active milestone:** v2.0 Production Polish & PDF  
+**Phase:** Not started (roadmap ready)  
+**Next phase:** 6 — v1 Tech Debt Closure
 
-**Current focus:** Plan next milestone — `/gsd-new-milestone`
+**Current focus:** `/gsd-discuss-phase 6` o `/gsd-plan-phase 6`
 
-## Deferred Items
+## Deferred Items (from v1.0 — in scope v2.0 phase 6)
 
-Items acknowledged and deferred at milestone close on 2026-05-29:
+| Item | REQ |
+|------|-----|
+| CLI batch --zip + tone | DEBT-01 |
+| UI Bearer + API_TOKEN | DEBT-02 |
+| Editor multi-idioma | DEBT-03 |
+| 02-VERIFICATION.md | DEBT-04 |
 
-| Category | Item | Status |
-|----------|------|--------|
-| tech_debt | CLI `batch --zip` omite `--tone` | deferred v1.0.x |
-| tech_debt | UI sin Bearer cuando `API_TOKEN` activo | deferred v1.0.x |
-| tech_debt | Editor multi-idioma solo muestra idioma primario | deferred v1.0.x |
-| docs | Falta `02-VERIFICATION.md` retroactivo | deferred |
+## Deferred to v2.1+
+
+- Redis job store (V2-04)
+- Multi-tenant (V2-03)
+- Plugin Obsidian/VS Code (V2-02)
 
 ## Session Continuity
 
-Stopped at: Milestone v1.0 shipped  
-Resume file: none — run `/gsd-new-milestone` to start v2
+Stopped at: v2.0 roadmap created  
+Resume file: `.planning/ROADMAP.md` Phase 6
