@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 NOTEBOOK A→E** — Phases 0–5 (shipped 2026-05-29) → [archive](milestones/v1.0-ROADMAP.md)
-- 🚧 **v2.0 Production Polish & PDF** — Phases 6–7 (in progress)
+- ✅ **v2.0 Production Polish & PDF** — Phases 6–7 (shipped 2026-05-29) → [archive](milestones/v2.0-ROADMAP.md)
 
 ## Phases (v1.0 — shipped)
 
@@ -23,50 +23,23 @@ Detalle: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 </details>
 
-## Phases (v2.0 — active)
+## Phases (v2.0 — shipped)
 
-### Phase 6: v1 Tech Debt Closure
-**Goal**: Cerrar gaps periféricos del audit v1.0 sin cambiar arquitectura core  
-**Depends on**: v1.0 shipped  
-**Requirements**: DEBT-01, DEBT-02, DEBT-03, DEBT-04  
-**Success Criteria** (what must be TRUE):
-  1. `md-translate batch --zip -t es --tone formal` aplica tono en todas las traducciones del ZIP
-  2. Con `API_TOKEN` en servidor, la UI permite guardar token y las peticiones autenticadas funcionan (incl. SSE)
-  3. Tras traducir a 2+ idiomas en editor, el usuario puede ver y descargar cada idioma sin perder validación/preview
-  4. Existe `02-VERIFICATION.md` con status passed para fase 2  
-**Plans:** 4/4 complete
+<details>
+<summary>✅ v2.0 Production Polish & PDF (Phases 6–7) — SHIPPED 2026-05-29</summary>
 
-Plans:
-- [x] 06-01-PLAN.md — CLI batch ZIP + tone (DEBT-01) — wave 1
-- [x] 06-02-PLAN.md — UI Bearer token + fetch/SSE (DEBT-02) — wave 1
-- [x] 06-03-PLAN.md — Editor multi-idioma tabs/download (DEBT-03) — wave 2
-- [x] 06-04-PLAN.md — 02-VERIFICATION retroactivo + tests regresión (DEBT-04) — wave 3
+| Phase | Name | Plans | Completed |
+|-------|------|-------|-----------|
+| 6 | v1 Tech Debt Closure | 4/4 | 2026-05-29 |
+| 7 | PDF Export | 3/3 | 2026-05-29 |
 
-### Phase 7: PDF Export
-**Goal**: Usuario exporta Markdown traducido a PDF desde CLI y UI  
-**Depends on**: Phase 6  
-**Requirements**: PDF-01, PDF-02, PDF-03, PDF-04  
-**Success Criteria** (what must be TRUE):
-  1. CLI genera PDF legible desde `.md` traducido (estilos básicos, código preservado visualmente)
-  2. UI ofrece «Export PDF» tras traducción exitosa (mismo patrón que HTML)
-  3. Dependencia PDF documentada como opcional; tests mock o skip si WeasyPrint/pandoc ausente
-  4. README describe instalación y limitaciones (Docker, headless)  
-**Plans:** 3/3 complete
+Detalle: [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
 
-Plans:
-- [x] 07-01-PLAN.md — pdf_export.py + tests (PDF-01, PDF-04) — wave 1
-- [x] 07-02-PLAN.md — CLI export --format pdf (PDF-02) — wave 2
-- [x] 07-03-PLAN.md — API + UI Export PDF + README (PDF-03, PDF-04) — wave 3
+</details>
 
-## Progress
+## Next milestone
 
-| Phase | Milestone | Plans | Status | Completed |
-|-------|-----------|-------|--------|-----------|
-| 0–5 | v1.0 | 29/29 | Complete | 2026-05-29 |
-| 6. Tech Debt Closure | v2.0 | 4/4 | Complete | 2026-05-29 |
-| 7. PDF Export | v2.0 | 3/3 | Complete | 2026-05-29 |
-
-**Execution order:** 6 → 7
+No hay milestone activo. Ejecuta `/gsd-new-milestone` para planificar v2.1+ (plugin, multi-tenant, Redis, lockfile — ver backlog en archivos de milestone).
 
 ---
-*Last updated: 2026-05-29 — phase 7 complete; v2.0 milestone ready to ship*
+*Last updated: 2026-05-29 — v2.0 shipped*

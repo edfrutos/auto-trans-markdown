@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Traductor de archivos Markdown que preserva formato y bloques de código, orientado a documentación técnica y equipos que localizan docs sin romper sintaxis. Incluye interfaz web (editor, archivo, lote), API FastAPI, CLI `md-translate`, glosario, memoria de traducción y proveedores OpenAI o DeepL. El milestone NOTEBOOK (fases A→E) está **completo** (fases GSD 0–5).
+Traductor de archivos Markdown que preserva formato y bloques de código, orientado a documentación técnica y equipos que localizan docs sin romper sintaxis. Incluye interfaz web (editor, archivo, lote), API FastAPI, CLI `md-translate`, glosario, memoria de traducción y proveedores OpenAI o DeepL. Milestones **v1.0** (NOTEBOOK A→E) y **v2.0** (polish + PDF) están **completos**.
 
 ## Core Value
 
@@ -10,124 +10,71 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 
 ## Requirements
 
-### Validated
+<details>
+<summary>Shipped v1.0 (phases 0–5) — NOTEBOOK A→E</summary>
 
-**MVP + Phase 0 (Hardening)**
+Ver `.planning/milestones/v1.0-REQUIREMENTS.md` para el listado completo (HARD, PIPE, GLOS, TM, CLI, VAL, PREV, JOB, COST, MULTI, DOCKER, SEC, REV, FALL, DIFF, WATCH, TONE, HIST, EXPORT).
 
-- ✓ Segmentación Markdown protegido vs traducible — `src/parser.py`
-- ✓ Preservación de bloques ```, inline `code`, frontmatter, indentados — `src/parser.py`
-- ✓ Comentarios traducibles en shell, Python, JS/TS, HTML — `src/parser.py`
-- ✓ Traducción por lotes vía OpenAI (JSON) o DeepL — `src/translator.py`
-- ✓ Rechazo traducciones incompletas (HTTP 502) — Phase 0 / HARD-01
-- ✓ UTF-8 estricto en uploads (HTTP 400) — Phase 0 / HARD-02
-- ✓ Idiomas filtrados por proveedor activo — Phase 0 / HARD-03
-- ✓ Tests integración traductor + API + reassemble — Phase 0 / HARD-04
+</details>
 
-**Phase 1 — Production table stakes**
+<details>
+<summary>Shipped v2.0 (phases 6–7) — Production Polish & PDF</summary>
 
-- ✓ Fachada `translate_markdown()` (API + CLI + web) — PIPE-01
-- ✓ Glosario YAML + UI + pipeline — GLOS-01 … GLOS-03
-- ✓ Memoria SQLite + clear UI/CLI/API — TM-01 … TM-03
-- ✓ CLI `file|dir|batch`, `--dry-run`, `serve` — CLI-01 … CLI-05
+- ✓ Tech debt audit — DEBT-01 … DEBT-04 (tone batch ZIP, Bearer UI/SSE, editor multi-idioma, 02-VERIFICATION)
+- ✓ Export PDF — PDF-01 … PDF-04 (WeasyPrint opcional, CLI, API, UI, README)
 
-**Phase 2 — Trust & QA**
+Ver `.planning/milestones/v2.0-REQUIREMENTS.md`.
 
-- ✓ Validación post-traducción + informe UI/ZIP — VAL-01, VAL-02
-- ✓ CLI `--strict` — VAL-03
-- ✓ Preview marked + DOMPurify — PREV-01, PREV-02
-- ✓ Frontmatter YAML selectivo — FM-01, FM-02
+</details>
 
-**Phase 3 — Batch UX & cost**
-
-- ✓ Jobs SSE, cancelación, ZIP parcial — JOB-01 … JOB-04
-- ✓ Estimate API + UI — COST-01, COST-02
-
-**Phase 4 — Team scale**
-
-- ✓ Multi-destino API/CLI/UI — MULTI-01, MULTI-02
-- ✓ Docker + compose — DOCKER-01, DOCKER-02
-- ✓ CORS, límites upload, TTL `output/`, `API_TOKEN` opcional — SEC-01, SEC-02
-
-**Phase 5 — Editorial & pro**
-
-- ✓ Modo revisión draft/finalize — REV-01, REV-02
-- ✓ Fallback DeepL → OpenAI — FALL-01
-- ✓ Diff por segmento — DIFF-01
-- ✓ `watch`, árbol con `.gitignore` — WATCH-01, TREE-01
-- ✓ Tono formal/informal — TONE-01
-- ✓ Historial opt-in (metadatos) — HIST-01
-- ✓ Export HTML — EXPORT-01
-
-## Current Milestone: v2.0 Production Polish & PDF
-
-**Goal:** Cerrar deuda técnica del audit v1.0 y añadir export PDF sin reabrir arquitectura core.
-
-**Target features:**
-- Paridad `--tone` en CLI batch ZIP; UI con Bearer para despliegues protegidos
-- Editor multi-idioma usable (ver/descargar cada traducción)
-- Export PDF desde CLI y web (dependencia opcional documentada)
-
-**Deferred to v2.1+:** Redis jobs, multi-tenant, plugin editor.
-
-### Active (v2.0)
-
-- [x] Tech debt closure — DEBT-01 … DEBT-04
-- [x] PDF export — PDF-01 … PDF-04
-
-### Active (v2.1+ / future)
+### Backlog (v2.1+)
 
 - [ ] Plugin Obsidian o VS Code — V2-02
 - [ ] Multi-tenant con API key por usuario — V2-03
 - [ ] Redis job store para multi-worker — V2-04
-
-### Out of Scope
-
-- Traducción directa PDF/DOCX — pipeline distinto; usar MD intermedio
-- MT offline sin LLM como calidad principal — inferior en modismos
-- Reescritura libre del documento — fuera del core value
+- [ ] Lockfile reproducible — LOCK-01
 
 ## Context
 
-**Estado actual:** Pipeline segment → translate → reassemble con fachada `pipeline.py`. FastAPI + UI estática. Memoria SQLite en `data/`. Glosario en `glossary.yaml`. Jobs de lote in-memory con SSE (single-process). **137 tests** en `tests/`. Despliegue Docker documentado.
+**Estado actual:** Pipeline segment → translate → reassemble con fachada `pipeline.py`. FastAPI + UI estática. Memoria SQLite. Glosario YAML. Jobs in-memory SSE. Export HTML + PDF (opcional). **148 tests**. Docker documentado.
 
-**Usuarios objetivo:** Desarrolladores, redactores técnicos y equipos que traducen README, docs y artículos Markdown manteniendo código y estructura.
+**Usuarios objetivo:** Desarrolladores, redactores técnicos y equipos que traducen README, docs y artículos Markdown.
 
-**Deuda / límites conocidos:** Jobs SSE no persisten entre reinicios (V2-04). Auth opcional vía `API_TOKEN` Bearer, no multi-tenant. Sin lockfile pip (`requirements.txt` con pins mínimos `>=`).
+**Límites conocidos:** Jobs SSE no persisten (V2-04). Auth Bearer opcional, no multi-tenant. WeasyPrint no en imagen Docker por defecto. Sin lockfile pip.
 
 ## Constraints
 
 - **Tech stack**: Python 3.11+, FastAPI, parser actual; extender sin reescritura total
-- **Seguridad**: Nunca commitear `.env`; documentación de planificación sin claves reales
-- **Compatibilidad**: OpenAI y DeepL como proveedores; variables de entorno existentes
-- **Formato**: Salida siempre Markdown válido; código y URLs intactos
-- **Privacidad**: Traducciones y `output/` pueden contener docs privados — gitignore y avisos en UI
+- **Seguridad**: Nunca commitear `.env`
+- **Compatibilidad**: OpenAI y DeepL; variables de entorno existentes
+- **Formato**: Salida Markdown válida; código y URLs intactos
+- **Privacidad**: Traducciones y `output/` pueden ser privados — gitignore y avisos UI
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 | -------- | --------- | ------- |
-| Alcance milestone = NOTEBOOK completo (A→E) | Elección explícita del usuario en GSD init | ✓ Complete — phases 0–5 |
-| Mapear codebase antes de planificar | Brownfield con código existente | ✓ `.planning/codebase/` |
-| OpenAI por defecto, DeepL alternativo | Ya implementado; glosario favorece LLM | ✓ Good |
-| Memoria vía SQLite local | NOTEBOOK §2; mínimo acoplamiento | ✓ `data/translation_memory.db` |
-| Jobs in-memory + SSE | Simplicidad single-process Uvicorn | ✓ Good; Redis deferred V2-04 |
+| v2.0 scope = debt + PDF only | Enfoque acotado post-v1.0 | ✓ Shipped 2026-05-29 |
+| WeasyPrint opcional | Deps nativas Cairo/Pango | ✓ `[pdf]` extra, mock tests |
+| PDF vía html_export | Reutilizar CSS HTML existente | ✓ Paridad visual CLI |
+| SSE auth query token | EventSource sin headers custom | ✓ DEBT-02 |
 
 ## Evolution
 
-This document evolves at phase transitions and milestone boundaries.
+**Shipped v1.0 (2026-05-29):** NOTEBOOK A→E — tag `v1.0`  
+**Shipped v2.0 (2026-05-29):** Tech debt + PDF — tag `v2.0`
 
-**Shipped v1.0 (2026-05-29):** NOTEBOOK fases A→E completas. Ver `.planning/MILESTONES.md` y tag `v1.0`.
+## Current State (v2.0 shipped)
 
-## Current State (v1.0 shipped)
-
-- **137 tests** (`pytest tests/ -q`)
+- **148 tests** (`pytest tests/ -q`)
 - **Stack:** Python 3.11+, FastAPI, SQLite TM, vanilla JS UI, Docker
 - **Proveedores:** OpenAI (default), DeepL + fallback opcional
-- **Modos:** editor, archivo, lote SSE, CLI, watch, revisión editorial
+- **Modos:** editor (multi-idioma tabs), archivo, lote SSE, CLI, watch, revisión, export HTML/PDF
+- **Despliegue:** `API_TOKEN` + UI Bearer; CORS, límites upload, TTL output/
 
-## Next Milestone Goals (v2.0 — active)
+## Next Milestone Goals
 
-Ver `.planning/REQUIREMENTS.md` y `.planning/ROADMAP.md` fases 6–7.
+Ejecutar `/gsd-new-milestone` para definir v2.1+. Candidatos en backlog: plugin editor, multi-tenant, Redis jobs, lockfile.
 
 ---
-*Last updated: 2026-05-29 — v2.0 milestone initialized*
+*Last updated: 2026-05-29 — v2.0 milestone shipped*
