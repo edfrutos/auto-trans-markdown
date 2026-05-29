@@ -11,7 +11,7 @@ Brownfield extension del MVP hacia el NOTEBOOK completo (fases A→E). Se parte 
 - **Phases 1–5**: NOTEBOOK A→E (table stakes → trust → batch UX → team scale → editorial)
 
 - [x] **Phase 0: MVP Hardening** - Contratos fiables, UTF-8 estricto, idiomas por proveedor, tests de integración
-- [ ] **Phase 1: Production Table Stakes** - Pipeline unificado, glosario, memoria SQLite, CLI `md-translate`
+- [x] **Phase 1: Production Table Stakes** - Pipeline unificado, glosario, memoria SQLite, CLI `md-translate`
 - [x] **Phase 2: Trust & QA** - Validación post-traducción, preview renderizada, parser ampliado, frontmatter selectivo
 - [x] **Phase 3: Batch UX & Cost Control** - Jobs SSE con progreso real, cancelación, lotes parciales, estimación de coste
 - [x] **Phase 4: Team Scale** - Multi-destino, Docker, hardening de despliegue (CORS, límites, TTL)
@@ -45,7 +45,7 @@ Plans:
   2. Usuario define términos en `glossary.yaml` y los gestiona desde la UI; el glosario se aplica en editor, archivo único y lote
   3. Segmentos repetidos se sirven desde cache SQLite sin llamar al proveedor; el usuario puede limpiar la memoria
   4. Usuario ejecuta `md-translate file|dir|batch` con `--dry-run`; `md-translate serve` arranca el servidor web por separado
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — Fachada pipeline.py + refactor main.py (PIPE-01)
@@ -140,7 +140,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. MVP Hardening | 4/4 | Complete    | 2026-05-28 |
-| 1. Production Table Stakes | 0/5 | Not started | - |
+| 1. Production Table Stakes | 5/5 | Complete | 2026-05-28 |
 | 2. Trust & QA | 5/5 | Complete | 2026-05-29 |
 | 3. Batch UX & Cost Control | 4/4 | Complete | 2026-05-29 |
 | 4. Team Scale | 5/5 | Complete | 2026-05-29 |

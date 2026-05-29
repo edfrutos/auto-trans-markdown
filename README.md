@@ -4,12 +4,18 @@ Traductor de archivos Markdown que preserva el formato original, protege bloques
 
 ## Características
 
-- **Cualquier idioma → idioma seleccionado** (30+ idiomas o detección automática)
-- **Salida .md** lista para usar, con la misma estructura que el original
+- **Cualquier idioma → idioma seleccionado** (30+ idiomas o detección automática); **multi-destino** en una pasada
+- **Salida .md** lista para usar, con la misma estructura que el original; export **HTML** opcional
 - **Código intacto**: bloques ` ``` `, inline `` ` ``, frontmatter YAML, bloques indentados
 - **Formato preservado**: encabezados, listas, tablas, enlaces, imágenes, citas
-- **Traducción contextual** vía LLM: modismos y frases naturales, no literal palabra a palabra
-- **Tres modos**: editor en vivo, archivo único, lote (ZIP)
+- **Traducción contextual** vía LLM; **tono** auto / formal / informal; fallback DeepL → OpenAI
+- **Glosario** (`glossary.yaml` + UI) y **memoria de traducción** SQLite (segmentos repetidos sin re-llamar API)
+- **Validación** post-traducción (fences, enlaces, imágenes) y **preview** sanitizada (original + traducido)
+- **Lote con SSE**: progreso real, cancelación, estimación de coste, ZIP parcial + `errors.json`
+- **Modo revisión**: edición por segmentos, diff resaltado, historial opt-in (solo metadatos)
+- **Tres modos web**: editor en vivo, archivo único, lote (ZIP)
+- **CLI** `md-translate`: file, dir, batch, watch, export; respeta `.gitignore`
+- **Docker** multi-stage + `docker-compose` para despliegue en equipo
 
 ## Requisitos
 
@@ -46,8 +52,15 @@ Puedes traducir el mismo contenido a **varios idiomas** en una sola operación:
 Ejemplo API JSON:
 
 ```json
-{ "content": "# Hello", "target_langs": ["es", "en"], "source_lang": "auto" }
+{
+  "content": "# Hello",
+  "target_langs": ["es", "en"],
+  "source_lang": "auto",
+  "tone": "auto"
+}
 ```
+
+`tone`: `auto` (default), `formal` o `informal`.
 
 Respuesta multi-idioma: `{ "translations": { "es": { ... }, "en": { ... } } }`.
 
@@ -66,12 +79,19 @@ En VPS o LAN, ajusta `CORS_ORIGINS` y `HOST=0.0.0.0` (ya en compose). Ver variab
 
 | Método | Ruta | Descripción |
 | ------ | ---- | ------------- |
-| `GET` | `/api/languages` | Lista de idiomas |
-| `POST` | `/api/translate` | Traduce texto JSON `{ content, target_lang?, target_langs?, source_lang }` |
-| `POST` | `/api/translate/file` | Sube un `.md` y devuelve el archivo traducido |
+| `GET` | `/api/languages` | Lista de idiomas (filtrada por proveedor activo) |
+| `GET` | `/api/glossary` | Lee glosario (`glossary.yaml`) |
+| `PUT` | `/api/glossary` | Actualiza glosario |
+| `DELETE` | `/api/memory` | Vacía memoria de traducción SQLite |
+| `POST` | `/api/translate` | Traduce JSON `{ content, target_lang?, target_langs?, source_lang, tone? }` |
+| `POST` | `/api/translate/draft` | Borrador revisable (un solo idioma destino) |
+| `POST` | `/api/translate/finalize` | Reensambla con ediciones `{ content, segments: {index: text} }` |
+| `POST` | `/api/translate/file` | Sube un `.md` (form: `tone`, `target_langs`, …) |
 | `POST` | `/api/translate/batch` | Sube varios archivos, devuelve ZIP (síncrono) |
 | `POST` | `/api/translate/batch/jobs` | Crea job de lote con progreso SSE |
 | `POST` | `/api/translate/estimate` | Estima segmentos, caracteres y coste |
+
+Endpoints de traducción pueden requerir `Authorization: Bearer <API_TOKEN>` si `API_TOKEN` está configurado.
 
 Documentación interactiva: [http://127.0.0.1:5400/docs](http://127.0.0.1:5400/docs)
 
@@ -109,6 +129,7 @@ DEEPL_API_URL=https://api-free.deepl.com
 | `OPENAI_MODEL` | Modelo (default: `gpt-4o-mini`) |
 | `DEEPL_API_KEY` | Auth key de DeepL (solo si provider=deepl) |
 | `DEEPL_API_URL` | `https://api-free.deepl.com` en plan Free |
+| `TRANSLATION_FALLBACK` | `openai` — reintento con OpenAI si DeepL falla (requiere `OPENAI_API_KEY`) |
 | `HOST` / `PORT` | Servidor web (default `127.0.0.1:5400`) |
 | `ESTIMATE_WARN_USD` | Umbral USD para aviso de coste estimado (default: `1.0`) |
 | `CORS_ORIGINS` | Orígenes permitidos separados por coma (default localhost:5400) |
@@ -189,7 +210,7 @@ md-translate serve
 - **Historial:** opt-in en localStorage (solo metadatos: idioma, modo, fecha).
 - **Export HTML:** botón en UI o `md-translate export`.
 
-Variables opcionales: `TRANSLATION_FALLBACK=openai` (DeepL → OpenAI si falla cuota/idioma).
+Variables opcionales: `TRANSLATION_FALLBACK=openai` (DeepL → OpenAI si falla cuota/idioma). Ver `.env.example`.
 
 Glosario por defecto en `glossary.yaml`; memoria SQLite en `data/translation_memory.db` (gitignored).
 

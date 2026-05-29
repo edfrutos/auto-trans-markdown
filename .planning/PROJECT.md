@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Traductor de archivos Markdown que preserva formato y bloques de código, orientado a documentación técnica y equipos que localizan docs sin romper sintaxis. Incluye interfaz web (editor, archivo, lote), API FastAPI y proveedores OpenAI o DeepL. Este milestone evoluciona el MVP hacia la hoja de ruta completa del `NOTEBOOK.md` (fases A→E).
+Traductor de archivos Markdown que preserva formato y bloques de código, orientado a documentación técnica y equipos que localizan docs sin romper sintaxis. Incluye interfaz web (editor, archivo, lote), API FastAPI, CLI `md-translate`, glosario, memoria de traducción y proveedores OpenAI o DeepL. El milestone NOTEBOOK (fases A→E) está **completo** (fases GSD 0–5).
 
 ## Core Value
 
@@ -12,62 +12,76 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 
 ### Validated
 
+**MVP + Phase 0 (Hardening)**
+
 - ✓ Segmentación Markdown protegido vs traducible — `src/parser.py`
 - ✓ Preservación de bloques ```, inline `code`, frontmatter, indentados — `src/parser.py`
-- ✓ Comentarios `#` traducibles en fences shell (bash/sh/zsh/fish) — `src/parser.py`
+- ✓ Comentarios traducibles en shell, Python, JS/TS, HTML — `src/parser.py`
 - ✓ Traducción por lotes vía OpenAI (JSON) o DeepL — `src/translator.py`
-- ✓ API REST: texto, archivo único, lote ZIP — `src/main.py`
-- ✓ UI web: editor, archivo, lote, modo oscuro, favicon — `static/`
-- ✓ Reintentos y chunking en traducción; executor async — `src/translator.py`, `src/main.py`
-- ✓ `.env` y secretos fuera de git — `.gitignore`
 - ✓ Rechazo traducciones incompletas (HTTP 502) — Phase 0 / HARD-01
 - ✓ UTF-8 estricto en uploads (HTTP 400) — Phase 0 / HARD-02
 - ✓ Idiomas filtrados por proveedor activo — Phase 0 / HARD-03
 - ✓ Tests integración traductor + API + reassemble — Phase 0 / HARD-04
 
-### Active
+**Phase 1 — Production table stakes**
 
-- [ ] Glosario / términos fijos (archivo + UI)
-- [ ] Memoria de traducción persistente (cache por segmento e idioma)
-- [ ] CLI `md-translate` para archivos y directorios (CI/automatización)
-- [ ] Validación post-traducción (fences, enlaces, alertas)
-- [ ] Vista previa Markdown renderizada en UI
-- [ ] Progreso en tiempo real en traducción por lote (SSE/WebSocket)
-- [ ] Comentarios traducibles en más lenguajes de código (Python, JS, HTML…)
-- [ ] Frontmatter YAML selectivo (title, description…)
-- [ ] Multi-destino en una pasada (varios idiomas → ZIP)
-- [ ] Estimación de coste/tokens antes de traducir
-- [ ] Empaquetado Docker / docker-compose
-- [ ] Modo revisión (editar segmentos antes de exportar)
-- [ ] Fallback de proveedor (DeepL → OpenAI)
-- [ ] Diff visual original vs traducción
-- [ ] Carpeta vigilada (watch)
-- [ ] Traducción de árbol de directorios / docs site
-- [ ] Selector formal/informal (DeepL / LLM)
-- [ ] Historial de sesiones (opt-in, sin secretos)
-- [ ] Export HTML/PDF opcional
+- ✓ Fachada `translate_markdown()` (API + CLI + web) — PIPE-01
+- ✓ Glosario YAML + UI + pipeline — GLOS-01 … GLOS-03
+- ✓ Memoria SQLite + clear UI/CLI/API — TM-01 … TM-03
+- ✓ CLI `file|dir|batch`, `--dry-run`, `serve` — CLI-01 … CLI-05
+
+**Phase 2 — Trust & QA**
+
+- ✓ Validación post-traducción + informe UI/ZIP — VAL-01, VAL-02
+- ✓ CLI `--strict` — VAL-03
+- ✓ Preview marked + DOMPurify — PREV-01, PREV-02
+- ✓ Frontmatter YAML selectivo — FM-01, FM-02
+
+**Phase 3 — Batch UX & cost**
+
+- ✓ Jobs SSE, cancelación, ZIP parcial — JOB-01 … JOB-04
+- ✓ Estimate API + UI — COST-01, COST-02
+
+**Phase 4 — Team scale**
+
+- ✓ Multi-destino API/CLI/UI — MULTI-01, MULTI-02
+- ✓ Docker + compose — DOCKER-01, DOCKER-02
+- ✓ CORS, límites upload, TTL `output/`, `API_TOKEN` opcional — SEC-01, SEC-02
+
+**Phase 5 — Editorial & pro**
+
+- ✓ Modo revisión draft/finalize — REV-01, REV-02
+- ✓ Fallback DeepL → OpenAI — FALL-01
+- ✓ Diff por segmento — DIFF-01
+- ✓ `watch`, árbol con `.gitignore` — WATCH-01, TREE-01
+- ✓ Tono formal/informal — TONE-01
+- ✓ Historial opt-in (metadatos) — HIST-01
+- ✓ Export HTML — EXPORT-01
+
+### Active (v2 / next milestone)
+
+- [ ] Export PDF — V2-01
+- [ ] Plugin Obsidian o VS Code — V2-02
+- [ ] Multi-tenant con API key por usuario — V2-03
+- [ ] Redis job store para multi-worker — V2-04
 
 ### Out of Scope
 
-- Traducción directa de PDF/DOCX — alcance distinto; pipeline vía MD intermedio
-- MT offline sin LLM como calidad principal — inferior en modismos vs OpenAI/DeepL
-- Plugin Obsidian/VS Code — repositorio o fase futura separada
-- Multi-tenant con API keys por usuario — solo si hay despliegue público; no en este milestone inicial
-- Reescritura libre del documento (no traducción) — fuera del propósito del producto
+- Traducción directa PDF/DOCX — pipeline distinto; usar MD intermedio
+- MT offline sin LLM como calidad principal — inferior en modismos
+- Reescritura libre del documento — fuera del core value
 
 ## Context
 
-**Estado actual (brownfield):** Pipeline monolith segment → translate → reassemble. FastAPI + static UI. Sin base de datos. Secretos en `.env`. Roadmap de producto detallado en `NOTEBOOK.md`. Mapa técnico en `.planning/codebase/`.
+**Estado actual:** Pipeline segment → translate → reassemble con fachada `pipeline.py`. FastAPI + UI estática. Memoria SQLite en `data/`. Glosario en `glossary.yaml`. Jobs de lote in-memory con SSE (single-process). **137 tests** en `tests/`. Despliegue Docker documentado.
 
 **Usuarios objetivo:** Desarrolladores, redactores técnicos y equipos que traducen README, docs y artículos Markdown manteniendo código y estructura.
 
-**Deuda conocida:** Sin auth en API, CORS `*`, progreso UI simulado, `output/` sin TTL, `md-translate` script arranca servidor no CLI, frontmatter no traducible selectivamente.
-
-**Decisión de milestone:** Implementar **todo el NOTEBOOK** (fases A→E) como evolución del producto, priorizando orden A→B→C→D→E del notebook.
+**Deuda / límites conocidos:** Jobs SSE no persisten entre reinicios (V2-04). Auth opcional vía `API_TOKEN` Bearer, no multi-tenant. Sin lockfile pip (`requirements.txt` con pins mínimos `>=`).
 
 ## Constraints
 
-- **Tech stack**: Mantener Python 3.11+, FastAPI, parser actual; extender sin reescritura total
+- **Tech stack**: Python 3.11+, FastAPI, parser actual; extender sin reescritura total
 - **Seguridad**: Nunca commitear `.env`; documentación de planificación sin claves reales
 - **Compatibilidad**: OpenAI y DeepL como proveedores; variables de entorno existentes
 - **Formato**: Salida siempre Markdown válido; código y URLs intactos
@@ -77,22 +91,15 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 
 | Decision | Rationale | Outcome |
 | -------- | --------- | ------- |
-| Alcance milestone = NOTEBOOK completo (A→E) | Elección explícita del usuario en GSD init | — Pending |
-| Mapear codebase antes de planificar | Brownfield con código existente | ✓ Good — `.planning/codebase/` |
-| GSD config recomendada (YOLO, Standard, Parallel) | Velocidad con research + verify | — Pending |
+| Alcance milestone = NOTEBOOK completo (A→E) | Elección explícita del usuario en GSD init | ✓ Complete — phases 0–5 |
+| Mapear codebase antes de planificar | Brownfield con código existente | ✓ `.planning/codebase/` |
 | OpenAI por defecto, DeepL alternativo | Ya implementado; glosario favorece LLM | ✓ Good |
-| Sin base de datos en MVP; memoria vía SQLite propuesto | NOTEBOOK §2; mínimo acoplamiento | — Pending |
+| Memoria vía SQLite local | NOTEBOOK §2; mínimo acoplamiento | ✓ `data/translation_memory.db` |
+| Jobs in-memory + SSE | Simplicidad single-process Uvicorn | ✓ Good; Redis deferred V2-04 |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -101,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-28 after GSD initialization (brownfield + NOTEBOOK full scope)*
+*Last updated: 2026-05-29 — NOTEBOOK milestone v1 complete*

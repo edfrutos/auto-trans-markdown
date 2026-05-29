@@ -26,7 +26,7 @@ score: 12/12
 
 ## Automated Checks
 
-- `pytest tests/ -q` — 56 passed
+- `pytest tests/ -q` — 56 passed at phase close (137 at milestone end)
 
 ## Notes
 
