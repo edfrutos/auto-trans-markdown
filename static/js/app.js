@@ -39,6 +39,7 @@ const state = {
   loading: false,
   languagesLoaded: false,
   glossary: { loaded: false, entries: [], dirty: false, expanded: false },
+  lastValidation: null,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -78,6 +79,22 @@ const els = {
   btnAddGlossary: $('#btn-add-glossary'),
   btnSaveGlossary: $('#btn-save-glossary'),
   btnClearMemory: $('#btn-clear-memory'),
+  previewSource: $('#preview-source'),
+  previewResult: $('#preview-result'),
+  validationSection: $('#validation-section'),
+  validationToggle: $('#validation-toggle'),
+  validationPanel: $('#validation-panel'),
+  validationChevron: $('#validation-chevron'),
+  validationSummary: $('#validation-summary'),
+  validationChecks: $('#validation-checks'),
+};
+
+const CHECK_LABELS = {
+  fences: 'Bloques de código',
+  links: 'Enlaces',
+  images: 'Imágenes',
+  inline_code: 'Código inline',
+  headings: 'Encabezados',
 };
 
 const tabs = [
@@ -208,6 +225,56 @@ function escapeAttr(s) {
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;');
+}
+
+function renderPreview(markdown, el) {
+  if (!el) return;
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    el.textContent = 'Vista previa no disponible';
+    return;
+  }
+  const raw = marked.parse(markdown || '', { gfm: true, breaks: false });
+  el.innerHTML = DOMPurify.sanitize(raw, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['script', 'iframe'],
+  });
+}
+
+function renderValidationPanel(validation) {
+  if (!els.validationSection) return;
+  if (!validation) {
+    els.validationSection.classList.add('hidden');
+    return;
+  }
+  state.lastValidation = validation;
+  const counts = { pass: 0, warn: 0, error: 0 };
+  for (const check of validation.checks || []) {
+    if (counts[check.status] !== undefined) counts[check.status] += 1;
+  }
+  if (els.validationSummary) {
+    els.validationSummary.textContent =
+      `${counts.pass} correctos · ${counts.warn} avisos · ${counts.error} errores`;
+  }
+  if (els.validationChecks) {
+    setHtml(
+      els.validationChecks,
+      (validation.checks || [])
+        .map((check) => {
+          const icon =
+            check.status === 'pass' ? '✓' : check.status === 'warn' ? '⚠' : '✗';
+          const color =
+            check.status === 'pass'
+              ? 'text-teal-600'
+              : check.status === 'warn'
+                ? 'text-amber-600'
+                : 'text-red-600';
+          const label = CHECK_LABELS[check.id] || check.id;
+          return `<li class="flex gap-2 items-start"><span class="${color}" aria-hidden="true">${icon}</span><span><strong>${label}:</strong> ${escapeAttr(check.message)}</span></li>`;
+        })
+        .join('')
+    );
+  }
+  els.validationSection.classList.remove('hidden');
 }
 
 function bindGlossaryRowEvents() {
@@ -387,6 +454,9 @@ async function translateEditor() {
     state.downloadBlob = blob;
     state.downloadName = `traduccion.${els.targetLang.value}.md`;
     els.btnDownload.classList.remove('hidden');
+    renderPreview(content, els.previewSource);
+    renderPreview(data.content, els.previewResult);
+    renderValidationPanel(data.validation);
     showStatus(`Listo — ${data.segments_translated} segmentos traducidos.`);
   } catch (err) {
     showStatus(err.message, 'error');
@@ -417,9 +487,20 @@ async function translateFile() {
     const match = disposition.match(/filename="?([^"]+)"?/);
     state.downloadBlob = blob;
     state.downloadName = match ? match[1] : `traduccion.${els.targetLang.value}.md`;
-    els.outputMd.value = await blob.text();
+    const text = await blob.text();
+    els.outputMd.value = text;
     els.btnCopy.disabled = false;
     els.btnDownload.classList.remove('hidden');
+    renderPreview(await state.selectedFile.text(), els.previewSource);
+    renderPreview(text, els.previewResult);
+    const valHeader = res.headers.get('X-Validation-Report');
+    if (valHeader) {
+      try {
+        renderValidationPanel(JSON.parse(valHeader));
+      } catch {
+        renderValidationPanel(null);
+      }
+    }
     showStatus(`Archivo traducido: ${state.downloadName}`);
   } catch (err) {
     showStatus(err.message, 'error');
@@ -449,7 +530,7 @@ async function translateBatch() {
     state.downloadBlob = blob;
     state.downloadName = 'traducciones.zip';
     els.btnDownload.classList.remove('hidden');
-    showStatus(`${state.batchFiles.length} archivos traducidos — descarga el ZIP.`);
+    showStatus(`${state.batchFiles.length} archivos traducidos — validation.json incluido en ZIP.`);
   } catch (err) {
     showStatus(err.message, 'error');
   } finally {
@@ -514,7 +595,11 @@ function toggleTheme() {
 tabs.forEach(({ tab, mode }) => tab?.addEventListener('click', () => switchTab(mode)));
 els.btnTranslate?.addEventListener('click', handleTranslate);
 els.btnDownload?.addEventListener('click', downloadResult);
-els.btnSample?.addEventListener('click', () => { els.inputMd.value = SAMPLE_MD; });
+els.btnSample?.addEventListener('click', () => {
+  els.inputMd.value = SAMPLE_MD;
+  renderPreview(SAMPLE_MD, els.previewSource);
+  if (els.previewResult) els.previewResult.innerHTML = '';
+});
 els.btnCopy?.addEventListener('click', async () => {
   await navigator.clipboard.writeText(els.outputMd.value);
   showStatus('Copiado al portapapeles.');
@@ -527,6 +612,13 @@ els.glossaryToggle?.addEventListener('click', () => {
   els.glossaryToggle.setAttribute('aria-expanded', String(isOpen));
   els.glossaryChevron?.classList.toggle('expanded', isOpen);
   state.glossary.expanded = isOpen;
+});
+
+els.validationToggle?.addEventListener('click', () => {
+  const expanded = els.validationPanel.classList.toggle('hidden');
+  const isOpen = !expanded;
+  els.validationToggle.setAttribute('aria-expanded', String(isOpen));
+  els.validationChevron?.classList.toggle('expanded', isOpen);
 });
 
 els.btnAddGlossary?.addEventListener('click', () => {
