@@ -8,6 +8,15 @@ Traductor de archivos Markdown que preserva formato y bloques de código, orient
 
 Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar Markdown ni código**, con coherencia terminológica y coste predecible en lotes grandes.
 
+## Current Milestone: v2.1 Reproducible Dependencies
+
+**Goal:** Añadir un lockfile al proyecto para que las instalaciones sean deterministas y reproducibles.
+
+**Target features:**
+- Lockfile con versiones exactas pinadas (`uv.lock` o equivalente)
+- Flujo de actualización documentado (cómo renovar el lock)
+- README / instrucciones de instalación actualizadas
+
 ## Requirements
 
 <details>
@@ -77,4 +86,4 @@ Ver `.planning/milestones/v2.0-REQUIREMENTS.md`.
 Ejecutar `/gsd-new-milestone` para definir v2.1+. Candidatos en backlog: plugin editor, multi-tenant, Redis jobs, lockfile.
 
 ---
-*Last updated: 2026-05-29 — v2.0 milestone shipped*
+*Last updated: 2026-05-31 — v2.1 milestone started*
