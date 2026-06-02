@@ -1,245 +1,419 @@
-# Feature Landscape
+# Feature Landscape — macOS Native App (v3.0)
 
-**Domain:** Markdown / technical documentation translation tools  
-**Project:** MarkDown Auto Translator (milestone SUBSEQUENT — NOTEBOOK A→E)  
-**Researched:** 2026-05-28
-
-## Executive framing
-
-Tools in this space split into **format-safe segment-and-translate pipelines** (md-translator, rosetta-mark, Lara/MetalGlot-style MD processors) and **general CAT/i18n platforms** (Glossboss, PO/JSON workflows). For **developer docs in Markdown**, users judge quality first on **what stayed intact** (code, links, frontmatter keys, fences), then on **terminology consistency** and **operational fit** (batch, CI, cost). This project already covers most **table stakes** in its MVP; the NOTEBOOK backlog moves from **production hygiene** (glossary, TM, CLI, validation) toward **team deployment and editorial workflow** (Docker, multi-target, review, watch).
-
-**Confidence:** Table stakes and anti-features — **HIGH** (validated in codebase + multiple industry sources). Competitive differentiator ranking — **MEDIUM** (WebSearch + GitHub READMEs; not a formal market study).
+**Domain:** macOS native translation app (SwiftUI + embedded Python backend)
+**Researched:** 2026-06-02
+**Scope:** Solo features nuevas o significativamente diferentes respecto a la web app existente.
+**Overall confidence:** HIGH (Context7 + documentación oficial Apple + Sparkle docs)
 
 ---
 
 ## Table Stakes
 
-Features users expect from any credible Markdown translation tool. Missing these makes the product feel broken or unsafe for technical docs.
+Features que un usuario macOS espera. Su ausencia hace que la app parezca un port barato.
 
-| Feature | Why expected | Complexity | Project status |
-|---------|--------------|------------|----------------|
-| **Segmentación protegido vs traducible** | Industry standard: only prose is translated; code/structure must survive parsers and builds | Med | ✓ Validated — `src/parser.py` |
-| **Preservar bloques ` ``` `, inline `` ` ``, indentados** | #1 failure mode in MD localization (broken fences → unreadable docs) | Med | ✓ Validated |
-| **Preservar estructura MD** (encabezados, listas, tablas, enlaces, imágenes) | Readers expect same outline and link targets | Med | ✓ Validated (reassemble) |
-| **No traducir URLs, rutas, identificadores, claves API** | Broken links and copy-paste failures | Low–Med | ✓ Implicit in protected segments; validation not automated |
-| **Frontmatter YAML protegido** (bloque intacto) | SSGs break if keys or types change | Med | ✓ Protected as block; selective field translation = gap |
-| **Traducción archivo único + salida `.md`** | README/docs workflow | Low | ✓ API + UI |
-| **Traducción por lote** (múltiples archivos) | Real doc sets are folders, not one file | Med | ✓ ZIP batch (max 20 files) |
-| **Múltiples idiomas origen/destino** | Any serious localization tool | Low | ✓ 30+ codes; DeepL subset documented |
-| **Proveedor MT/LLM con API key** (BYOK) | No hosted MT without user credentials for private docs | Low | ✓ OpenAI + DeepL |
-| **Interfaz usable sin escribir código** | Tech writers and PMs, not only engineers | Med | ✓ Web UI (editor, archivo, lote) |
-| **API programática** (mismo motor que UI) | Automation and integrations | Med | ✓ FastAPI |
-| **Reintentos / resiliencia ante rate limits** | Batch jobs always hit 429 | Med | ✓ `src/translator.py` |
-| **Modismos / traducción contextual** (LLM path) | Literal MT on colloquial prose reads wrong | Med | ✓ OpenAI default positioning |
-
-### Table stakes — partially met (gaps vs ecosystem)
-
-| Feature | Why expected | Complexity | Project status |
-|---------|--------------|------------|----------------|
-| **Glosario / lista «no traducir»** | Terminology lock is standard in CAT and MD tools (rosetta-mark, Lara, OpenL) | Med | NOTEBOOK §1 — Active |
-| **Coherencia frase repetida en lotes** | Same string → same translation across files | Med | NOTEBOOK §2 (TM) — Active; competitors use TM/SQLite/cache |
-| **CLI / CI sin servidor web** | Pipelines and pre-commit are table stakes for dev teams | Med | NOTEBOOK §3 — Active; script name exists but not true CLI |
-| **Comprobación post-traducción** (fences, enlaces) | Catches silent structure breaks before merge | Med | NOTEBOOK §6 — Active |
-| **Progreso real en lote** | Long jobs without feedback feel broken | Med | NOTEBOOK §5 — Active (UI progress simulated per PROJECT.md) |
+| Feature | Por qué se espera | Complejidad | Patrón SwiftUI | Backend Python |
+|---------|-------------------|-------------|----------------|----------------|
+| **Sidebar + content area (NavigationSplitView)** | Estándar en apps macOS con múltiples modos (Mail, Finder, Notes) | Media | `NavigationSplitView(sidebar:detail:)` — macOS 13+ | No |
+| **Drag & drop de archivos .md desde Finder** | Comportamiento nativo macOS esperado en cualquier editor de texto | Media | `onDrop(of: [.fileURL], isTargeted:perform:)` + `NSItemProvider.loadFileRepresentation` | No |
+| **API keys en Keychain (no .env)** | Estándar de seguridad macOS; los usuarios esperan no manejar ficheros de config | Alta | `SecItemAdd` / `SecItemCopyMatching` con `kSecClassGenericPassword` | No (Keychain → env vars antes de lanzar subprocess) |
+| **Ventana Preferencias nativa (Cmd+,)** | Convención macOS inviolable | Baja | `Settings { SettingsView() }` scene en `App.body` — macOS 11+ | No |
+| **Atajos de teclado en menú** | Usuarios power user esperan Cmd+T (traducir), Cmd+O (abrir), etc. | Baja | `.commands { CommandMenu(...) }` + `.keyboardShortcut("T")` | No |
+| **Notificaciones nativas al completar batch** | Feedback sin mantener ventana abierta; la app puede estar en background | Media | `UNUserNotificationCenter.current().add(request)` + `requestAuthorization` al arrancar | No (disparo desde Swift al recibir respuesta HTTP de la API local) |
+| **Backend Python embebido (sin instalar Python)** | App autocontenida; el usuario no instala nada extra | Muy Alta | `Process()` + `executableURL` apuntando a python-build-standalone en `Bundle.main.resourceURL` | Sí — el .app bundle contiene el intérprete + deps |
+| **Health check antes de primera request** | El subprocess tarda ~1-2 s en arrancar; sin esto hay race condition | Media | Loop `URLSession` con retry en Swift hasta recibir 200 en `/health` | Requiere endpoint `/health` en FastAPI (trivial añadir si no existe) |
 
 ---
 
 ## Differentiators
 
-Features that set a product apart. Not always expected on day one, but valued for **technical docs at scale**, **cost control**, or **editorial quality**.
+Features que la web app no puede ofrecer o que en macOS son significativamente mejor.
 
-| Feature | Value proposition | Complexity | NOTEBOOK | Phase |
-|---------|-------------------|------------|----------|-------|
-| **Memoria de traducción persistente** | Lower API cost, speed, identical phrasing across repo | Med | §2 | A |
-| **Glosario por par de idiomas + UI** | Product names, APIs, agreed renderings | Med | §1 | A |
-| **CLI `md-translate` (file, dir, batch, dry-run)** | GitHub Actions, local scripts, no browser | Med | §3 | A |
-| **Vista previa MD renderizada + sanitización** | Visual QA for tables/lists before export | Med | §4 | B |
-| **Validación estructural + informe JSON en ZIP** | Automated gate before publishing | Med | §6 | B |
-| **Comentarios traducibles en más lenguajes** | Docs with explanatory code in py/js/sql/html | Med–High | §7 | B (stretch) |
-| **Frontmatter YAML selectivo** | SEO fields translated, `slug`/`layout` preserved | Med | §8 | B |
-| **SSE/WebSocket progreso + cancelación job** | Trust on 10–20+ file batches | Med | §5 | C |
-| **Estimación coste/tokens pre-traducción** | Budget approval before spend | Low–Med | §10 | C |
-| **Multi-destino en una pasada** | One upload → `doc.es.md`, `doc.fr.md`, … | High | §9 | D |
-| **Docker / docker-compose** | One-command team deploy | Med | §11 | D |
-| **Modo revisión segmento a segmento** | Human-in-the-loop for legal/release notes | High | §12 | E |
-| **Fallback proveedor (DeepL → OpenAI)** | Uptime when quota/language unsupported | Low–Med | §13 | E (low effort) |
-| **Diff visual original vs traducción** | Reviewer UX without external diff tool | Med | §14 | E |
-| **Watch carpeta `input/` → `output/`** | Live authoring (Obsidian/VS Code save) | High | §15 | E |
-| **Árbol directorios / docs site + `.gitignore` respect** | Whole site localization | High | §16 | E |
-| **Formal / informal (DeepL formality + LLM tone)** | Locale-appropriate register | Low | §17 | E (low effort) |
-| **Historial sesiones (opt-in, sin secretos)** | Convenience without TM scope | Med | §18 | E |
-| **Export HTML/PDF** | Deliverables beyond MD | High | §19 | E (optional) |
+| Feature | Valor añadido | Complejidad | Patrón SwiftUI | Backend Python |
+|---------|---------------|-------------|----------------|----------------|
+| **Menubar icon (MenuBarExtra)** | Traducción rápida sin abrir ventana principal; acceso desde cualquier contexto | Media | `MenuBarExtra("MDTranslate", systemImage: "doc.text")` con `.menuBarExtraStyle(.menu)` para acciones rápidas o `.window` para UI rica. Coexiste con `WindowGroup` en el mismo `App.body` | No (solo llama a la API local) |
+| **File association: abrir .md con doble-click** | El usuario puede registrar la app como editora de .md en Finder | Media | `CFBundleDocumentTypes` + `UTExportedTypeDeclarations` en `Info.plist` con `public.utf8-plain-text` conformance | No |
+| **Auto-update (Sparkle 2)** | Distribución fuera del App Store con updates automáticos | Alta | SPM: `https://github.com/sparkle-project/Sparkle`. `SPUStandardUpdaterController` en `App.init()`. `CheckForUpdatesView` en `CommandGroup(after: .appInfo)`. Requiere appcast XML en servidor y firma EdDSA | No |
+| **Drop zone visual con feedback isTargeted** | En la web hay un botón; en macOS el drop desde Finder con feedback visual es más natural | Baja-Media | `dropDestination(for:action:isTargeted:)` con animación de borde en `isTargeted = true` | No |
+| **Glosario y TM en `~/Library/Application Support/`** | Ubicación estándar macOS para datos de usuario; backup automático con Time Machine | Media | `FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)` para resolver ruta | Sí — el servidor Python recibe la ruta via variable de entorno `GLOSSARY_PATH` / `TM_DB_PATH` |
+| **Badge en Dock al completar batch** | Feedback visible incluso cuando la app está minimizada | Baja | `NSApplication.shared.dockTile.badgeLabel = "\(count)"` + resetear al activar la app | No |
+| **Modo offline con mensaje claro** | Detección de red antes de intentar llamada a API; en la web simplemente falla con error HTTP | Baja | `NWPathMonitor` (Network framework) para detectar conectividad antes de disparar request | No |
 
-### Differentiators already in MVP (positioning, not backlog)
+---
 
-| Feature | Notes |
-|---------|-------|
-| **Comentarios `#` en fences shell** | Uncommon depth vs generic MD translators; keep as marketing differentiator |
-| **Dual provider OpenAI + DeepL** | Table stake for flexibility; **fallback chain** is the differentiator (§13) |
-| **Modo editor en vivo** | Strong for ad-hoc strings; less common in pure CLI tools |
+## Nice-to-Have (diferir post-MVP macOS)
 
-### Weak differentiators for this product (defer or out of scope)
-
-| Feature | Why weak here |
-|---------|---------------|
-| **Multi-tenant API key per user** | NOTEBOOK §20 — only if public SaaS; PROJECT.md Out of Scope for milestone |
-| **Plugin Obsidian/VS Code** | Different distribution model; NOTEBOOK «fase F» |
-| **MT offline sin LLM como calidad principal** | Out of Scope — inferior for modismos |
-| **PDF/DOCX direct** | Out of Scope — different pipeline |
+| Feature | Motivo de diferimiento | Alternativa inmediata |
+|---------|------------------------|----------------------|
+| **iCloud Drive sync del glosario/TM** | Requiere entitlement + Apple Developer account ($99/año); PROJECT.md dice distribuir ad-hoc | `~/Library/Application Support/` con sync manual |
+| **Quick Look preview del .md traducido** | Buena UX pero requiere `QLPreviewPanel` y plugin separado | Split view con texto renderizado como `Text` scrollable |
+| **Spotlight indexing (NSMetadataItem)** | Permite buscar traducciones pasadas desde Spotlight | Omitir en v3.0 |
+| **Notarización con Apple Developer** | PROJECT.md dice ad-hoc explícitamente | Instrucciones para bypassear Gatekeeper (clic derecho → Abrir) en README |
+| **Touch Bar support** | Deprecado en hardware actual (MacBook Pro M3+) | Omitir |
 
 ---
 
 ## Anti-Features
 
-Features to explicitly **not** build in this milestone (or ever, per product intent).
+Features a NO construir en v3.0.
 
-| Anti-Feature | Why avoid | What to do instead |
-|--------------|-----------|-------------------|
-| **Traducir PDF/DOCX in-place** | Different parsers, layout, and QA | MD intermediate pipeline if needed later |
-| **MT offline como motor principal** | Poor modismos vs OpenAI/DeepL | Keep cloud providers; optional local via `OPENAI_BASE_URL` only |
-| **Plugin IDE (Obsidian/VS Code)** | Separate repo, release cadence, marketplace | Ship CLI + API; users wire editor save → watch (§15) later |
-| **Multi-tenant con claves por usuario** | Security/compliance scope explosion | BYOK via `.env` on single host; revisit only for public deploy |
-| **Reescritura libre / «mejorar redacción»** | Conflicts with core value (faithful translation) | Stay on segment translate + glossary |
-| **Traducir claves YAML, URLs, código, flags CLI** | Breaks builds and copy-paste | Protected segments + validator + glossary DNT list |
-| **CORS `*` + sin auth en despliegue público** | Data exfiltration risk | Document «local/trusted network»; auth phase only if SaaS |
+| Anti-Feature | Por qué evitar | En su lugar |
+|--------------|----------------|-------------|
+| **WebView embebido de la UI web existente** | Derrota el propósito; pierde integración nativa; PROJECT.md eligió SwiftUI explícitamente | SwiftUI nativo desde cero |
+| **Autenticación multi-usuario / Bearer en app** | La app es mono-usuario local; la API key es del usuario, no multi-tenant | Keychain con un conjunto de keys por proveedor |
+| **Plugin manager en app** | Scope demasiado grande para v3.0 | Plugin Obsidian/VS Code es backlog separado (V2-02) |
+| **Redux-style state management** | Sobre-ingeniería para una app de escritorio con poco estado compartido | `@StateObject` + `@EnvironmentObject` es suficiente |
+| **Servidor expuesto en red local** | Sin auth Bearer, el servidor embebido solo debe escuchar `127.0.0.1` | `HOST=127.0.0.1` forzado en subprocess env |
 
 ---
 
-## NOTEBOOK → Landscape mapping
+## Diferenciadores macOS vs Web (resumen ejecutivo)
 
-Complete map of `NOTEBOOK.md` items (§1–§20) to category, phase, and dependency notes.
-
-| ID | NOTEBOOK title | Priority | Effort | Category | Phase | Depends on / notes |
-|----|----------------|----------|--------|----------|-------|-------------------|
-| 1 | Glosario y términos fijos | 🔴 | ⚙️⚙️ | **Table stake** (docs teams) / **Differentiator** (generic MD tools) | A | Feeds TM consistency; OpenAI prompt injection + DeepL placeholders |
-| 2 | Memoria de traducción | 🔴 | ⚙️⚙️ | **Differentiator** | A | SQLite per PROJECT decision; before cost estimate accuracy |
-| 3 | CLI automatización | 🔴 | ⚙️⚙️ | **Table stake** (CI) | A | Reuses `parser`, `translator`; exit codes for CI |
-| 4 | Vista previa MD renderizada | 🔴 | ⚙️⚙️ | **Differentiator** | B | Sanitize HTML; pairs with §6 validation |
-| 5 | Progreso tiempo real (lote) | 🔴 | ⚙️⚙️ | **Table stake gap** | C | SSE/WS + job id; optional Redis only at scale |
-| 6 | Validación post-traducción | 🟡 | ⚙️⚙️ | **Table stake gap** | B | `src/validator.py`; blocks download optional |
-| 7 | Comentarios más lenguajes | 🟡 | ⚙️⚙️ | **Differentiator** | B | Extends `parser.py`; tests per language |
-| 8 | Frontmatter YAML selectivo | 🟡 | ⚙️⚙️ | **Differentiator** | B | PyYAML whitelist; fallback protect whole block |
-| 9 | Multi-destino una pasada | 🟢 | ⚙️⚙️⚙️ | **Differentiator** | D | Concurrency limits; shares §2 TM per source segment |
-| 10 | Estimación coste/tokens | 🟢 | ⚙️ | **Differentiator** | C | `collect_translatable()` + price table; pairs §5 |
-| 11 | Docker y despliegue | 🟢 | ⚙️⚙️ | **Differentiator** (ops) | D | Volumes for `output/` + TM DB |
-| 12 | Modo revisión (borrador) | 🟢 | ⚙️⚙️⚙️ | **Differentiator** | E | Segment UI; export gate |
-| 13 | Proveedor con fallback | ⚙️ | ⚙️⚙️ | **Differentiator** | E | `TRANSLATION_FALLBACK`; small win early if moved up |
-| 14 | Diff visual | ⚙️ | ⚙️⚙️ | **Differentiator** | E | Complements §4 preview |
-| 15 | Carpeta vigilada (watch) | ⚙️ | ⚙️⚙️⚙️ | **Differentiator** | E | Dev workflow; not substitute for §3 CLI in CI |
-| 16 | Árbol Git / docs site | ⚙️ | ⚙️⚙️⚙️ | **Differentiator** | E | Extends batch + `.gitignore` rules |
-| 17 | Formal / informal | ⚙️ | ⚙️ | **Differentiator** | E | DeepL `formality`; LLM prompt variant |
-| 18 | Historial sesiones | ⚙️ | ⚙️⚙️ | **Differentiator** (convenience) | E | Opt-in privacy; not TM |
-| 19 | Export HTML/PDF | ⚙️ | ⚙️⚙️⚙️ | **Differentiator** (optional) | E | Pandoc/WeasyPrint; out of core MD path |
-| 20 | API key por usuario | ⚙️ | ⚙️⚙️⚙️ | **Anti-feature** (this milestone) | — | PROJECT Out of Scope unless public SaaS |
-
-### NOTEBOOK phased delivery vs feature type
-
-| Phase | NOTEBOOK deliverables | Primary feature goal |
-|-------|----------------------|----------------------|
-| **A** | §1 Glosario, §2 TM, §3 CLI | **Production table stakes** for tech docs + automation |
-| **B** | §6 Validación, §4 Preview (+ §7–§8 quality extensions) | **Trust** — catch breaks before ship |
-| **C** | §5 Progreso SSE, §10 Estimación | **UX + cost control** on large batches |
-| **D** | §9 Multi-destino, §11 Docker | **Team scale** — deploy and multi-locale output |
-| **E** | §12 Revisión, §15 Watch, §14 Diff (+ §13–§19 polish) | **Editorial / pro workflow** |
-
-### Ideas descartadas (NOTEBOOK footer) → Anti-features
-
-| NOTEBOOK discarded idea | Mapped to |
-|-------------------------|-----------|
-| PDF/DOCX directo | Anti-feature |
-| MT offline sin LLM | Anti-feature |
-| Plugin Obsidian/VS Code | Anti-feature (separate product) |
+| Dimensión | App Web | App macOS nativa |
+|-----------|---------|-----------------|
+| **Ingesta de archivos** | Botón upload en browser | Drag desde Finder, doble-click en .md, file association |
+| **Gestión de credenciales** | .env en disco (riesgo) | Keychain encriptado del OS |
+| **Accesibilidad del servicio** | Requiere abrir browser y navegar | Menubar icon siempre accesible desde cualquier app |
+| **Feedback de completado** | Visible solo si la pestaña está abierta | Notificación nativa con sonido + badge en Dock |
+| **Persistencia de preferencias** | localStorage / sin backup | `~/Library/Application Support/` + Time Machine |
+| **Updates** | Recargar página | Auto-update Sparkle sin intervención del usuario |
+| **Arranque** | Depende de un servidor externo en ejecución | Backend embebido se lanza y termina con la app |
+| **Privacidad** | Los archivos transitan por el browser + servidor | Todo local; los .md nunca salen del Mac salvo a la API de traducción |
 
 ---
 
 ## Feature Dependencies
 
 ```
-parser (segmentación) ──► translator ──► reassemble
-         │                      │
-         │                      ├──► glossary (§1) ──► prompt / placeholders
-         │                      └──► translation memory (§2) ──► cache before API
-         │
-         ├──► validator (§6) ──► post reassemble
-         ├──► frontmatter selective (§8) ──► parser extension
-         └──► code comments i18n (§7) ──► parser extension
+Backend embebido (subprocess Python)
+  → Health check en /health (FastAPI)
+    → Todo el resto de features de traducción
 
-CLI (§3) ──► same pipeline as API (no web)
+Keychain (API keys)
+  → Inyectar como env vars al subprocess antes de Process.run()
+    → Backend Python las lee como os.getenv() sin cambios en su código
 
-estimate (§10) ──► collect_translatable() only (no provider call)
+Notificaciones nativas
+  → requestAuthorization en onAppear o applicationDidFinishLaunching
+    → Disparar desde Swift al recibir respuesta de la API local
+    → Badge en Dock = complementario, no sustituye la notificación
 
-batch SSE (§5) ──► async jobs + batch translator
-multi-target (§9) ──► parallel jobs per lang + TM keyed by target_lang
+Glosario/TM en Application Support
+  → Backend Python recibe ruta via variable de entorno GLOSSARY_PATH / TM_DB_PATH
+    → Leer con FileManager en Swift, pasar al subprocess en su environment
 
-preview (§4) ──► client render (independent)
-diff (§14) ──► needs translated + source text (pairs with preview/review)
+Sparkle (auto-update)
+  → Appcast XML en servidor HTTPS
+    → Firma EdDSA de los binarios distribuidos (generate_keys + sign_update)
+    → Re-firma manual de XPC services de Sparkle con codesign antes de distribuir
 
-review mode (§12) ──► segment list API + UI state before export
+MenuBarExtra
+  → Coexiste con WindowGroup sin conflicto (mismo App.body, macOS 13+)
+    → Para abrir ventana principal desde menu:
+      NSApp.windows.first { !$0.isFloatingPanel }?.makeKeyAndOrderFront(nil)
 
-watch (§15) / docs tree (§16) ──► CLI or internal batch runner + filesystem
-
-docker (§11) ──► packages API+static; volumes for output + TM
-
-fallback (§13) ──► translator provider chain
+File association (.md)
+  → Info.plist CFBundleDocumentTypes con LSItemContentTypes
+    → UTExportedTypeDeclarations con conformance a public.utf8-plain-text
 ```
 
-**Critical path for roadmap:** §1 + §2 + §3 (Phase A) unlock terminology and CI; §6 + §4 (B) reduce regression risk; §5 + §10 (C) improve batch UX; §9 + §11 (D) team outputs; §12 + §14 + §15 (E) human workflow.
+---
+
+## Patrones SwiftUI Concretos (referencia de implementación)
+
+### 1. NavigationSplitView — sidebar + content — macOS 13+
+
+```swift
+// Fuente: developer.apple.com/documentation/swiftui/navigationsplitview (Context7, HIGH)
+NavigationSplitView {
+    SidebarView()                            // Lista de modos/archivos recientes
+        .navigationSplitViewColumnWidth(220)
+} detail: {
+    TranslationDetailView()                  // Editor o resultados
+}
+// Para 3 columnas (sidebar + lista + detail):
+// NavigationSplitView(sidebar:content:detail:)
+// Control programático de visibilidad: NavigationSplitViewVisibility
+```
+
+### 2. Drag & drop de archivos .md
+
+```swift
+// Fuente: developer.apple.com/documentation/swiftui/view/ondrop (Context7, HIGH)
+// CRITICO: loadFileRepresentation debe iniciarse DENTRO del closure perform (restricción de seguridad)
+@State private var isDropTargeted = false
+
+RoundedRectangle(cornerRadius: 12)
+    .strokeBorder(isDropTargeted ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: 2)
+    .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+        for provider in providers {
+            provider.loadFileRepresentation(
+                forTypeIdentifier: UTType.fileURL.identifier
+            ) { url, _ in
+                guard let url, url.pathExtension == "md" else { return }
+                let gotAccess = url.startAccessingSecurityScopedResource()
+                defer { if gotAccess { url.stopAccessingSecurityScopedResource() } }
+                // leer contenido y enviar a la API local
+            }
+        }
+        return true
+    }
+// UTType para .md: no existe tipo nativo en Apple.
+// Usar .fileURL para drop y filtrar por extensión,
+// o UTType(tag: "md", tagClass: .filenameExtension, conformingTo: .plainText)
+```
+
+### 3. App híbrida: WindowGroup + MenuBarExtra + Settings
+
+```swift
+// Fuente: developer.apple.com/documentation/swiftui/menubarextra (Context7, HIGH)
+@main
+struct MDTranslateApp: App {
+    private let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil
+    )
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+        .commands {
+            CommandMenu("Traducir") {
+                Button("Traducir selección") { /* ... */ }
+                    .keyboardShortcut("T")
+                Button("Abrir archivo .md…") { /* ... */ }
+                    .keyboardShortcut("O", modifiers: [.command, .shift])
+            }
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(updater: updaterController.updater)
+            }
+        }
+
+        MenuBarExtra("MDTranslate", systemImage: "doc.text.magnifyingglass") {
+            Button("Traducir texto…") { /* abre ventana o inline */ }
+            Button("Abrir ventana principal") {
+                NSApp.windows.first { !$0.isFloatingPanel }?.makeKeyAndOrderFront(nil)
+            }
+            Divider()
+            Button("Salir") { NSApplication.shared.terminate(nil) }
+        }
+        .menuBarExtraStyle(.menu)   // .window si se necesita UI más rica
+
+        Settings {
+            SettingsView()          // Cmd+, — paneles: General, Proveedores, Avanzado
+        }
+    }
+}
+```
+
+### 4. Notificaciones locales al completar batch
+
+```swift
+// Fuente: developer.apple.com/documentation/usernotifications/unusernotificationcenter (WebFetch oficial Apple, HIGH)
+
+// Paso 1: solicitar permiso una vez al arrancar la app
+UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+
+// Paso 2: disparar cuando la API local responde con batch completo
+func notifyBatchComplete(fileCount: Int) {
+    let content = UNMutableNotificationContent()
+    content.title = "Traducción completada"
+    content.body = "\(fileCount) archivo(s) traducido(s) correctamente."
+    content.sound = .default
+
+    let request = UNNotificationRequest(
+        identifier: UUID().uuidString,
+        content: content,
+        trigger: nil            // nil = inmediato
+    )
+    UNUserNotificationCenter.current().add(request)
+
+    // Badge en Dock (complementario)
+    NSApplication.shared.dockTile.badgeLabel = "\(fileCount)"
+}
+```
+
+### 5. Keychain para API keys
+
+```swift
+// Fuente: developer.apple.com/documentation/security/keychain_services (WebFetch oficial Apple, HIGH)
+import Security
+
+struct KeychainManager {
+    static let service = "com.tuapp.mdtranslate"
+
+    static func save(_ value: String, forKey key: String) {
+        guard let data = value.data(using: .utf8) else { return }
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: key,
+            kSecValueData: data
+        ]
+        SecItemDelete(query as CFDictionary)     // eliminar si ya existe
+        SecItemAdd(query as CFDictionary, nil)
+    }
+
+    static func load(forKey key: String) -> String? {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: key,
+            kSecReturnData: true,
+            kSecMatchLimit: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    static func delete(forKey key: String) {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: key
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
+
+// Antes de lanzar el subprocess Python:
+// env["OPENAI_API_KEY"] = KeychainManager.load(forKey: "openai_api_key") ?? ""
+// env["DEEPL_API_KEY"]  = KeychainManager.load(forKey: "deepl_api_key") ?? ""
+```
+
+### 6. Backend Python como subprocess embebido
+
+```swift
+// Fuente: developer.apple.com/documentation/foundation/process (WebFetch oficial Apple, HIGH)
+@MainActor
+class BackendManager: ObservableObject {
+    private var process: Process?
+    @Published var isReady = false
+    @Published var startError: String?
+
+    func start() {
+        guard let resourceURL = Bundle.main.resourceURL else { return }
+        let pythonBin    = resourceURL.appendingPathComponent("python/bin/python3")
+        let serverScript = resourceURL.appendingPathComponent("server/src/main.py")
+
+        let proc = Process()
+        proc.executableURL       = pythonBin
+        proc.arguments           = [serverScript.path]
+        proc.currentDirectoryURL = serverScript.deletingLastPathComponent()
+        proc.environment         = buildEnvironment()   // API keys de Keychain + HOST=127.0.0.1 + PORT=8000
+
+        let errPipe = Pipe()
+        proc.standardError = errPipe
+
+        do {
+            try proc.run()
+            self.process = proc
+            Task { await waitForReady() }
+        } catch {
+            startError = error.localizedDescription
+        }
+    }
+
+    private func waitForReady() async {
+        // Polling /health hasta 200 o timeout ~10 s
+        for _ in 0..<20 {
+            try? await Task.sleep(nanoseconds: 500_000_000)   // 0.5 s
+            guard let url = URL(string: "http://127.0.0.1:8000/health") else { continue }
+            if let (_, resp) = try? await URLSession.shared.data(from: url),
+               (resp as? HTTPURLResponse)?.statusCode == 200 {
+                isReady = true
+                return
+            }
+        }
+        startError = "El servidor Python no respondió en 10 s. Verifica los logs."
+    }
+
+    private func buildEnvironment() -> [String: String] {
+        var env = ProcessInfo.processInfo.environment
+        env["HOST"]             = "127.0.0.1"
+        env["PORT"]             = "8000"
+        env["OPENAI_API_KEY"]   = KeychainManager.load(forKey: "openai_api_key") ?? ""
+        env["DEEPL_API_KEY"]    = KeychainManager.load(forKey: "deepl_api_key") ?? ""
+        env["TRANSLATION_PROVIDER"] = UserDefaults.standard.string(forKey: "provider") ?? "openai"
+        // Rutas de datos en Application Support
+        if let appSupport = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let appDir = appSupport.appendingPathComponent("MDTranslate")
+            try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+            env["GLOSSARY_PATH"] = appDir.appendingPathComponent("glossary.yaml").path
+            env["TM_DB_PATH"]    = appDir.appendingPathComponent("translation_memory.db").path
+        }
+        return env
+    }
+
+    func stop() {
+        process?.terminate()
+        process?.waitUntilExit()
+    }
+}
+```
+
+### 7. Auto-update con Sparkle 2 (SPM)
+
+```swift
+// Fuente: sparkle-project.org/documentation/programmatic-setup (Context7, HIGH)
+// Añadir en Xcode: File > Add Packages > https://github.com/sparkle-project/Sparkle
+// Requiere: appcast.xml en servidor HTTPS, firma EdDSA del .dmg de update
+// Requiere re-firma XPC services con codesign antes de distribuir (ver PITFALLS.md)
+
+import Sparkle
+
+final class CheckForUpdatesViewModel: ObservableObject {
+    @Published var canCheckForUpdates = false
+    init(updater: SPUUpdater) {
+        updater.publisher(for: \.canCheckForUpdates).assign(to: &$canCheckForUpdates)
+    }
+}
+
+struct CheckForUpdatesView: View {
+    @ObservedObject private var viewModel: CheckForUpdatesViewModel
+    private let updater: SPUUpdater
+    init(updater: SPUUpdater) {
+        self.updater = updater
+        self.viewModel = CheckForUpdatesViewModel(updater: updater)
+    }
+    var body: some View {
+        Button("Buscar actualizaciones…", action: updater.checkForUpdates)
+            .disabled(!viewModel.canCheckForUpdates)
+    }
+}
+```
 
 ---
 
-## Competitive snapshot (MD-focused)
+## MVP Recommendation
 
-| Capability | md-translator (browser) | rosetta-mark (VS Code) | i18n-translator-sync | **This project (target)** |
-|------------|-------------------------|------------------------|----------------------|---------------------------|
-| Preserve code/fences | ✓ | ✓ | ✓ | ✓ MVP |
-| Glossary | ? | ✓ | via TM/CSV | §1 |
-| Translation memory | IndexedDB cache | Hash cache dir | SQLite + CSV | §2 |
-| CLI / watch | Browser | Extension | ✓ watch/sync | §3, §15 |
-| Live preview | ✓ | Split view | — | §4 |
-| Batch progress | — | Streaming | — | §5 |
-| Multi-engine | AI providers | Multi-provider | Azure/DeepL/Gemini | OpenAI + DeepL |
+Priorizar para entrega inicial de v3.0 (orden de implementación):
 
-**Positioning recommendation:** Own **«Markdown + technical docs + web + API + CLI»** with **glossary + TM + validator** — match rosetta-mark/i18n-sync on consistency, beat generic browser translators on **batch API + shell comments + dual provider**.
+1. **Backend embebido + health check** — fundamento de todo lo demás; sin esto nada funciona
+2. **NavigationSplitView** con modos Editor / Archivo / Batch — paridad funcional con la web
+3. **Keychain** para API keys — seguridad no negociable; sustituye al .env
+4. **Settings scene** con `TabView` (General, Proveedores, Avanzado) — necesario para introducir las keys
+5. **Drag & drop** de archivos .md — diferenciador de primera impresión, baja complejidad
+6. **Notificaciones** al completar batch — UX completion loop, pocas líneas de código
 
----
+Diferir a iteración posterior dentro de v3.0:
 
-## MVP recommendation (post–brownfield)
-
-**Already shipped (do not re-prioritize):** segmentation, code preservation, three UI modes, REST API, batch ZIP, OpenAI/DeepL, retries.
-
-**Prioritize next (NOTEBOOK Phase A — aligns table stakes for target users):**
-
-1. **Glosario (§1)** — unlocks terminology for tech docs  
-2. **Memoria de traducción (§2)** — cost + consistency in large batches  
-3. **CLI real (§3)** — CI/automation table stake  
-
-**Then Phase B for trust:**
-
-4. **Validación post-traducción (§6)**  
-5. **Vista previa renderizada (§4)**  
-
-**Defer until later phases:**
-
-- **§9 Multi-destino**, **§11 Docker** — Phase D (team)  
-- **§12 Revisión**, **§15 Watch**, **§14 Diff** — Phase E (editorial)  
-- **§19 HTML/PDF**, **§20 multi-tenant** — optional / out of scope  
-
-**Quick win candidate:** **§13 Fallback** — low effort, improves reliability (could move before Phase E).
+- **MenuBarExtra** — nice-to-have; añadir tras tener la ventana principal funcional
+- **Sparkle auto-update** — requiere infraestructura de distribución; añadir antes del primer release público
+- **File association** — menor impacto; añadir cuando la app sea estable
 
 ---
 
 ## Sources
 
-| Source | Used for | Confidence |
-|--------|----------|------------|
-| `.planning/PROJECT.md` | Validated vs Active requirements, out of scope | HIGH |
-| `NOTEBOOK.md` | Full §1–§20 map, phases A→E | HIGH |
-| `.planning/codebase/INTEGRATIONS.md` | Current API surface, no TM/cache/auth | HIGH |
-| `README.md` | MVP feature list | HIGH |
-| [OpenL — translate technical docs without breaking code](https://blog.openl.io/how-to-translate-technical-docs-without-breaking-code/) | Table stakes: DNT list, fences, validation | MEDIUM |
-| [Lara — localize developer documentation in Markdown](https://blog.laratranslate.com/how-to-localize-developer-documentation-in-markdown/) | Table stakes: code/CLI/API paths, glossary | MEDIUM |
-| [MetalGlot — Markdown localization](https://metalglot.com/blog/markdown/) | Table stakes: frontmatter keys, link URLs | MEDIUM |
-| [rockbenben/md-translator](https://github.com/rockbenben/md-translator) | Differentiators: cache, multi-lang, context mode | MEDIUM |
-| [seewhyme/rosetta-mark](https://github.com/seewhyme/rosetta-mark) | Differentiators: glossary, incremental cache, streaming | MEDIUM |
-| [appsitu-com/i18n-translator-sync](https://github.com/appsitu-com/i18n-translator-sync) | TM, watch/sync, CSV TM export | MEDIUM |
-| [glossboss-labs/glossboss](https://github.com/glossboss-labs/glossboss) | TM + QA patterns (non-MD, analog) | LOW for MD-specific |
+| Fuente | Usado para | Confianza |
+|--------|-----------|-----------|
+| Context7 `/websites/developer_apple_swiftui` | NavigationSplitView, onDrop, MenuBarExtra, Settings, CommandMenu, AppStorage | HIGH |
+| developer.apple.com/documentation/usernotifications | UNUserNotificationCenter, requestAuthorization, UNNotificationRequest | HIGH |
+| developer.apple.com/documentation/security/keychain_services | SecItemAdd, SecItemCopyMatching, kSecClassGenericPassword | HIGH |
+| developer.apple.com/documentation/foundation/process | Process, executableURL, standardError, terminate | HIGH |
+| Context7 `/websites/sparkle-project` | SPUStandardUpdaterController, appcast, EdDSA, XPC signing, SPM setup | HIGH |
+| developer.apple.com (UTType) | No existe UTType nativo para .md; usar .fileURL + filtro por extensión | MEDIUM |
+| .planning/PROJECT.md | Restricciones del proyecto, decisiones clave (ad-hoc DMG, no notarización) | HIGH |

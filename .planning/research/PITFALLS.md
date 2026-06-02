@@ -1,403 +1,477 @@
-# Domain Pitfalls — Markdown Translation & Localization
+# Domain Pitfalls — macOS Native App con Python Embebido
 
-**Domain:** Herramientas de traducción/localización de Markdown técnico (preservación de sintaxis, lotes, proveedores MT/LLM)  
-**Project:** MarkDown Auto Translator (brownfield)  
-**Researched:** 2026-05-28  
-**Overall confidence:** HIGH (codebase audit + patrones de industria verificados en fuentes oficiales/comunidad 2025–2026)
+**Domain:** App macOS nativa SwiftUI + backend Python/FastAPI embebido + firma ad-hoc  
+**Project:** MarkDown Auto Translator v3.0  
+**Researched:** 2026-06-02  
+**Overall confidence:** HIGH (patrones documentados de distribución macOS sin Developer Program, python-build-standalone, subprocess management, Keychain, Sparkle)
 
 ---
 
 ## Critical Pitfalls
 
-Errores que provocan documentos rotos, pérdida de confianza del lector o reescrituras arquitectónicas.
-
-### Pitfall 1: Tratar el `.md` como texto plano
-
-**What goes wrong:** Se envía el archivo completo a Google Translate, CAT genérico o LLM sin segmentación; se traducen fences, claves YAML, URLs, nombres de variables y comandos CLI. El resultado no renderiza o las instrucciones fallan al ejecutarlas.
-
-**Why it happens:** Markdown *parece* texto; los equipos subestiman nodos estructurales (frontmatter, `[texto](url)`, `` `inline` ``, bloques indentados).
-
-**Consequences:** Frontmatter inválido (claves traducidas), snippets de código inutilizables, 404 en enlaces internos/externos, pérdida de SEO en `title`/`description`.
-
-**Prevention:**
-- Pipeline obligatorio: **parse → traducir solo segmentos TRANSLATABLE → reassemble por índice** (ya en `src/parser.py`; no añadir atajos que salten este paso).
-- Documentar en README/UI la lista de «zonas prohibidas» (código, URLs, paths, badges).
-- Tests de regresión: mismo conteo de fences, enlaces y backticks antes/después.
-
-**Detection:** Renderizar MD traducido; diff estructural origen vs salida; validador post-traducción (NOTEBOOK §6).
-
-**Phase mapping:** Transversal — **refuerzo en Fase B** (validación + preview). No degradar el parser en fases C–E.
-
-**Codebase status:** Mitigado en MVP para fences, inline code, frontmatter bloqueado; **sin validación automática** tras traducir (`CONCERNS.md`).
-
-**Sources:** [MetalGlot — Markdown localization](https://metalglot.com/blog/markdown/) (MEDIUM), [Lara Translate — MD syntax](https://blog.laratranslate.com/translate-a-markdown-file-online/) (MEDIUM), alineado con `PROJECT.md` Core Value.
+Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga secretos o requiera reescritura de arquitectura.
 
 ---
 
-### Pitfall 2: Desincronización de chunks y placeholders (fences / listas)
+### Pitfall C-1: Quarantine xattr bloquea el intérprete Python embebido
 
-**What goes wrong:** Al dividir por líneas o por tokens sin agrupar contexto, un bloque de código o un ítem de lista queda partido entre dos llamadas API; los placeholders (`@@BLOCK@@`) no se restauran y reaparecen fences sin cerrar o listas rotas.
+**Severity:** CRÍTICO
 
-**Why it happens:** Chunking greedy por caracteres (`MAX_BATCH_CHARS=4000`) sin unidad atómica de bloque MD; HTML `<pre>`/`<code>` con heurística frágil en `parser.py`.
+**What goes wrong:** macOS aplica el atributo extendido `com.apple.quarantine` a todo lo descargado por el navegador o recibido por AirDrop/Mail. Cuando la app arranca e intenta ejecutar el binario Python dentro del bundle, Gatekeeper lo bloquea silenciosamente o lanza un diálogo «no se puede abrir» que **no menciona Python** — el usuario ve un crash de la app sin mensaje útil.
 
-**Consequences:** Contenido omitido, fences huérfanos, bullets desalineados con su código de ejemplo (patrón documentado en pipelines de traducción a escala).
+**Why it happens:** python-build-standalone distribuye `python3.XX` como un binario Mach-O independiente. Al estar dentro de `Contents/Resources/python/bin/`, hereda el quarantine del `.dmg` padre. La firma ad-hoc no es suficiente para satisfacer Gatekeeper en macOS 12+: se requiere `--options runtime` o eliminar el atributo explícitamente.
+
+**Consequences:** La app llega al usuario y no arranca. Diagnóstico imposible desde la UI. Reportes de crash sin información útil.
 
 **Prevention:**
-- Tratar cada fence + info string como **unidad atómica** en segmentación y en chunking del traductor (no partir un `Segment` entre lotes).
-- Agrupar ítems de lista con líneas de continuación e indentación antes de trocear (`CONCERNS.md` — área frágil `segment_markdown`).
-- Añadir tests para: fence sin cierre, fence de longitud variable (` ``` ` vs ` ```` `), listas con bloque indentado.
+- En el script de build, tras copiar python-build-standalone al bundle, ejecutar:
+  ```bash
+  xattr -cr MyApp.app
+  codesign --force --deep --sign - MyApp.app
+  ```
+- Al crear el DMG, firmar el `.dmg` también con `codesign --sign -`.
+- Añadir `NSPrincipalClass` y `LSMinimumSystemVersion` en `Info.plist` para evitar activación de paths de seguridad adicionales.
+- Documentar en README del proyecto: el usuario que descarga manualmente puede necesitar ejecutar `xattr -d com.apple.quarantine MyApp.dmg` si el diálogo aparece.
 
-**Detection:** Conteo de ` ``` ` / `~~~` par; parser AST o markdown-it en validador; informe por archivo en lote.
+**Detection (warning signs):**
+- Crash en arranque sin llegar a `AppDelegate.applicationDidFinishLaunching`.
+- Consola macOS muestra `AMFI: ... is not allowed to run` o `killed: 9`.
+- `xattr -l MyApp.app/Contents/Resources/python/bin/python3.XX` devuelve `com.apple.quarantine`.
 
-**Phase mapping:** **Fase B** (validator); **investigación previa a Fase C** si se paraleliza lote (más superficie de chunking).
-
-**Codebase status:** Riesgo activo — parser line-based; bisect-on-failure en `translator.py` puede enmascarar desajustes parciales.
-
-**Sources:** [Azure Feeds — Hardening MD translation pipeline](https://azurefeeds.com/2026/04/30/fixing-broken-markdown-in-ai-translation-hardening-a-production-pipeline/) (MEDIUM), `CONCERNS.md` Known Bugs (HTML pre/code).
+**Phase:** Fase de packaging (Phase 12 / distribución). Validar también en Phase 9 (embedding Python).
 
 ---
 
-### Pitfall 3: Segmentos no traducidos sin fallar (silencio en `reassemble`)
+### Pitfall C-2: Paths absolutos hardcodeados en python-build-standalone
 
-**What goes wrong:** Si el mapa `translations` no incluye un índice, `reassemble` conserva el texto original sin aviso; el usuario cree que todo el documento está en el idioma destino.
+**Severity:** CRÍTICO
 
-**Why it happens:** Diseño tolerante en `parser.py` (`else` en `reassemble`); validación de conteo solo en ruta OpenAI (`_parse_openai_response`), no garantizada en todos los caminos DeepL.
+**What goes wrong:** python-build-standalone compila rutas absolutas de `sys.prefix`, `sys.exec_prefix` y la ubicación de la stdlib en el propio binario. Si el bundle se instala en `/Applications/MyApp.app` pero el build se hizo en `/tmp/build/python/`, Python no encuentra su stdlib y falla con `ModuleNotFoundError: No module named 'encodings'` al arrancar el intérprete — incluso antes de importar FastAPI.
 
-**Consequences:** Mezcla bilingüe invisible; publicación de docs «traducidas» con párrafos en idioma fuente; incumplimiento de Core Value.
+**Why it happens:** CPython usa rutas en tiempo de compilación para localizar `lib/pythonX.Y/`. python-build-standalone usa `PYTHONHOME` y la ruta relativa al ejecutable para resolverlas, pero solo funciona si el layout `bin/python3.XX` → `../lib/pythonX.Y/` se preserva intacto.
+
+**Consequences:** El subprocess Python nunca arranca. Error críptico en log. App inutilizable.
 
 **Prevention:**
-- Tras cada traducción: `len(translations) == len(collect_translatable)` o HTTP 502 con segmentos faltantes.
-- Incluir en respuesta API lista de índices omitidos (modo debug) y flag `complete: false`.
-- Tests de contrato en `tests/test_translator.py` con respuestas JSON incompletas.
+- Usar la variante **"relocatable"** de python-build-standalone (releases marcados `+20XXXXXX` con soporte `PYTHONHOME`).
+- Establecer `PYTHONHOME` y `PYTHONPATH` en el entorno del subprocess apuntando a rutas dentro del bundle:
+  ```swift
+  let bundlePath = Bundle.main.bundlePath
+  env["PYTHONHOME"] = "\(bundlePath)/Contents/Resources/python"
+  env["PYTHONPATH"] = "\(bundlePath)/Contents/Resources/python/lib/python3.XX/site-packages"
+  ```
+- Verificar en CI que el bundle funciona en una ruta diferente a la de build (test en directorio temporal).
+- Nunca hardcodear rutas `/Users/developer/...` en `requirements.txt` instalados dentro del bundle.
 
-**Detection:** Comparar `segments_translated` vs translatable; diff idioma heurístico en segmentos largos.
+**Detection:**
+- `python3 -c "import encodings"` falla desde la ruta del bundle.
+- Log del subprocess contiene `Fatal Python error: init_sys_streams` o `can't open file 'bootstrap.py'`.
 
-**Phase mapping:** **Pre-Fase A / transversal** (calidad mínima); **Fase B** lo eleva a error bloqueante opcional.
-
-**Codebase status:** Bug conocido — `CONCERNS.md` Known Bugs.
+**Phase:** Phase 9 (embedding). Resolver antes de integrar FastAPI.
 
 ---
 
-### Pitfall 4: Frontmatter «todo o nada»
+### Pitfall C-3: Procesos zombie de Python al cerrar la app
 
-**What goes wrong:** Bloque `---` entero protegido → `title`/`description` no localizados; o, en el extremo opuesto, traducir claves YAML (`title` → `título`) y romper SSG (Hugo, Jekyll, Docusaurus).
+**Severity:** CRÍTICO
 
-**Why it happens:** Parser actual marca frontmatter completo como PROTECTED (`parser.py` ~118–128); sin parser YAML selectivo.
+**What goes wrong:** Si Swift no llama explícitamente a `terminate()` + `waitForExit()` antes de que el proceso padre finalice, el subprocess Python queda como zombie. En reaperturas posteriores, el puerto está ocupado (tipicamente `8000`) y la app lanza un nuevo subprocess que también falla al bind, resultando en múltiples procesos zombie acumulados entre sesiones.
 
-**Consequences:** Metadatos SEO en idioma incorrecto; builds que ignoran campos; doble trabajo manual en cada artículo.
+**Why it happens:** `NSTask` / `Process` en Swift no envía SIGTERM automáticamente al proceso hijo cuando el padre termina. Además, `applicationWillTerminate` tiene un timeout muy corto (~5s) en macOS; si la llamada a `terminate()` bloquea esperando que FastAPI drene las conexiones, la app se mata antes de completar la limpieza.
+
+**Consequences:** Puerto permanentemente bloqueado. La app no arranca tras la primera sesión o tras un crash. Proceso Python consumiendo RAM/CPU en segundo plano.
 
 **Prevention:**
-- Lista blanca/negra de campos (`NOTEBOOK §8`); PyYAML con tipos preservados; fallback: bloque entero protegido si YAML inválido.
-- Nunca traducir nombres de clave ni URLs en frontmatter.
+- Registrar el subprocess en `AppDelegate` y llamar en `applicationWillTerminate`:
+  ```swift
+  pythonProcess.terminate()
+  pythonProcess.waitUntilExit()  // máximo 2s con DispatchSemaphore timeout
+  ```
+- Usar `kill(pid, SIGKILL)` si `waitUntilExit` excede el timeout.
+- Al arrancar, hacer un bind-check del puerto antes de lanzar el subprocess:
+  ```swift
+  if isPortInUse(8000) { killProcessOnPort(8000) }
+  ```
+- Almacenar el PID en `UserDefaults` para matar procesos huérfanos de sesiones anteriores.
+- Elegir un puerto aleatorio libre en cada sesión (evita conflictos permanentes).
 
-**Detection:** Diff de claves YAML; schema del generador de sitio.
+**Detection:**
+- `lsof -i :8000` muestra proceso `python3` sin padre (`PPID=1`).
+- La app tarda >10s en arrancar tras un crash previo.
+- `ps aux | grep python` muestra múltiples instancias.
 
-**Phase mapping:** **Fase B** (junto a validación) o sub-fase explícita antes de multi-destino **Fase D**.
-
-**Codebase status:** Deuda documentada — `CONCERNS.md`, `NOTEBOOK.md` §8.
+**Phase:** Phase 10 (subprocess management). Implementar desde el primer día de integración.
 
 ---
 
-### Pitfall 5: Enlaces internos y anclas rotas tras traducir encabezados
+### Pitfall C-4: Gatekeeper bloquea librerías `.dylib` dentro del bundle
 
-**What goes wrong:** `[ver sección](#instalacion)` sigue apuntando al slug en español mientras el H2 traducido genera `#installation` en el renderizador; enlaces relativos `./other.md` traducidos o fragmentos alterados por el LLM.
+**Severity:** CRÍTICO
 
-**Why it happens:** Solo se traduce el texto visible del enlace, no se reconcilia el árbol de headings post-hoc; URLs no están en zona PROTECTED explícita si el segmento es línea completa mezclada.
+**What goes wrong:** python-build-standalone incluye decenas de `.dylib` (OpenSSL, libffi, sqlite3, etc.) y `.so` de extensiones C (como `_ssl.cpython-3XX.so`). Aunque se firme el ejecutable Python, Gatekeeper verifica **cada** binario Mach-O del bundle de forma independiente. Una sola `.dylib` sin firmar bloquea la ejecución con `Library validation failed`.
 
-**Consequences:** 404 locales, TOC roto, CI de docs que falla en link checkers.
+**Why it happens:** La firma `--deep` de `codesign` no siempre alcanza archivos en subdirectorios no estándar. Las rutas `lib/pythonX.Y/lib-dynload/*.so` y `lib/*.dylib` no son paths que Xcode gestiona automáticamente.
+
+**Consequences:** Crash en import de módulos que usan C extensions (`ssl`, `sqlite3`, `hashlib`). FastAPI no arranca por falta de `ssl`. Errores intermitentes dependiendo del primer import.
 
 **Prevention:**
-- Proteger URL/path en `[texto](url)` e `![alt](path)` (solo traducir texto/alt).
-- Post-paso: parsear headings traducidos, regenerar slugs estilo GitHub, reescribir fragmentos internos (patrón Co-op Translator / GenAIScript).
-- Validador: conjunto de URLs externas idéntico origen vs salida.
+- Firmar **bottom-up**: primero todas las `.dylib` y `.so`, luego los ejecutables, luego el bundle:
+  ```bash
+  find MyApp.app -name "*.dylib" -o -name "*.so" | \
+    xargs -I{} codesign --force --sign - {}
+  find MyApp.app -name "python3*" -type f | \
+    xargs -I{} codesign --force --sign - {}
+  codesign --force --deep --sign - MyApp.app
+  ```
+- Usar `codesign -vvv MyApp.app` para verificar que todos los binarios tienen firma válida.
+- Automatizar en el Makefile/script de build, no hacerlo manualmente.
 
-**Detection:** `markdown-it` + comparación de sets de URIs; readme-i18n-sentinel-style checks en CI.
+**Detection:**
+- `codesign --verify --deep --strict MyApp.app` reporta archivos sin firma.
+- Log contiene `dlopen` con `code signature invalid`.
+- `spctl -a -vv MyApp.app` devuelve `rejected`.
 
-**Phase mapping:** **Fase B** (validator ampliado); crítico antes de **Fase D** (multi-destino y árbol Git §16).
-
-**Codebase status:** No implementado; riesgo MEDIO en líneas con enlaces embebidos en segmentos TRANSLATABLE.
-
-**Sources:** [GenAIScript — continuous translations](https://microsoft.github.io/genaiscript/blog/continuous-translations/) (HIGH — validación explícita de URLs), [readme-i18n-sentinel](https://github.com/sugurutakahashi-1234/readme-i18n-sentinel) (MEDIUM).
+**Phase:** Phase 12 (distribución). Pero verificar en Phase 9 con un build de prueba.
 
 ---
 
-### Pitfall 6: Lotes LLM con JSON y conteo de segmentos inestable
+### Pitfall C-5: Firma ad-hoc no equivale a notarización — el usuario necesita instrucciones
 
-**What goes wrong:** El modelo devuelve menos/más entradas, anida arrays, envuelve JSON en fences markdown, o «divide» una traducción en varias cadenas; el pipeline acepta parcialmente o reintenta con bisect sin alertar al usuario.
+**Severity:** CRÍTICO (UX / adopción)
 
-**Why it happens:** `response_format json_object` reduce pero no elimina fallos; prompts con arrays planos son más frágiles que tool-use con propiedades fijas por índice.
+**What goes wrong:** Con firma ad-hoc (`codesign --sign -`), la app **no pasa Gatekeeper automáticamente** en macOS 15+. El usuario verá «"MyApp.app" cannot be opened because it is from an unidentified developer» y el botón de `Abrir de todos modos` está en `Ajustes del Sistema > Privacidad y Seguridad`, no en el diálogo inicial. Muchos usuarios no saben esto y asumen que la app está rota.
 
-**Consequences:** Retraducciones costosas, texto mixto, confianza cero en lotes de 15+ segmentos.
+**Why it happens:** Sin una Developer ID Certificate notarizada por Apple, la firma ad-hoc solo impide la alerta de «binario corrupto» pero no supera la verificación de identidad. Es por diseño de Gatekeeper.
 
-**Prevention:**
-- Validación estricta de cardinalidad antes de `reassemble`.
-- Considerar function calling / propiedades nombradas `t0…tN` para lotes OpenAI (HIGH confidence en mejoría de fiabilidad).
-- Reducir `BATCH_SIZE` cuando aumente tasa de fallo; fixtures de respuestas malformadas en tests.
-
-**Detection:** Métrica `batch_parse_failures`; logs de bisect recursivo.
-
-**Phase mapping:** **Pre-Fase A** (tests translator); **Fase A** no sustituye esta capa — glosario aumenta tamaño de prompt y presión sobre JSON.
-
-**Codebase status:** Mitigación parcial (`_parse_openai_response`, chunk split); sin tests — `CONCERNS.md` Test Coverage Gaps HIGH.
-
-**Sources:** [DEV — LLM structured output in translator](https://dev.to/cloudyview/how-i-fixed-llm-structured-output-failures-in-a-powerpoint-translator-0-errors-on-1214-20g) (MEDIUM).
-
----
-
-### Pitfall 7: Coherencia terminológica sin glosario ni memoria de traducción
-
-**What goes wrong:** «API Gateway», «dashboard» y la misma frase en 20 archivos se traducen de formas distintas; coste API multiplicado por segmentos repetidos.
-
-**Why it happens:** Cada segmento es independiente; DeepL/OpenAI sin reglas de producto; prioridad de negocio pospuesta.
-
-**Consequences:** Revisiones manuales masivas en docs técnicas; incumplimiento del Core Value de «coherencia terminológica».
+**Consequences:** Tasa de abandono en instalación. Tickets de soporte. Percepción de app maliciosa.
 
 **Prevention:**
-- **Fase A:** `glossary.json` + inyección en prompt (OpenAI) y placeholders (DeepL); TM SQLite con hash `text+source+target`.
-- Validar glosario case-sensitive y por par de idiomas (Azure Translator glossary guidance).
-- Métricas: cache hit %, términos glosario violados (heurística post-hoc).
+- Incluir instrucciones prominentes en el DMG (archivo `INSTALL.txt` visible al montar):
+  ```
+  Si ves "no se puede abrir", haz clic derecho → Abrir, o ve a
+  Ajustes del Sistema > Privacidad y Seguridad > Abrir de todos modos.
+  ```
+- Alternativamente, incluir un script de instalación que ejecute:
+  ```bash
+  xattr -d com.apple.quarantine /Applications/MyApp.app
+  ```
+- Evaluar para v3.1+: el programa Apple Developer ($99/año) permite notarización y elimina este problema completamente.
+- Documentar en README el proceso de primera apertura.
 
-**Detection:** Diff entre archivos del mismo lote; auditoría de términos prohibidos.
+**Detection:**
+- Test en una VM macOS limpia sin el Developer ID del proyecto instalado como trusted.
+- Verificar que `spctl --status` está en `assessments enabled` en la VM de test.
 
-**Phase mapping:** **Fase A** (entregable principal NOTEBOOK).
-
-**Codebase status:** Ausente — `CONCERNS.md` Missing Critical Features §1–2.
-
-**Sources:** [Azure AI Docs — glossaries](https://github.com/MicrosoftDocs/azure-ai-docs/blob/main/articles/ai-services/translator/document-translation/how-to-guides/create-use-glossaries.md) (HIGH).
-
----
-
-### Pitfall 8: Exponer API de traducción sin auth ni límites
-
-**What goes wrong:** `HOST=0.0.0.0`, CORS `*`, sin cuotas → terceros consumen cuota OpenAI/DeepL y filtran contenido sensible a proveedores MT.
-
-**Why it happens:** Diseño «local first» que escala a red interna sin hardening.
-
-**Consequences:** Coste impredecible, fuga de IP/docs, violación de políticas de datos.
-
-**Prevention:**
-- Por defecto `127.0.0.1`; API key de servicio o proxy con auth antes de **Fase D** (Docker).
-- Límites `MAX_UPLOAD_BYTES`, rate limit por IP; mensajes 502 genéricos (no filtrar SDK).
-- Aviso explícito en UI: contenido sale a terceros.
-
-**Detection:** Escaneo de despliegue; pruebas de carga no autorizada.
-
-**Phase mapping:** **Pre-Fase D** (obligatorio antes de Docker/equipo); **Fase E** si multi-tenant §20.
-
-**Codebase status:** Deuda crítica — `CONCERNS.md` Security, Tech Debt.
-
----
-
-### Pitfall 9: Lote «todo o nada» ante el primer fallo
-
-**What goes wrong:** Un archivo inválido en un ZIP de 20 hace fallar toda la petición; trabajo ya traducido en memoria se pierde para el cliente.
-
-**Why it happens:** `translate_batch` hace `raise HTTPException` en primera excepción.
-
-**Consequences:** UX catastrófica en carpetas heterogéneas; equipos evitan el modo lote.
-
-**Prevention:**
-- ZIP parcial + manifest `errors.json`; o job async con SSE (**Fase C**) y estado por archivo.
-- Validar `source_lang`/`target_lang` en todas las rutas multipart (igual que `/api/translate`).
-
-**Detection:** Test de lote con un archivo «veneno»; métrica `batch_partial_success`.
-
-**Phase mapping:** **Fase C** (progreso + resiliencia); mitigación mínima posible antes en handler batch.
-
-**Codebase status:** Bug conocido — `CONCERNS.md` Known Bugs.
-
----
-
-### Pitfall 10: UI de idiomas incompatible con el proveedor activo
-
-**What goes wrong:** Usuario elige catalán/gallego/euskera en UI; DeepL lanza `ValueError` en runtime; OpenAI podría traducir pero la lista no está filtrada.
-
-**Why it happens:** `LANGUAGE_NAMES` unificado; `DEEPL_TARGET_MAP` más restrictivo; validación solo en `POST /api/translate`.
-
-**Consequences:** 502 confuso; pérdida de confianza en selector de idioma.
-
-**Prevention:**
-- `/api/languages?provider=deepl` o filtrado según `get_provider()`; validar `target_lang` en file/batch.
-- Documentar matriz idioma × proveedor en README.
-
-**Phase mapping:** **Pre-Fase A** (contrato API); **Fase A** CLI debe compartir misma validación.
-
-**Codebase status:** Fragile area — `CONCERNS.md`.
+**Phase:** Phase 12 (distribución). Documentar en Phase 11 (DMG build).
 
 ---
 
 ## Moderate Pitfalls
 
-### Pitfall 11: Traducir comentarios de código sin reglas por lenguaje
-
-**What goes wrong:** Traducir `#` dentro de strings Python, o `//` en URLs; o dejar comentarios útiles sin traducir en `python`/`js` porque solo `bash` está soportado.
-
-**Prevention:** Detección por etiqueta de fence; tests por lenguaje; no traducir shebangs, pragmas, URLs (`NOTEBOOK §7`).
-
-**Phase mapping:** **Fase B** o extensión parser post-A.
-
-**Codebase status:** Solo shell — `CONCERNS.md`.
+Problemas que degradan la experiencia de desarrollo o pueden causar bugs en producción si no se anticipan.
 
 ---
 
-### Pitfall 12: Decodificación permisiva (UTF-8 → latin-1)
+### Pitfall M-1: Health check timeout demasiado corto en primera ejecución
 
-**What goes wrong:** Bytes inválidos se convierten en `` con `errors="replace"`; traducción «exitosa» de texto corrupto.
+**Severity:** MEDIO
 
-**Prevention:** UTF-8 estricto + HTTP 400 con mensaje claro.
+**What goes wrong:** En la primera ejecución, Python debe importar FastAPI, uvicorn, y todas las dependencias del proyecto desde el bundle. En una máquina lenta o en un sistema de archivos cifrado (FileVault activo), esto puede tardar 3-8 segundos. Si Swift hace el health check con un timeout de 2s, asume que el subprocess falló y muestra un error al usuario, aunque Python esté arrancando correctamente.
 
-**Phase mapping:** Transversal (fix pequeño en `main.py`).
+**Why it happens:** Los timeouts de health check se calibran en la máquina del desarrollador (rápida, caché caliente). En producción hay más variabilidad.
 
-**Codebase status:** Known Bug — `CONCERNS.md`.
+**Consequences:** Falsos positivos de «backend no disponible». El usuario reintenta, lanza múltiples subprocesses, y aparece el Pitfall C-3 (zombies).
 
----
+**Prevention:**
+- Implementar retry con backoff en el health check: intentar `/api/languages` cada 500ms hasta 15s de timeout total.
+- En la primera ejecución (detectar con `UserDefaults`), mostrar un indicador de progreso «Iniciando…» en lugar de un error inmediato.
+- Loggear el tiempo de arranque para calibrar timeouts en CI.
+- Separar el health check de «¿está vivo?» (TCP connect) del de «¿está listo?» (HTTP 200): el primero es más rápido.
 
-### Pitfall 13: Progreso de UI falso
+**Detection:**
+- Arranque en máquina con FileVault + HDD (o VM con throttling de I/O).
+- Log de Swift muestra «backend failed to start» pero el proceso Python sigue en `ps`.
 
-**What goes wrong:** Barra al 30 % fija durante toda la petición; lotes largos percibidos como colgados; usuarios reenvían y duplican coste.
-
-**Prevention:** Conectar `ProgressEvent` / `on_progress` vía SSE (**Fase C**); cancelación de job.
-
-**Phase mapping:** **Fase C**.
-
-**Codebase status:** Tech debt — `CONCERNS.md`, `NOTEBOOK §5`.
-
----
-
-### Pitfall 14: Coste y tokens impredecibles en lotes grandes
-
-**What goes wrong:** Sin estimación previa, equipos disparan 20 archivos × miles de segmentos; rate limit 429 y factura sorpresa.
-
-**Prevention:** Endpoint `estimate` post-segmentación (**Fase C**); TM en **Fase A**; umbrales configurables.
-
-**Phase mapping:** **Fase A** (TM), **Fase C** (estimate UI).
-
-**Codebase status:** NOTEBOOK §10 sin implementar.
+**Phase:** Phase 10 (subprocess management). Health check protocol desde el diseño inicial.
 
 ---
 
-### Pitfall 15: Un solo proveedor sin fallback
+### Pitfall M-2: Tamaño del bundle explota por dependencias Python
 
-**What goes wrong:** Cuota DeepL agotada o idioma no soportado detiene el pipeline; no hay `TRANSLATION_FALLBACK=openai`.
+**Severity:** MEDIO
 
-**Prevention:** Cadena configurada de proveedores con registro de qué segmento usó qué motor (**Fase A/C** según prioridad).
+**What goes wrong:** python-build-standalone base pesa ~70-90 MB. Al instalar FastAPI + uvicorn + openai + deepl + WeasyPrint + todas las dependencias de `requirements.txt`, el directorio `site-packages` puede llegar a 400-600 MB. El DMG resultante supera los 500 MB, lo que penaliza enormemente la descarga y el tiempo de apertura del DMG.
 
-**Phase mapping:** Puede entrar en **Fase A** (resiliencia) o **Fase C** (operaciones).
+**Why it happens:** Los SDKs de OpenAI y DeepL traen dependencias transitivas pesadas (httpx, pydantic, certifi). WeasyPrint arrastra Cairo y Pango (200+ MB en macOS). python-build-standalone incluye test suites y archivos `.pyc` redundantes.
 
-**Codebase status:** NOTEBOOK §13 — ausente.
+**Consequences:** DMG de >500 MB. Tiempo de instalación de 3-5 minutos. Rechazo por parte de usuarios en redes lentas. Sparkle updates lentos.
+
+**Prevention:**
+- Excluir WeasyPrint del bundle de la app macOS (PDF export puede ser opcional, igual que en la versión web).
+- Usar `pip install --no-compile` + limpiar `__pycache__` y `*.pyc` antes de firmar.
+- Eliminar archivos innecesarios de python-build-standalone:
+  ```bash
+  rm -rf python/lib/python3.XX/test/
+  rm -rf python/lib/python3.XX/ensurepip/
+  find python/ -name "*.py" -path "*/test*" -delete
+  ```
+- Objetivo razonable: bundle <200 MB, DMG comprimido <120 MB.
+- Evaluar `uv` para instalar dependencias con resolución más agresiva de duplicados.
+
+**Detection:**
+- `du -sh MyApp.app/Contents/Resources/python/` en el script de build.
+- Alerta si supera 300 MB antes de comprimir el DMG.
+
+**Phase:** Phase 9 (embedding) + Phase 11 (DMG build).
 
 ---
 
-### Pitfall 16: Acumulación en `output/` y RAM en uploads
+### Pitfall M-3: Sparkle sin Developer ID requiere configuración especial de EdDSA
 
-**What goes wrong:** Disco lleno con MD privados; `await file.read()` sin tope agota memoria en lotes.
+**Severity:** MEDIO
 
-**Prevention:** TTL/stream/borrado post-`FileResponse`; `MAX_UPLOAD_BYTES` total y por archivo.
+**What goes wrong:** Sparkle 2.x usa firmas EdDSA para verificar la integridad de las actualizaciones antes de instalarlas. Sin una Apple Developer ID, el desarrollador debe gestionar el par de claves EdDSA manualmente. Si se pierde la clave privada EdDSA, las actualizaciones firmadas con la clave anterior dejan de verificarse en clientes ya instalados — no hay recuperación posible sin que el usuario reinstale manualmente.
 
-**Phase mapping:** **Fase D** (volúmenes Docker); límites antes de despliegue.
+**Why it happens:** Sparkle no depende del Apple Developer Program para sus firmas de actualización. Usa su propio sistema EdDSA. Pero la documentación asume que el desarrollador tiene flujo CI establecido; sin él, la clave privada acaba en la máquina del desarrollador sin backup.
 
-**Codebase status:** `CONCERNS.md` Performance / Security.
+**Consequences:** Pérdida de la clave = imposibilidad de distribuir actualizaciones automáticas a usuarios existentes. Si se usa una clave diferente en un update, Sparkle rechaza la actualización silenciosamente.
+
+**Prevention:**
+- Generar el par de claves EdDSA con `generate_keys` de Sparkle **una sola vez** y guardar la clave privada en:
+  1. macOS Keychain del desarrollador (no en el repo).
+  2. Backup cifrado offline (1Password, Bitwarden).
+- La clave pública va en `Info.plist` bajo `SUPublicEDKey` — esta sí es pública y va en el repo.
+- Script de release siempre usa la misma clave: `sign_update <archivo.dmg> <clave-privada>`.
+- Sparkle no requiere sandbox, pero sí requiere HTTPS para el appcast XML (`SUFeedURL`).
+
+**Detection:**
+- El instalador de Sparkle muestra «Update cannot be verified» si la firma no coincide.
+- `sparkle_tool verify-update` en CI.
+
+**Phase:** Phase 12 (distribución). Setup de claves en Phase 11.
 
 ---
 
-### Pitfall 17: `innerHTML` con nombres de archivo en lote
+### Pitfall M-4: Keychain desde app no-sandboxed — acceso sin restricciones pero sin grupo compartido
 
-**What goes wrong:** XSS si nombre de archivo contiene HTML malicioso.
+**Severity:** MEDIO
 
-**Prevention:** `textContent` / `createElement` en `static/js/app.js`.
+**What goes wrong:** Una app sin sandbox puede leer/escribir en el Keychain del usuario sin los permisos de `com.apple.security.keychain-access-groups` del sandbox. Esto es conveniente, pero también significa que **cualquier app en el sistema** puede leer los ítems del Keychain que no tengan ACL restrictivas. Si la app almacena `OPENAI_API_KEY` con `kSecAttrAccessible = kSecAttrAccessibleAlways`, otras apps (o malware) pueden extraer la clave.
 
-**Phase mapping:** Transversal (fix UI pequeño).
+Además, sin sandbox no hay `kSecAttrAccessGroup` automático: si en el futuro se sandboxea la app, los ítems del Keychain del período no-sandbox no son accesibles desde el nuevo contexto sandbox, rompiendo la migración.
 
-**Codebase status:** Security consideration — `CONCERNS.md`.
+**Why it happens:** La conveniencia de no-sandbox enmascara los controles de acceso que deberían configurarse explícitamente.
+
+**Consequences:** API keys expuestas a otras apps. Rotura de Keychain en migración a sandbox. Posibles violaciones de ToS de OpenAI/DeepL si las claves se filtran.
+
+**Prevention:**
+- Usar `kSecAttrAccessible = kSecAttrAccessibleWhenUnlockedThisDeviceOnly` (más restrictivo).
+- Configurar ACL explícita con `SecAccessCreate` para limitar qué apps pueden leer el ítem.
+- Usar un `kSecAttrService` único y consistente (`com.autoTransMarkdown.apikeys`) para facilitar migración futura.
+- Documentar en ARCHITECTURE.md que el Keychain access no está sandboxed y los riesgos asociados.
+
+**Detection:**
+- Auditar con `security find-generic-password -s "com.autoTransMarkdown.apikeys"` — si devuelve la clave sin autenticación adicional, el atributo `Accessible` es demasiado permisivo.
+
+**Phase:** Phase 10 (Keychain integration). Definir atributos de acceso desde el primer ítem almacenado.
+
+---
+
+### Pitfall M-5: Variables de entorno del sistema no disponibles en el subprocess Python
+
+**Severity:** MEDIO
+
+**What goes wrong:** El subprocess Python arrancado desde Swift no hereda el entorno del shell del usuario. Variables como `PATH`, `HOME`, `TMPDIR`, y cualquier variable de entorno configurada en `~/.zshrc` o `~/.bash_profile` no están disponibles. Si `src/main.py` o `src/translator.py` depende de `os.getenv('HOME')` para rutas relativas o si alguna dependencia usa `PATH` para localizar binarios del sistema, el comportamiento será diferente al esperado.
+
+**Why it happens:** Los subprocesses lanzados desde una app GUI macOS tienen un entorno mínimo del sistema, no el entorno interactivo del usuario.
+
+**Consequences:** `load_dotenv()` falla si busca `.env` relativo a `HOME`. Rutas a `output/` no resuelven. Imports que dependen de binarios en `/usr/local/bin` (ej. Pandoc) fallan.
+
+**Prevention:**
+- Pasar un entorno explícito y completo al subprocess desde Swift:
+  ```swift
+  process.environment = [
+      "PYTHONHOME": pythonHomePath,
+      "PYTHONPATH": sitePackagesPath,
+      "HOME": NSHomeDirectory(),
+      "TMPDIR": NSTemporaryDirectory(),
+      "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+      "OPENAI_API_KEY": keyFromKeychain,
+      "DEEPL_API_KEY": keyFromKeychain,
+      "TRANSLATION_PROVIDER": userPreference
+  ]
+  ```
+- No depender de `.env` en la app macOS: las API keys vienen del Keychain vía variables de entorno inyectadas por Swift.
+- Usar rutas absolutas dentro del bundle para todos los recursos Python.
+
+**Detection:**
+- El subprocess Python falla con `FileNotFoundError` para rutas relativas.
+- `load_dotenv()` no encuentra el archivo y el proveedor cae en RuntimeError 503.
+
+**Phase:** Phase 10 (subprocess management). Definir el entorno completo del proceso desde el diseño.
+
+---
+
+### Pitfall M-6: Conflicto de puerto al tener múltiples instancias (Finder + dock)
+
+**Severity:** MEDIO
+
+**What goes wrong:** El usuario abre la app dos veces (doble clic en Finder mientras ya está en el dock). macOS permite múltiples instancias de apps sin sandbox. La segunda instancia intenta lanzar FastAPI en el mismo puerto y falla silenciosamente. La UI de la segunda ventana apunta al backend de la primera instancia o a nada.
+
+**Why it happens:** Sin `LSMultipleInstancesProhibited` en `Info.plist`, macOS no previene múltiples instancias.
+
+**Consequences:** Segunda instancia sin backend funcional. Confusión del usuario. Puerto bloqueado si la primera instancia termina antes que la segunda.
+
+**Prevention:**
+- Añadir `LSMultipleInstancesProhibited = YES` en `Info.plist` para forzar instancia única.
+- Si se permite múltiples instancias por diseño: asignar puertos dinámicos y comunicarlos a la UI.
+- Implementar un mecanismo de IPC para traer al frente la instancia existente (`NSRunningApplication.activate()`).
+
+**Detection:**
+- Abrir la app dos veces desde Finder y verificar comportamiento.
+- `lsof -i :8000` muestra dos procesos python escuchando.
+
+**Phase:** Phase 10. Añadir `LSMultipleInstancesProhibited` en Phase 9 al crear el bundle inicial.
+
+---
+
+### Pitfall M-7: Logging del subprocess Python no visible para el usuario ni para debug
+
+**Severity:** MEDIO
+
+**What goes wrong:** El subprocess Python escribe logs en stdout/stderr, pero si Swift no redirige esos file descriptors, los mensajes se pierden. En producción, el usuario no ve nada. En desarrollo, el desarrollador tiene que hacer `print` statements y esperar que aparezcan en la consola de Xcode, que no siempre captura stderr de subprocesses.
+
+**Why it happens:** `Process` en Swift solo captura stdout/stderr si se configuran explícitamente `standardOutput` y `standardError` como `Pipe`.
+
+**Consequences:** Imposible diagnosticar crashes del backend sin re-ejecutar en terminal. Errores de traducción (502) sin contexto. Pérdida de mensajes de `logger.exception()`.
+
+**Prevention:**
+- Configurar `Pipe` para stdout y stderr del subprocess desde el primer día:
+  ```swift
+  let stdoutPipe = Pipe()
+  let stderrPipe = Pipe()
+  process.standardOutput = stdoutPipe
+  process.standardError = stderrPipe
+  // Leer asincrónicamente y escribir en un archivo de log en Application Support
+  ```
+- Escribir logs en `~/Library/Logs/AutoTransMarkdown/backend.log` con rotación.
+- En la app, añadir una vista «Diagnóstico» que muestre las últimas 100 líneas del log.
+- En desarrollo, redirigir también a `NSLog` para que aparezca en Console.app.
+
+**Detection:**
+- Un 502 desde la UI no da información sobre la causa sin logs del subprocess.
+- `Console.app` → filtrar por el nombre del proceso no muestra nada del backend Python.
+
+**Phase:** Phase 10 (subprocess). Implementar desde el primer subprocess launch, no como afterthought.
 
 ---
 
 ## Minor Pitfalls
 
-### Pitfall 18: Entry point `md-translate` arranca servidor, no CLI
-
-**What goes wrong:** Pipelines CI esperan traducción en terminal; reciben uvicorn.
-
-**Prevention:** `md-translate` → `src/cli.py`; script separado para servidor (**Fase A**).
-
-**Phase mapping:** **Fase A**.
+Problemas de menor impacto que aún merecen atención en las fases correspondientes.
 
 ---
 
-### Pitfall 19: Doble manifest de dependencias sin lockfile
+### Pitfall m-1: `PYTHONDONTWRITEBYTECODE` no configurado — `.pyc` en el bundle post-ejecución
 
-**What goes wrong:** `requirements.txt` y `pyproject.toml` divergen entre máquinas.
+**Severity:** BAJO
 
-**Prevention:** Una fuente de verdad + lock; actualizar README.
+**What goes wrong:** Sin `PYTHONDONTWRITEBYTECODE=1`, Python escribe archivos `.pyc` en `__pycache__/` dentro del bundle durante la primera ejecución. Si el bundle está firmado y en `/Applications/`, esto puede fallar con `PermissionError` o invalidar la firma.
 
-**Phase mapping:** **Fase D** (Docker) o housekeeping pre-D.
+**Prevention:** Configurar `PYTHONDONTWRITEBYTECODE=1` en el entorno del subprocess. Usar un directorio de caché en `~/Library/Caches/AutoTransMarkdown/` si se necesita bytecode para rendimiento.
 
----
-
-### Pitfall 20: Tailwind desde CDN en UI offline
-
-**What goes wrong:** UI rota sin red o si CDN cambia comportamiento.
-
-**Prevention:** Build estático pinneado en **Fase D** o antes si se empaqueta Docker.
-
-**Phase mapping:** **Fase D**.
+**Phase:** Phase 9.
 
 ---
 
-### Pitfall 21: Preview Markdown sin sanitizar
+### Pitfall m-2: Tailwind desde CDN en UI web embebida
 
-**What goes wrong:** Si **Fase B** renderiza MD con `marked.js` sin DOMPurify, XSS en preview de contenido no confiable.
+**Severity:** BAJO
 
-**Prevention:** Sanitizar HTML; no ejecutar scripts del documento traducido.
+**What goes wrong:** Si la app reutiliza la UI web existente (`static/index.html`), esta carga Tailwind desde `cdn.tailwindcss.com`. Sin conexión a internet, la UI carga sin estilos. La app macOS debe funcionar offline (para edición, no para traducción).
 
-**Phase mapping:** **Fase B** (NOTEBOOK §4 criterios).
+**Prevention:** Generar un build estático de Tailwind con solo las clases utilizadas e incluirlo en el bundle. O migrar a SwiftUI nativa (objetivo principal de v3.0).
+
+**Phase:** Phase 11 (UI SwiftUI) elimina este problema. Si hay una fase intermedia con WebView, resolver en esa fase.
+
+---
+
+### Pitfall m-3: `output/` ephemeral dentro del bundle — rutas de descarga rotas
+
+**Severity:** BAJO
+
+**What goes wrong:** El backend Python actual crea `output/` relativo al working directory. Si el subprocess se lanza con CWD dentro del bundle (read-only en `/Applications/`), la creación del directorio falla con `PermissionError`.
+
+**Prevention:** Pasar `OUTPUT_DIR` como variable de entorno apuntando a `~/Library/Application Support/AutoTransMarkdown/output/` desde Swift.
+
+**Phase:** Phase 10.
+
+---
+
+### Pitfall m-4: `reload=True` en uvicorn activado en producción
+
+**Severity:** BAJO
+
+**What goes wrong:** El `run()` de `src/main.py` usa `reload=True`. En el bundle, el file watcher de uvicorn monitoriza los archivos Python del bundle, consume recursos innecesarios y puede causar reinicios inesperados si el sistema modifica metadatos del bundle.
+
+**Prevention:** Detectar si se está ejecutando dentro de un bundle (ej. `BUNDLE_ID` env var) y forzar `reload=False`. O añadir un flag `--no-reload` en el CLI.
+
+**Phase:** Phase 10.
+
+---
+
+### Pitfall m-5: Auto-update Sparkle descarga a `/tmp` — antivirus / quarantine
+
+**Severity:** BAJO
+
+**What goes wrong:** Sparkle descarga el nuevo DMG/ZIP a un directorio temporal. En sistemas con software de seguridad activo (Malwarebytes, Sophos), la descarga puede ser interceptada o bloqueada, dejando la actualización en estado inconsistente. La app no reporta el error claramente.
+
+**Prevention:** Implementar el handler `updater(_:didAbortWithError:)` de Sparkle para mostrar un mensaje accionable. Proporcionar URL de descarga manual como fallback.
+
+**Phase:** Phase 12.
 
 ---
 
 ## Phase-Specific Warnings
 
-| Phase (NOTEBOOK) | Entregables | Pitfalls más probables si se implementan mal | Mitigación prioritaria |
-|------------------|-------------|-----------------------------------------------|-------------------------|
-| **Pre-A** (hardening MVP) | Tests translator/API, validación conteo segmentos, idiomas por proveedor, UTF-8 estricto | #3, #6, #10, #12 | `tests/test_translator.py`, `tests/test_main.py`; fallar si traducciones incompletas |
-| **A** | Glosario + TM + CLI | #7, #6 (prompt más largo), #18, glosario case-insensitive | TM antes de llamada API; glosario por par `en→es`; CLI comparte parser+validator |
-| **B** | Validator + preview render | #1, #2, #5, #21, falso positivo en ratio longitud | Checks fences/enlaces/headings; reconciliación anclas; sanitizar preview |
-| **C** | SSE progreso + estimate | #13, #9, #14, chunking agresivo en paralelo | Job ID; ZIP parcial; no paralelizar sin unidades atómicas (#2) |
-| **D** | Multi-destino + Docker | #5, #8, #16, #14 (rate limits × N idiomas) | Auth antes de imagen pública; límites upload; TM compartida entre idiomas del mismo origen |
-| **E** | Revisión + watch + diff | #3 (editar segmentos manualmente), drift estructural en watch | Versionar segmentos; validator en cada guardado watch |
-
-### Orden de roadmap vs riesgo
-
-El orden A→B→C→D→E del `NOTEBOOK.md` es correcto para ROI, **pero** publicar Docker (**D**) sin cerrar #8 y #16 es un anti-patrón habitual en proyectos MD i18n «que funcionan en local». La investigación recomienda **hardening Pre-A + B antes de exponer red**.
+| Phase | Tema | Pitfall más probable | Mitigación prioritaria |
+|-------|------|----------------------|------------------------|
+| **Phase 9** (Python embedding) | Copiar python-build-standalone al bundle | C-2 (paths), C-4 (dylib signing), M-2 (tamaño) | Variante relocatable; firma bottom-up; `rm -rf test/` |
+| **Phase 10** (subprocess Swift) | Lanzar FastAPI como Process | C-1 (quarantine), C-3 (zombies), M-1 (health timeout), M-5 (entorno) | xattr clear; cleanup en applicationWillTerminate; retry health check 15s; env explícito |
+| **Phase 10** (Keychain) | Almacenar API keys | M-4 (acceso Keychain) | `AccessibleWhenUnlockedThisDeviceOnly`; ACL explícita |
+| **Phase 11** (SwiftUI UI) | Ventanas y lifecycle | M-6 (múltiples instancias) | `LSMultipleInstancesProhibited`; IPC para instancia única |
+| **Phase 11** (logging) | Debug del backend | M-7 (logs perdidos) | Pipe stdout/stderr; log en Application Support |
+| **Phase 12** (DMG/firma) | Distribución ad-hoc | C-1, C-4, C-5 | xattr -cr; firma bottom-up; instrucciones INSTALL.txt |
+| **Phase 12** (Sparkle) | Auto-update sin Developer ID | M-3 (clave EdDSA) | Backup clave privada; script de release automatizado |
 
 ---
 
-## Anti-Patterns del dominio (explícitamente evitar)
+## Integration Pitfalls: Swift ↔ Python Boundary
 
-| Anti-pattern | Por qué falla en MD i18n | En lugar de |
-|--------------|---------------------------|-------------|
-| Copiar/pegar en traductor web | Rompe estructura | API/CLI con parser |
-| Traducir README único sobrescribiendo | Pierde idioma fuente y SEO | `README.es.md` + selector (convención GitHub) |
-| Confiar solo en prompt «no traduzcas código» | LLM viola instrucciones | Segmentación determinista + validación |
-| Lotes enormes sin TM | Coste y inconsistencia | Fase A TM |
-| Desplegar sin auth «porque es interno» | Abuso y fuga | Proxy + API key |
-| Validar solo «a ojo» en preview | No escala | `validator.py` + CI (readme-i18n-sentinel pattern) |
+Pitfalls específicos del punto de contacto entre los dos mundos del stack.
+
+| Pitfall | Descripción | Severidad | Mitigación |
+|---------|-------------|-----------|------------|
+| **Puerto dinámico sin retry** | Swift hace GET a `:8000` antes de que Python haya hecho `bind()` | CRÍTICO | Loop de retry con backoff hasta `/api/languages` devuelve 200 |
+| **Encoding de paths con espacios** | `Bundle.main.bundlePath` puede contener espacios si el usuario renombra la app; `Process.arguments` los maneja, pero concatenación de strings en shell no | MEDIO | Siempre usar arrays de argumentos, nunca `sh -c "python \(path)"` |
+| **Inyección de API key en arguments** | Pasar API keys como argumentos CLI (visibles en `ps aux`) | CRÍTICO | Solo vía variables de entorno, nunca como `--api-key=sk-...` |
+| **Versión de protocolo HTTP** | uvicorn por defecto acepta HTTP/1.1; la app debería usar URLSession con HTTP/1.1 explícito para evitar upgrades a HTTP/2 que añaden complejidad | BAJO | `URLSessionConfiguration.httpAdditionalHeaders["Connection"] = "keep-alive"` |
+| **CORS en localhost** | Si la UI web corre en un WebView con origin `file://`, las peticiones fetch a `127.0.0.1:8000` pueden fallar por CORS | MEDIO | Añadir `allow_origins=["*"]` o `file://` en el middleware CORS cuando se detecte contexto bundle |
+| **stdin bloqueante** | Si Python lee stdin (ej. debugger, `input()`), el subprocess se cuelga esperando input que nunca llega | BAJO | Redirigir stdin a `/dev/null` en el Process de Swift |
 
 ---
 
-## What MD / localization projects get wrong (síntesis)
+## Anti-Patterns Explícitos
 
-1. **Confunden contenido con contenedor** — traducen sintaxis Markdown como si fuera prosa.  
-2. **Optimizan el LLM antes que el parser** — el 80 % de los rotos son estructurales, no semánticos.  
-3. **No validan después** — asumen que «casi igual» renderiza bien.  
-4. **Ignoran glosario/TM** en docs técnicas repetitivas.  
-5. **Mezclan producto local y servicio multiusuario** sin auth ni límites.  
-6. **Lotes opacos** — sin progreso, sin parcial, sin estimación de coste.  
-7. **Frontmatter y anclas** como detalle «fase 2» que nunca llega.  
-8. **Lista de idiomas marketing** ≠ capacidades del proveedor MT.  
-9. **Tests solo en parser** — el valor está en translate + API (este repo).  
-10. **Scripts y nombres de CLI** que no coinciden con automatización real.
-
-Este codebase ya evita (1) en gran medida vía `parser.py`; los huecos más peligrosos hoy son (3), (4), (7), (8), (9) según `CONCERNS.md` y `PROJECT.md` Active requirements.
+| Anti-pattern | Por qué falla | En lugar de |
+|--------------|---------------|-------------|
+| Firmar solo el ejecutable principal | Gatekeeper verifica cada Mach-O individualmente | Firma bottom-up de todas las `.dylib` y `.so` |
+| Usar `codesign --deep` como único paso de firma | `--deep` tiene bugs en subdirectorios no estándar | Script explícito que firma cada binario individualmente |
+| Confiar en que el usuario tiene Python en el sistema | La versión del sistema puede ser incompatible o no existir en macOS 15+ | Siempre usar python-build-standalone relocatable dentro del bundle |
+| Puerto fijo sin fallback | Conflicto garantizado con otras apps o instancias | Puerto dinámico o check + kill previo al bind |
+| API keys en `UserDefaults` o en el bundle | `UserDefaults` es texto plano en `~/Library/Preferences/` | Siempre Keychain con `AccessibleWhenUnlockedThisDeviceOnly` |
+| Iniciar FastAPI con `reload=True` en producción | File watcher en bundle read-only causa errores; consume recursos | `reload=False` fuera de modo desarrollo explícito |
+| Mostrar errores del subprocess con mensaje técnico | «RuntimeError: No module named fastapi» no es accionable para el usuario | Traducir errores del subprocess a mensajes de usuario + acción |
 
 ---
 
@@ -405,19 +479,16 @@ Este codebase ya evita (1) en gran medida vía `parser.py`; los huecos más peli
 
 | Source | Topic | Confidence |
 |--------|-------|------------|
-| `.planning/codebase/CONCERNS.md` | Deuda, bugs, seguridad, tests | HIGH (repo) |
-| `NOTEBOOK.md` | Roadmap fases A–E, criterios | HIGH (repo) |
-| `.planning/PROJECT.md` | Core value, alcance | HIGH (repo) |
-| `.planning/codebase/ARCHITECTURE.md` | Pipeline, límites | HIGH (repo) |
-| https://metalglot.com/blog/markdown/ | Plain-text trap, frontmatter, no-fly zones | MEDIUM |
-| https://blog.laratranslate.com/translate-a-markdown-file-online/ | Fences, links, frontmatter keys | MEDIUM |
-| https://azurefeeds.com/2026/04/30/fixing-broken-markdown-in-ai-translation-hardening-a-production-pipeline/ | Chunking, listas, fences atómicos, anclas | MEDIUM |
-| https://microsoft.github.io/genaiscript/blog/continuous-translations/ | Validación URLs, nodos, QA | HIGH |
-| https://github.com/sugurutakahashi-1234/readme-i18n-sentinel | CI estructura README i18n | MEDIUM |
-| https://dev.to/german_yamil_e021eef8710d/how-i-translated-a-technical-ebook-from-spanish-to-english-with-semantic-qa-in-python-3ie | Fence detector, QA ratio | MEDIUM |
-| https://dev.to/cloudyview/how-i-fixed-llm-structured-output-failures-in-a-powerpoint-translator-0-errors-on-1214-20g | JSON / tool-use batching | MEDIUM |
-| https://github.com/MicrosoftDocs/azure-ai-docs/blob/main/articles/ai-services/translator/document-translation/how-to-guides/create-use-glossaries.md | Glosarios, case, pares idioma | HIGH |
+| python-build-standalone releases (indygreg/python-build-standalone) | Variante relocatable, PYTHONHOME, paths compilados | HIGH (conocimiento de spec del proyecto) |
+| Apple Developer Documentation — Code Signing Guide | Firma bottom-up, quarantine xattr, Gatekeeper | HIGH |
+| Sparkle 2.x Documentation — `generate_keys`, EdDSA signing | Firma de updates sin Developer ID | HIGH |
+| macOS Security Overview — Keychain Services | `SecItemAdd`, atributos de acceso, ACL | HIGH |
+| NSTask / Process Apple documentation | `terminate()`, `waitUntilExit()`, Pipe, entorno | HIGH |
+| Gatekeeper behavior macOS 14/15 | Quarantine en bundles descargados, `xattr` | HIGH |
+| `.planning/PROJECT.md` v3.0 constraints | Stack, distribución ad-hoc, Keychain, Sparkle | HIGH (repo) |
+
+*Nota: WebSearch y WebFetch no disponibles en este contexto. Pitfalls basados en especificación técnica del dominio y documentación conocida del ecosistema macOS/Python (corte agosto 2025). Verificar comportamiento específico de macOS 15 Sequoia en CI antes de release.*
 
 ---
 
-*Investigación pitfalls: 2026-05-28. Consumir junto con `.planning/research/SUMMARY.md` (orquestador) para implicaciones de fases en ROADMAP.*
+*Investigación pitfalls macOS app: 2026-06-02. Consumir junto con `.planning/research/STACK.md` y `.planning/research/ARCHITECTURE.md` para implicaciones de fases en ROADMAP v3.0.*
