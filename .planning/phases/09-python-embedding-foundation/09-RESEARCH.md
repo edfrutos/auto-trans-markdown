@@ -731,22 +731,19 @@ WindowGroup {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Estructura del tarball en el release actual**
+1. **Estructura del tarball en el release actual** — RESOLVED: Mitigado con verificación en el build script
    - Qué sabemos: El asset existe en el release 20260510 con el nombre esperado y pesa 25 MB. El STACK.md previo indica que `install_only_stripped` es relocatable.
-   - Qué no está claro: No se ha descargado y verificado el contenido real del tarball. La asunción de `--strip-components=1` está basada en documentación y convention de la herramienta.
-   - Recomendación: El build script debe incluir `tar tzf | head -5` como verificación antes de la extracción, y abortar con mensaje de error si la estructura no es la esperada.
+   - Resolución: El build script incluye `tar tzf | head -1` con comprobación explícita del primer entry (`python/`). Si la estructura difiere, el script aborta con mensaje descriptivo antes de extraer. La asunción A1 queda cubierta por este gate en el propio script.
 
-2. **Comportamiento de `process.interrupt()` en uvicorn 0.48.0**
-   - Qué sabemos: uvicorn tiene handlers para SIGINT y SIGTERM para graceful shutdown. `process.interrupt()` envía SIGINT.
-   - Qué no está claro: Si uvicorn 0.48.0 (versión en uv.lock) tiene algún cambio en el handling de señales respecto a versiones anteriores.
-   - Recomendación: El smoke test del build script solo verifica `import fastapi`, no el ciclo de vida del servidor. El plan debe incluir una tarea de prueba de arranque+shutdown manual.
+2. **Comportamiento de `process.interrupt()` en uvicorn 0.48.0** — RESOLVED: Aceptado con verificación manual en Plan 09-03
+   - Qué sabemos: uvicorn tiene handlers para SIGINT y SIGTERM desde sus versiones iniciales; el código fuente de `uvicorn/server.py` registra ambas señales. `process.interrupt()` envía SIGINT.
+   - Resolución: El plan 09-03 incluye una tarea de checkpoint (human-verify) que prueba explícitamente el ciclo arranque+shutdown. Si el timeout de 5s no es suficiente, `process.terminate()` (SIGKILL) garantiza la terminación. El riesgo residual es aceptable para desarrollo (Phase 9).
 
-3. **Impacto de `PYTHONDONTWRITEBYTECODE` en rendimiento de arranque**
-   - Qué sabemos: Sin `.pyc`, Python recompila los módulos en cada arranque. Con la SSD de Apple Silicon esto es rápido.
-   - Qué no está claro: Si el tiempo de arranque con PYTHONDONTWRITEBYTECODE supera los 15 s del health check timeout.
-   - Recomendación: Verificar el tiempo de arranque en la primera tarea de integración. Si supera 10 s, eliminar la variable y aceptar el overhead de `.pyc` en el bundle.
+3. **Impacto de `PYTHONDONTWRITEBYTECODE` en rendimiento de arranque** — RESOLVED: Aceptado con gate manual de 10s
+   - Qué sabemos: Sin `.pyc`, Python recompila en cada arranque. Apple Silicon con NVMe hace este proceso rápido (~1-2s para módulos de FastAPI).
+   - Resolución: El plan 09-03 Task 3 (checkpoint:human-verify) incluye verificar el tiempo real de arranque. Si supera 10s del timeout de 15s, el ejecutor elimina `PYTHONDONTWRITEBYTECODE` del environment del Process. La variable se mantiene como primera elección (evita errores de escritura en bundle instalado en /Applications).
 
 ---
 

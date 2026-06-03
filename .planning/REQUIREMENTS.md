@@ -16,7 +16,7 @@ Milestone v3.0 añade una aplicación macOS nativa SwiftUI que embebe el servido
 - [ ] **BUNDLE-02**: El script `scripts/build-python-bundle.sh` verifica tras la instalación que `import fastapi` funciona desde la ruta del bundle (smoke test)
 - [ ] **BUNDLE-03**: El servidor uvicorn arranca en un puerto libre asignado dinámicamente por el kernel (`bind(port:0)`), pasado al subprocess como `--port`
 - [ ] **BUNDLE-04**: La app hace health check (`GET /api/languages`) con retry cada 500 ms y timeout de 15 s antes de mostrar la UI principal
-- [ ] **BUNDLE-05**: Al cerrar la app (ventana + Cmd+Q + Force Quit), el proceso Python recibe SIGTERM; si no termina en 5 s, recibe SIGKILL
+- [ ] **BUNDLE-05**: Al cerrar la app (ventana + Cmd+Q + Force Quit), el proceso Python recibe SIGINT (via `process.interrupt()` — uvicorn realiza graceful shutdown con SIGINT igual que con SIGTERM); si no termina en 5 s, recibe SIGKILL (via `process.terminate()`)
 
 ### CORE — App Shell & Navegación
 
@@ -104,20 +104,40 @@ Milestone v3.0 añade una aplicación macOS nativa SwiftUI que embebe el servido
 
 ## Traceability
 
-| REQ-ID | Phase | Plan |
-|--------|-------|------|
-| BUNDLE-01..05 | Phase 9 | TBD |
-| CORE-01..04 | Phase 10 | TBD |
-| AUTH-01..03 | Phase 10 | TBD |
-| EDITOR-01..02 | Phase 11 | TBD |
-| FILE-01..03 | Phase 11 | TBD |
-| BATCH-01..03 | Phase 11 | TBD |
-| NOTIF-01 | Phase 11 | TBD |
-| GLOS-01, TM-01 | Phase 11 | TBD |
-| MENU-01..02 | Phase 11 | TBD |
-| UPDATE-01 | Phase 12 | TBD |
-| DIST-01..03 | Phase 12 | TBD |
+| REQ-ID | Phase | Status | Plan estimado |
+|--------|-------|--------|---------------|
+| BUNDLE-01 | Phase 9 | Pending | 09-01-PLAN.md |
+| BUNDLE-02 | Phase 9 | Pending | 09-01-PLAN.md |
+| BUNDLE-03 | Phase 9 | Pending | 09-02-PLAN.md |
+| BUNDLE-04 | Phase 9 | Pending | 09-03-PLAN.md |
+| BUNDLE-05 | Phase 9 | Pending | 09-02-PLAN.md, 09-03-PLAN.md |
+| CORE-01 | Phase 10 | Pending | 10-01-PLAN.md |
+| CORE-02 | Phase 10 | Pending | 10-03-PLAN.md |
+| CORE-03 | Phase 10 | Pending | 10-02-PLAN.md |
+| CORE-04 | Phase 10 | Pending | 10-01-PLAN.md |
+| AUTH-01 | Phase 10 | Pending | 10-02-PLAN.md |
+| AUTH-02 | Phase 10 | Pending | 10-02-PLAN.md |
+| AUTH-03 | Phase 10 | Pending | 10-02-PLAN.md |
+| EDITOR-01 | Phase 11 | Pending | 11-01-PLAN.md |
+| EDITOR-02 | Phase 11 | Pending | 11-01-PLAN.md |
+| FILE-01 | Phase 11 | Pending | 11-01-PLAN.md |
+| FILE-02 | Phase 11 | Pending | 11-01-PLAN.md |
+| FILE-03 | Phase 11 | Pending | 11-01-PLAN.md |
+| BATCH-01 | Phase 11 | Pending | 11-02-PLAN.md |
+| BATCH-02 | Phase 11 | Pending | 11-02-PLAN.md |
+| BATCH-03 | Phase 11 | Pending | 11-02-PLAN.md |
+| NOTIF-01 | Phase 11 | Pending | 11-02-PLAN.md |
+| GLOS-01 | Phase 11 | Pending | 11-03-PLAN.md |
+| TM-01 | Phase 11 | Pending | 11-03-PLAN.md |
+| MENU-01 | Phase 11 | Pending | 11-04-PLAN.md |
+| MENU-02 | Phase 11 | Pending | 11-04-PLAN.md |
+| UPDATE-01 | Phase 12 | Pending | 12-01-PLAN.md |
+| DIST-01 | Phase 12 | Pending | 12-01-PLAN.md |
+| DIST-02 | Phase 12 | Pending | 12-02-PLAN.md |
+| DIST-03 | Phase 12 | Pending | 12-02-PLAN.md |
+
+**Coverage:** 26/26 requisitos v3.0 mapeados (100%) ✓
 
 ---
 
-*Last updated: 2026-06-02 — v3.0 requirements defined*
+*Last updated: 2026-06-02 — traceability completa con plan estimado por requisito*
