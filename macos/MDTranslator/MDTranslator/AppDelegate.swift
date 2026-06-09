@@ -11,7 +11,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Registrar hotkey global ⌥⇧M (NSEvent, necesita Accesibilidad). (HOTKEY-01)
+        // SERVICES-01: registrar el proveedor del servicio del sistema.
+        // Debe hacerse en applicationDidFinishLaunching, no en el body de SwiftUI.
+        NSApp.servicesProvider = ServiceHandler.shared
+        // Notificar a macOS que actualice el menú de servicios de todas las apps en curso.
+        NSUpdateDynamicServices()
+
+        // HOTKEY-01: registrar hotkey global ⌥⇧M (NSEvent, necesita Accesibilidad).
         GlobalHotkeyManager.shared.register()
     }
 

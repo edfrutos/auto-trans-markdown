@@ -22,8 +22,6 @@ struct MDTranslatorApp: App {
         // Compartir serverManager con AppDelegate y ServiceHandler.
         let _ = (delegate.serverManager = serverManager)
         let _ = (ServiceHandler.shared.serverManager = serverManager)
-        // Registrar el proveedor del servicio del sistema (SERVICES-01).
-        let _ = { NSApp.servicesProvider = ServiceHandler.shared }()
 
         // Solicitar permiso de notificaciones al primer arranque (macOS recuerda la decisión).
         let _ = { NotificationManager.shared.requestPermission() }()
