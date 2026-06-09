@@ -5,7 +5,7 @@
 - ✅ **v1.0 NOTEBOOK A→E** — Phases 0–5 (shipped 2026-05-29) → [archive](milestones/v1.0-ROADMAP.md)
 - ✅ **v2.0 Production Polish & PDF** — Phases 6–7 (shipped 2026-05-29) → [archive](milestones/v2.0-ROADMAP.md)
 - ⏸ **v2.1 Reproducible Dependencies** — Phase 8 (deferred → incorporated in v3.0 build system)
-- 🔄 **v3.0 macOS Native App** — Phases 9–12 (active)
+- ✅ **v3.0 macOS Native App** — Phases 9–12 (shipped 2026-06-09)
 
 ## Phases (v1.0 — shipped)
 
@@ -52,10 +52,10 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 
 ## Phases (v3.0 — active)
 
-- [ ] **Phase 9: Python Embedding Foundation** - El servidor FastAPI Python arranca dentro del .app bundle y responde al health check
-- [ ] **Phase 10: Swift App Shell & Auth** - La app Swift tiene navegación completa, gestión segura de API keys y ciclo de vida del servidor
-- [ ] **Phase 11: Translation Features & Native UI** - La app tiene paridad funcional con la web UI más las integraciones nativas macOS
-- [ ] **Phase 12: Distribution & Auto-Update** - `make dmg` produce un DMG listo para distribuir con firma ad-hoc, Sparkle y documentación
+- [x] **Phase 9: Python Embedding Foundation** - El servidor FastAPI Python arranca dentro del .app bundle y responde al health check
+- [x] **Phase 10: Swift App Shell & Auth** - La app Swift tiene navegación completa, gestión segura de API keys y ciclo de vida del servidor
+- [x] **Phase 11: Translation Features & Native UI** - La app tiene paridad funcional con la web UI más las integraciones nativas macOS
+- [x] **Phase 12: Distribution & Auto-Update** - `make dmg` produce un DMG listo para distribuir con firma ad-hoc, Sparkle y documentación
 
 ## Phase Details
 
@@ -121,10 +121,102 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 | 6. v1 Tech Debt Closure | 4/4 | Shipped | 2026-05-29 |
 | 7. PDF Export | 3/3 | Shipped | 2026-05-29 |
 | 8. Reproducible Dependencies | — | Deferred (absorbed in Phase 9) | - |
-| 9. Python Embedding Foundation | 0/3 | Not started | - |
-| 10. Swift App Shell & Auth | 0/3 | Not started | - |
-| 11. Translation Features & Native UI | 0/4 | Not started | - |
-| 12. Distribution & Auto-Update | 0/2 | Not started | - |
+| 9. Python Embedding Foundation | ✅ | Shipped | 2026-06-07 |
+| 10. Swift App Shell & Auth | ✅ | Shipped | 2026-06-07 |
+| 11. Translation Features & Native UI | ✅ | Shipped | 2026-06-07 |
+| 12. Distribution & Auto-Update | ✅ | Shipped | 2026-06-09 |
 
 ---
-*Last updated: 2026-06-02 — v3.0 roadmap created (4 phases, 9–12)*
+*Last updated: 2026-06-09 — v3.0 shipped (phases 9–12 complete, DMG + Sparkle)
+
+---
+
+## Milestones (v3.1)
+
+- 🔄 **v3.1 Native macOS Polish** — Phases 13–16 (planned)
+
+## Phases (v3.1 — planned)
+
+### Phase 13: Native macOS Integration
+**Goal**: La app se comporta como una app macOS de primera clase — acepta archivos desde el Finder, Dock y Services, y tiene historial de archivos recientes.
+**Depends on**: Phase 12
+**No requiere Apple Developer account.**
+**Requirements**:
+- `DOCK-01` — Arrastrar uno o varios `.md` al icono del Dock abre la ventana y los carga en el editor o lanza traducción en lote según el número de archivos
+- `DOCK-02` — `NSApplication.dockTile` muestra una barra de progreso durante traducciones largas (NSProgressIndicator en el Dock tile)
+- `RECENT-01` — Menú `File > Open Recent` estándar de macOS (NSDocumentController o manual con UserDefaults) con los últimos 10 archivos traducidos/abiertos
+- `DROP-01` — Arrastrar archivos `.md` directamente sobre la ventana principal (WKWebView) los inyecta en el editor
+- `SERVICES-01` — Entrada en el menú Services del sistema: "Traducir con MDTranslator" — recibe texto seleccionado de cualquier app, lo traduce al idioma configurado y devuelve el resultado al portapapeles
+
+**Success Criteria**:
+1. Arrastrar `readme.md` al Dock icon carga el contenido en el editor y activa el tab Editor
+2. Durante una traducción de lote > 5 archivos, el Dock icon muestra progreso visual
+3. `File > Open Recent` lista los últimos ficheros abiertos y los reabre al seleccionarlos
+4. El menú Services del sistema tiene "Traducir con MDTranslator" activo cuando hay texto seleccionado en cualquier app
+
+---
+
+### Phase 14: Keyboard & Workflow
+**Goal**: Usuarios avanzados pueden operar la app casi sin ratón y lanzar traducciones desde cualquier contexto.
+**Depends on**: Phase 13
+**No requiere Apple Developer account.**
+**Requirements**:
+- `HOTKEY-01` — Atajo global configurable (por defecto `⌥⇧T`) que activa MDTranslator desde cualquier app y enfoca el editor, usando `CGEventTap` o `MASShortcut`-style
+- `HOTKEY-02` — `⌘↩` (Cmd+Return) en el editor lanza la traducción sin necesidad de clic en el botón
+- `HOTKEY-03` — `⌘⇧C` copia el texto traducido del panel de resultado al portapapeles
+- `ESTIMATE-01` — Indicador en tiempo real de tokens estimados y coste aproximado conforme el usuario escribe/pega en el editor (usando `src/estimate.py` via la API `/api/translate/estimate`)
+- `UNDO-01` — `⌘Z` / `⌘⇧Z` funciona dentro del textarea del editor (actualmente WKWebView lo pierde)
+
+**Success Criteria**:
+1. Pulsando el atajo global desde Safari/VSCode/cualquier app, MDTranslator pasa a primer plano y el cursor está en el textarea
+2. `⌘↩` en el editor lanza la traducción igual que el botón "Traducir"
+3. El indicador de coste se actualiza < 300 ms tras cada keystroke (debounced 500 ms)
+
+---
+
+### Phase 15: Performance & Quality
+**Goal**: La app arranca en < 5 s en Mac Studio M2 y el bundle pesa < 120 MB, sin regresiones de funcionalidad.
+**Depends on**: Phase 13
+**No requiere Apple Developer account. Instruments es gratuito.**
+**Requirements**:
+- `PERF-01` — Profiling con Instruments (Time Profiler + Allocations) sobre la app ad-hoc firmada; documentar tiempo de arranque y RSS en reposo en `docs/performance.md`
+- `PERF-02` — Reducir tamaño del python-bundle eliminando tests, `__pycache__`, `.dist-info` innecesarios y binarios de plataformas no-arm64 del bundle de CPython standalone; objetivo < 120 MB (actualmente ~200 MB)
+- `PERF-03` — Arranque en frío < 5 s medido desde doble clic hasta que el health check pasa (actualmente ~8-10 s según la máquina)
+- `CRASH-01` — Integrar el Crash Reporter de Sparkle (`SentCrashReport` delegate) para recibir reports anónimos de crash opcionalmente
+- `TEST-01` — Script `make smoke-test` que lanza la app, espera el health check y ejecuta `curl /api/translate` con un texto de prueba; devuelve exit 0 si la traducción es correcta
+
+**Success Criteria**:
+1. `docs/performance.md` existe con métricas base de v3.0 y objetivos v3.1
+2. `python-bundle/` < 120 MB tras `scripts/build-python-bundle.sh`
+3. Arranque en frío < 5 s en Mac Studio M2 (medido 3 veces, mediana)
+4. `make smoke-test` pasa en CI (GitHub Actions con runner macOS)
+
+---
+
+### Phase 16: Distribution Upgrade *(requiere Apple Developer account)*
+**Goal**: La app pasa Gatekeeper sin clic derecho y puede distribuirse por el Mac App Store.
+**Depends on**: Phase 15
+**⚠️ Requiere Apple Developer Program ($99/año). Aplazar hasta renovar la cuenta.**
+**Requirements**:
+- `NOTARIZE-01` — `make notarize` llama a `xcrun notarytool` con las credenciales de App Store Connect y produce un `.dmg` notarizado que macOS abre sin advertencias
+- `SANDBOX-01` — La app funciona con App Sandbox activado (entitlements para subprocess, red saliente, acceso a ficheros con Security-Scoped Bookmarks)
+- `MAS-01` — La app pasa la validación de `xcrun altool --validate-app` para Mac App Store (sin APIs privadas, sin subprocess arbitrario — requiere rediseño del servidor embebido o usar XPC)
+- `HARDENED-01` — Hardened Runtime activado con solo los entitlements mínimos necesarios
+
+**Success Criteria**:
+1. Doble clic en el DMG notarizado en macOS 14/15 abre la app sin ningún diálogo de Gatekeeper
+2. `spctl --assess --verbose` devuelve `accepted` para la app
+
+---
+
+## Progress Table (v3.1)
+
+| Phase | Nombre | Estado |
+|-------|--------|--------|
+| 13 | Native macOS Integration | Planificado |
+| 14 | Keyboard & Workflow | Planificado |
+| 15 | Performance & Quality | Planificado |
+| 16 | Distribution Upgrade | En espera (Apple Dev account) |
+
+---
+*Last updated: 2026-06-09 — v3.1 roadmap creado (phases 13–16)*
