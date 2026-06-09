@@ -16,40 +16,39 @@ enum KeychainManager {
 
     // MARK: - API pública
 
-    // MARK: - API pública
-
-    /// Guarda o actualiza un valor en el Keychain para la cuenta dada.
-    /// Los items se crean con un ACL de acceso abierto (SecAccessCreate con trustedApps = nil)
-    /// para que cualquier binario de la misma máquina pueda leerlos sin prompt.
-    /// Esto es equivalente a "Permitir siempre" permanente, sin requerir entitlements especiales.
+    /// Guarda un valor en el Keychain para la cuenta dada.
+    /// Borra siempre el item existente antes de recrearlo, para garantizar
+    /// que el ACL sea abierto (SecAccessCreate con trustedApps = nil).
+    /// SecItemUpdate no cambia el ACL de un item ya existente: si el item
+    /// fue creado por un binario distinto (otro path de build), seguiría
+    /// prompting al leer desde el nuevo binario aunque el valor sea el mismo.
     static func save(account: String, value: String) throws {
         guard !value.isEmpty else {
             delete(account: account)
             return
         }
         let data = Data(value.utf8)
-        let baseQuery: [CFString: Any] = [
+
+        // Borrar el item anterior para poder recrear con ACL abierto.
+        delete(account: account)
+
+        // Crear con ACL abierto (trustedApps = nil → cualquier binario lee sin prompt).
+        // SecAccessCreate está deprecated desde macOS 10.10 pero es la única vía
+        // sin kSecUseDataProtectionKeychain, que requiere entitlements no disponibles
+        // con "Sign to Run Locally". El warning de compilación es esperado.
+        var access: SecAccess?
+        SecAccessCreate("\(service).\(account)" as CFString, nil, &access)   // deprecated OK
+
+        var addQuery: [CFString: Any] = [
             kSecClass:       kSecClassGenericPassword,
             kSecAttrService: service,
-            kSecAttrAccount: account
+            kSecAttrAccount: account,
+            kSecValueData:   data
         ]
-        // Actualizar si ya existe.
-        let status = SecItemUpdate(baseQuery as CFDictionary, [kSecValueData: data] as CFDictionary)
-        if status == errSecItemNotFound {
-            // Crear con ACL abierto (trustedApps = nil → cualquier app puede leer sin prompt).
-            // SecAccessCreate está deprecated desde macOS 10.10 pero es la única vía para
-            // un ACL permisivo sin kSecUseDataProtectionKeychain, que requiere entitlements
-            // no disponibles con "Sign to Run Locally". El warning de compilación es esperado.
-            var access: SecAccess?
-            SecAccessCreate("\(service).\(account)" as CFString, nil, &access)   // deprecated OK
-            var addQuery = baseQuery
-            addQuery[kSecValueData] = data
-            if let acc = access { addQuery[kSecAttrAccess] = acc }
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
-                throw KeychainError.saveFailed(addStatus)
-            }
-        } else if status != errSecSuccess {
+        if let acc = access { addQuery[kSecAttrAccess] = acc }
+
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        guard status == errSecSuccess else {
             throw KeychainError.saveFailed(status)
         }
     }

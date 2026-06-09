@@ -115,6 +115,8 @@ dev-install:
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO | tail -5
+	@echo "-> Firmando ad-hoc (necesario para Services en macOS 14+)..."
+	codesign --force --deep --sign - build/debug/$(APP_NAME).app
 	@echo "-> Instalando en $(INSTALL_DIR)/..."
 	@mkdir -p $(INSTALL_DIR)
 	@rm -rf $(INSTALL_APP)
