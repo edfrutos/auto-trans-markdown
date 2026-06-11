@@ -24,6 +24,25 @@ struct AppCommands: Commands {
                 NotificationCenter.default.post(name: WebView.triggerTranslateNotification, object: nil)
             }
             .keyboardShortcut(.return)
+            // HOTKEY-03: copiar el panel de resultado al portapapeles con ⌘⇧C
+            Button("Copiar traducción") {
+                NotificationCenter.default.post(name: WebView.copyResultNotification, object: nil)
+            }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+        }
+
+        // MARK: Undo / Redo — interceptar ⌘Z y ⌘⇧Z para redirigirlos al WKWebView (UNDO-01).
+        // SwiftUI captura ⌘Z antes de que llegue al WKWebView (que lo necesita para el textarea).
+        // Al reemplazar el CommandGroup de undoRedo, enviamos la acción via JS.
+        CommandGroup(replacing: .undoRedo) {
+            Button("Deshacer") {
+                NotificationCenter.default.post(name: WebView.undoNotification, object: nil)
+            }
+            .keyboardShortcut("z")
+            Button("Rehacer") {
+                NotificationCenter.default.post(name: WebView.redoNotification, object: nil)
+            }
+            .keyboardShortcut("z", modifiers: [.command, .shift])
         }
 
         // MARK: View — Recargar interfaz + Mostrar carpeta de salida

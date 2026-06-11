@@ -33,6 +33,22 @@ pip install -e .            # Instala el comando md-translate en .venv/bin/
 cp .env.example .env        # Edita y añade tu API key
 ```
 
+## App nativa macOS — Prerequisito
+
+La app nativa macOS (v3.0) requiere un bundle CPython autocontenido generado localmente. **Este directorio no se versiona** (`python-bundle/` está en `.gitignore`).
+
+**Requisitos previos:**
+- [`uv`](https://astral.sh/uv) instalado (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- Conexión a internet para la descarga inicial del tarball CPython (~30 MB)
+
+**Generar el bundle** (una sola vez, o cada vez que cambie `uv.lock`):
+
+```bash
+./scripts/build-python-bundle.sh
+```
+
+El script descarga CPython 3.11.15 standalone (Apple Silicon), instala todas las dependencias del proyecto y verifica con un smoke test que `import fastapi` funciona desde el intérprete embebido. Una vez completado, abre Xcode y compila el target `MDTranslator` (⌘B).
+
 ## Uso
 
 ```bash
@@ -244,6 +260,46 @@ Sin WeasyPrint: la CLI y la API responden con error claro (`503` en web).
 Variables opcionales: `TRANSLATION_FALLBACK=openai` (DeepL → OpenAI si falla cuota/idioma). Ver `.env.example`.
 
 Glosario por defecto en `glossary.yaml`; memoria SQLite en `data/translation_memory.db` (gitignored).
+
+## App nativa macOS (v3.1)
+
+La app integra el servidor FastAPI/uvicorn como subprocess embebido y expone la misma UI web vía `WKWebView`. No requiere Python del sistema ni venv activo.
+
+### Integraciones nativas (Phase 13)
+
+| Función | Detalle |
+|---------|---------|
+| **Dock drag & drop** | Arrastrar uno o varios `.md` al icono del Dock los carga en el editor o lanza traducción en lote |
+| **Barra de progreso Dock** | `NSProgressIndicator` en el Dock tile durante traducciones en lote |
+| **Open Recent** | `File > Open Recent` con los últimos archivos abiertos/traducidos |
+| **Drop en ventana** | Arrastrar `.md` directamente sobre la ventana los inyecta en el editor |
+| **Services** | Menú Services del sistema: «Traducir con MDTranslator» — recibe texto seleccionado de cualquier app (TextEdit, Safari…), lo traduce al idioma configurado y devuelve el resultado directamente en la selección |
+
+### Atajos de teclado (Phase 14)
+
+| Atajo | Acción |
+|-------|--------|
+| `⌥⇧T` | Activar MDTranslator desde cualquier app y enfocar el editor |
+| `⌘↩` | Lanzar traducción (equivale al botón «Traducir») |
+| `⌘⇧C` | Copiar el panel de traducción al portapapeles |
+| `⌘Z` / `⌘⇧Z` | Deshacer / rehacer en el textarea del editor |
+
+### Indicador de coste en tiempo real (Phase 14)
+
+Mientras escribes o pegas en el editor, aparece automáticamente bajo el área de texto una estimación de segmentos, caracteres y coste aproximado en USD — calculada vía `/api/translate/estimate` con debounce de 500 ms.
+
+### Build
+
+```bash
+# Paso 1 (una vez): generar el bundle CPython
+./scripts/build-python-bundle.sh
+
+# Paso 2: abrir en Xcode y compilar (⌘B + ⌘R)
+open macos/MDTranslator/MDTranslator.xcodeproj
+
+# Paso 3: actualización rápida tras cambios Swift o estáticos
+make dev-install
+```
 
 ## Arquitectura
 

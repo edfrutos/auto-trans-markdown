@@ -44,6 +44,7 @@ const state = {
   batchJobActive: false,
   eventSource: null,
   estimateController: null,
+  estimateEditorController: null,  // ESTIMATE-01
   batchFileStates: [],
   batchCompletedFiles: 0,
   batchActiveProgress: { done: 0, total: 1 },
@@ -87,6 +88,7 @@ const els = {
   batchInput: $('#batch-input'),
   dropZoneBatch: $('#drop-zone-batch'),
   batchList: $('#batch-list'),
+  estimateEditor: $('#estimate-editor'),  // ESTIMATE-01
   estimateBatch: $('#estimate-batch'),
   estimateWarn: $('#estimate-warn'),
   estimateFile: $('#estimate-file'),
@@ -642,6 +644,40 @@ async function fetchEstimateFile() {
 const scheduleEstimateBatch = debounce(fetchEstimateBatch, 300);
 const scheduleEstimateFile = debounce(fetchEstimateFile, 300);
 
+// ESTIMATE-01: estimación en tiempo real conforme el usuario escribe en el editor.
+// Usa cuerpo JSON (no FormData) con el contenido actual del textarea.
+async function fetchEstimateEditor() {
+  if (!els.estimateEditor) return;
+  const content = els.inputMd?.value?.trim();
+  if (!content) {
+    renderEstimateBlock(els.estimateEditor, null, null);
+    return;
+  }
+  state.estimateEditorController?.abort();
+  state.estimateEditorController = new AbortController();
+  try {
+    const res = await apiFetch('/api/translate/estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content,
+        target_lang: state.targetLangs[0] || 'es',
+        source_lang: els.sourceLang?.value || 'auto',
+      }),
+      signal: state.estimateEditorController.signal,
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    renderEstimateBlock(els.estimateEditor, null, data);
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      renderEstimateBlock(els.estimateEditor, null, null);
+    }
+  }
+}
+
+const scheduleEstimateEditor = debounce(fetchEstimateEditor, 500);
+
 function resetBatchJobUI() {
   state.batchJobId = null;
   state.batchJobActive = false;
@@ -1148,6 +1184,12 @@ async function translateEditor() {
           `Listo — ${langCount} idiomas traducidos (mostrando ${state.langNames[primary] || primary}).`
         );
       }
+      // Notificar a la app macOS (si está disponible) que la traducción terminó.
+      if (typeof window.__notifyTranslationDone === 'function') {
+        const fname = langCount > 1 ? 'traducciones.zip' : `traduccion.${primary}.md`;
+        const langs = state.targetLangs.map(l => state.langNames[l] || l).join(', ');
+        window.__notifyTranslationDone(fname, langs);
+      }
     } else {
       const result = data;
       state.draftSegments = [];
@@ -1165,6 +1207,15 @@ async function translateEditor() {
         segmentsTranslated: result.segments_translated,
         multiLang: false,
       });
+      // Notificar a la app macOS (si está disponible) que la traducción terminó.
+      if (typeof window.__notifyTranslationDone === 'function') {
+        const langs = state.langNames[primary] || primary;
+        window.__notifyTranslationDone(state.downloadName, langs);
+      }
+      // Guardar archivo traducido en carpeta de salida macOS (si está disponible).
+      if (typeof window.__saveTranslatedFile === 'function') {
+        window.__saveTranslatedFile(state.downloadName, result.content);
+      }
     }
   } catch (err) {
     showStatus(err.message, 'error');
@@ -1231,11 +1282,20 @@ async function translateFile() {
         segments: 0,
         chars: text.length,
       });
+      // Guardar archivo traducido en carpeta de salida macOS (si está disponible).
+      if (typeof window.__saveTranslatedFile === 'function') {
+        window.__saveTranslatedFile(state.downloadName, text);
+      }
     }
     els.btnDownload.classList.remove('hidden');
     if (!contentType.includes('zip')) {
       els.btnExportHtml?.classList.remove('hidden');
       els.btnExportPdf?.classList.remove('hidden');
+    }
+    // Notificar a la app macOS (si está disponible) que la traducción terminó.
+    if (typeof window.__notifyTranslationDone === 'function') {
+      const langs = state.targetLangs.map(l => state.langNames[l] || l).join(', ');
+      window.__notifyTranslationDone(state.downloadName, langs);
     }
   } catch (err) {
     showStatus(err.message, 'error');
@@ -1506,15 +1566,20 @@ function initApiTokenField() {
   if (els.apiTokenInput) els.apiTokenInput.value = getApiToken();
 }
 
+// ESTIMATE-01: actualizar estimación del editor al cambiar idioma origen/destino
+els.inputMd?.addEventListener('input', scheduleEstimateEditor);
+
 els.sourceLang.addEventListener('change', () => {
   if (state.glossary.loaded) loadGlossary();
   scheduleEstimateBatch();
   scheduleEstimateFile();
+  scheduleEstimateEditor();  // ESTIMATE-01
 });
 els.targetLang.addEventListener('change', () => {
   const code = els.targetLang.value;
   if (code) addTargetLang(code);
   els.targetLang.selectedIndex = 0;
+  scheduleEstimateEditor();  // ESTIMATE-01
 });
 
 els.btnCancelJob?.addEventListener('click', cancelBatchJob);

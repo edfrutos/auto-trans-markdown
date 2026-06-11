@@ -31,6 +31,12 @@ struct WebView: NSViewRepresentable {
     static let openMarkdownNotification = Notification.Name("openMarkdownContent")
     /// Notificación para disparar el botón Traducir vía ⌘↩ (HOTKEY-02).
     static let triggerTranslateNotification = Notification.Name("triggerTranslate")
+    /// Notificación para copiar el panel de resultado al portapapeles vía ⌘⇧C (HOTKEY-03).
+    static let copyResultNotification = Notification.Name("copyTranslationResult")
+    /// Notificación para deshacer en el editor WKWebView vía ⌘Z (UNDO-01).
+    static let undoNotification = Notification.Name("webViewUndo")
+    /// Notificación para rehacer en el editor WKWebView vía ⌘⇧Z (UNDO-01).
+    static let redoNotification = Notification.Name("webViewRedo")
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -112,6 +118,39 @@ struct WebView: NSViewRepresentable {
             webView?.reload()
         }
 
+        // HOTKEY-03: ⌘⇧C — copiar el panel de resultado al portapapeles
+        context.coordinator.copyResultObserver = NotificationCenter.default.addObserver(
+            forName: WebView.copyResultNotification,
+            object: nil,
+            queue: .main
+        ) { [weak webView] _ in
+            let js = """
+            (function() {
+                const val = document.getElementById('output-md')?.value;
+                if (val) navigator.clipboard.writeText(val);
+            })();
+            """
+            webView?.evaluateJavaScript(js, completionHandler: nil)
+        }
+
+        // UNDO-01: ⌘Z — deshacer en el textarea del editor
+        context.coordinator.undoObserver = NotificationCenter.default.addObserver(
+            forName: WebView.undoNotification,
+            object: nil,
+            queue: .main
+        ) { [weak webView] _ in
+            webView?.evaluateJavaScript("document.execCommand('undo')", completionHandler: nil)
+        }
+
+        // UNDO-01: ⌘⇧Z — rehacer en el textarea del editor
+        context.coordinator.redoObserver = NotificationCenter.default.addObserver(
+            forName: WebView.redoNotification,
+            object: nil,
+            queue: .main
+        ) { [weak webView] _ in
+            webView?.evaluateJavaScript("document.execCommand('redo')", completionHandler: nil)
+        }
+
         // Escuchar notificación de apertura de Markdown (Cmd+O desde Commands.swift)
         context.coordinator.markdownObserver = NotificationCenter.default.addObserver(
             forName: WebView.openMarkdownNotification,
@@ -163,12 +202,18 @@ struct WebView: NSViewRepresentable {
         var markdownObserver: NSObjectProtocol?
         var focusEditorObserver: NSObjectProtocol?
         var translateObserver: NSObjectProtocol?
+        var copyResultObserver: NSObjectProtocol?   // HOTKEY-03
+        var undoObserver: NSObjectProtocol?          // UNDO-01
+        var redoObserver: NSObjectProtocol?          // UNDO-01
 
         deinit {
             if let obs = reloadObserver       { NotificationCenter.default.removeObserver(obs) }
             if let obs = markdownObserver     { NotificationCenter.default.removeObserver(obs) }
             if let obs = focusEditorObserver  { NotificationCenter.default.removeObserver(obs) }
             if let obs = translateObserver    { NotificationCenter.default.removeObserver(obs) }
+            if let obs = copyResultObserver   { NotificationCenter.default.removeObserver(obs) }
+            if let obs = undoObserver         { NotificationCenter.default.removeObserver(obs) }
+            if let obs = redoObserver         { NotificationCenter.default.removeObserver(obs) }
         }
 
         // MARK: - WKScriptMessageHandler (mensajes JS→Swift)
@@ -226,6 +271,24 @@ struct WebView: NSViewRepresentable {
                 return
             }
             decisionHandler(.allow)
+        }
+
+        // MARK: - WKUIDelegate: confirm() nativo
+
+        /// WKWebView suprime confirm() por defecto; este delegate lo muestra como NSAlert nativo.
+        /// Sin él, clearMemory() retorna inmediatamente (confirm devuelve false) sin borrar nada.
+        func webView(
+            _ webView: WKWebView,
+            runJavaScriptConfirmPanelWithMessage message: String,
+            initiatedByFrame frame: WKFrameInfo,
+            completionHandler: @escaping (Bool) -> Void
+        ) {
+            let alert = NSAlert()
+            alert.messageText = message
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Aceptar")
+            alert.addButton(withTitle: "Cancelar")
+            completionHandler(alert.runModal() == .alertFirstButtonReturn)
         }
 
         // MARK: - WKUIDelegate (file picker nativo para <input type="file">)

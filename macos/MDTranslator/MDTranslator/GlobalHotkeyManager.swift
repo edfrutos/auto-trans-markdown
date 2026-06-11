@@ -84,11 +84,30 @@ final class GlobalHotkeyManager {
     /// `true` si el permiso de Accesibilidad está concedido.
     var isAccessibilityGranted: Bool { AXIsProcessTrusted() }
 
-    /// Abre Ajustes del Sistema en la pantalla de Accesibilidad.
+    /// Muestra el diálogo nativo del sistema para conceder Accesibilidad,
+    /// y abre Ajustes del Sistema como fallback por si el diálogo no aparece.
+    /// Más fiable que navegar directamente con una URL (los deep-links de
+    /// x-apple.systempreferences cambian entre versiones de macOS).
     func openAccessibilitySettings() {
-        NSWorkspace.shared.open(
-            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-        )
+        // 1. Diálogo nativo "MDTranslator quiere controlar este ordenador" —
+        //    la forma más directa: el usuario activa el toggle en el mismo diálogo.
+        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+        AXIsProcessTrustedWithOptions(opts as CFDictionary)
+
+        // 2. Abrir Ajustes del Sistema como fallback para que el usuario
+        //    pueda encontrar la sección manualmente si el diálogo no aparece.
+        //    Intentar varias URLs para compatibilidad macOS 13 / 14 / 15 / 26.
+        let candidates = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+            "x-apple.systempreferences:com.apple.preference.security"
+        ]
+        for str in candidates {
+            if let url = URL(string: str) {
+                NSWorkspace.shared.open(url)
+                break
+            }
+        }
     }
 
     /// Solicita el permiso mostrando el diálogo del sistema (solo si no está concedido).
