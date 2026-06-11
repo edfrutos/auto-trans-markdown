@@ -16,6 +16,8 @@ struct SettingsView: View {
     @State private var saved = false
     @State private var outputFolderName: String? = OutputManager.shared.outputFolderName
     @State private var accessibilityGranted = GlobalHotkeyManager.shared.isAccessibilityGranted
+    // CRASH-01: opt-in diagnóstico — persiste en UserDefaults a través de @AppStorage.
+    @AppStorage(CrashReporterManager.sendReportsKey) private var sendCrashReports = false
 
     private var canSave: Bool {
         !openAIKey.trimmingCharacters(in: .whitespaces).isEmpty ||
@@ -110,9 +112,21 @@ struct SettingsView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+
+                // CRASH-01: opt-in informes de diagnóstico anónimos.
+                Section {
+                    Toggle("Enviar informes de diagnóstico anónimos", isOn: $sendCrashReports)
+                    Text("Si la app se cierra de forma inesperada, en el siguiente arranque se ofrecerá enviar un informe al autor. No se incluyen API keys, contenido personal ni texto traducido.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Privacidad")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
             .formStyle(.grouped)
-            .frame(height: 400)
+            .frame(height: 490)
 
             // MARK: Banner Accesibilidad (hotkey ⌥⇧M)
             if !accessibilityGranted {

@@ -1,32 +1,73 @@
 // AppDelegate.swift — NSApplicationDelegate para shutdown limpio y apertura de archivos.
 // Phase 11: application(_:open:) para drag al Dock y "Abrir con…".
 // Phase 13: batch nativo multi-archivo vía API Python + Dock progress + Open Recent.
+// Phase 15: SERVICES-01 — nonisolated en métodos @objc del delegate para evitar thunk
+//   async de Swift 6. Sin @MainActor a nivel de clase para compatibilidad con
+//   @NSApplicationDelegateAdaptor en Xcode 17/Swift 6.
 import AppKit
 
+/// AppDelegate sin @MainActor a nivel de clase para que @NSApplicationDelegateAdaptor
+/// la instancie correctamente en Swift 6/Xcode 17.
+///
+/// Patrón aplicado:
+/// - Métodos @objc del delegate → nonisolated (thunk ObjC síncrono, sin actor hop)
+/// - Cuerpo de esos métodos → MainActor.assumeIsolated { } (acceso seguro a APIs UIKit/AppKit)
+/// - Helpers privados con acceso a AppKit/NSApp → @MainActor explícito
 class AppDelegate: NSObject, NSApplicationDelegate {
     /// Referencia al ServerManager compartido con el App struct.
     var serverManager: ServerManager?
 
+    override init() {
+        super.init()
+        // Diagnóstico SERVICES-01: escritura directa a archivo (no depende de unified logging).
+        // Comprueba con: cat /tmp/md-appdelegate-init.txt
+        let marker = "/tmp/md-appdelegate-init.txt"
+        let text = "AppDelegate.init() called at \(Date())\n"
+        try? text.write(toFile: marker, atomically: true, encoding: .utf8)
+        NSLog("[AppDelegate] init() — instancia creada por @NSApplicationDelegateAdaptor")
+    }
+
     // MARK: - Launch
 
-    @MainActor
+    /// nonisolated → Swift 6 genera thunk ObjC síncrono (no async Task).
+    /// MainActor.assumeIsolated → acceso seguro a NSApp, etc.;
+    /// NSApplicationDelegate siempre llama en hilo principal.
+    nonisolated
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // SERVICES-01: registrar el proveedor del servicio del sistema.
-        // Debe hacerse en applicationDidFinishLaunching, no en el body de SwiftUI.
-        NSApp.servicesProvider = ServiceHandler.shared
-        // Notificar a macOS que actualice el menú de servicios de todas las apps en curso.
-        NSUpdateDynamicServices()
-
-        // HOTKEY-01: registrar hotkey global ⌥⇧M (NSEvent, necesita Accesibilidad).
-        GlobalHotkeyManager.shared.register()
+        // Diagnóstico: escritura directa antes del actor hop.
+        // Comprueba con: cat /tmp/md-appdelegate-adfl.txt
+        let marker = "/tmp/md-appdelegate-adfl.txt"
+        let text = "applicationDidFinishLaunching called at \(Date())\n"
+        try? text.write(toFile: marker, atomically: true, encoding: .utf8)
+        MainActor.assumeIsolated {
+            // SERVICES-01: registrar el proveedor del servicio del sistema.
+            // MDTranslatorApp.body también lo hace como respaldo.
+            NSApp.servicesProvider = ServiceHandler.shared
+            NSLog("[AppDelegate] servicesProvider: %@",
+                  String(describing: type(of: NSApp.servicesProvider)))
+            NSUpdateDynamicServices()
+            NSLog("[AppDelegate] applicationDidFinishLaunching OK")
+            // HOTKEY-01: registrar hotkey global ⌥⇧M (NSEvent, necesita Accesibilidad).
+            GlobalHotkeyManager.shared.register()
+            // CRASH-01: inicializar el crash reporter (detecta cierre anómalo de la sesión
+            // anterior) y mostrar alerta opt-in si el usuario lo ha habilitado.
+            // checkAndPromptIfNeeded() aplica un delay de 2 s para no bloquear el arranque.
+            _ = CrashReporterManager.shared
+            CrashReporterManager.shared.checkAndPromptIfNeeded()
+        }
     }
 
     // MARK: - Shutdown
 
-    @MainActor
+    nonisolated
     func applicationWillTerminate(_ notification: Notification) {
-        GlobalHotkeyManager.shared.unregister()   // liberar monitor de eventos ⌥⇧M
-        serverManager?.stop()
+        MainActor.assumeIsolated {
+            GlobalHotkeyManager.shared.unregister()
+            serverManager?.stop()
+            // CRASH-01: marcar salida limpia para que el siguiente arranque no lo
+            // detecte como crash. Debe hacerse ANTES de que el proceso termine.
+            CrashReporterManager.shared.markCleanExit()
+        }
         Thread.sleep(forTimeInterval: 1.0)
         // Force Quit no llama a este método.
         // La limpieza de huérfanos se gestiona en ServerManager.init() via /tmp/md-translator-python.pid
@@ -34,27 +75,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Apertura de archivos (Dock drag & drop, "Abrir con…", Open Recent, doble clic Finder)
 
+    nonisolated
     func application(_ application: NSApplication, open urls: [URL]) {
-        let markdownURLs = urls.filter { $0.pathExtension.lowercased() == "md" }
-        guard !markdownURLs.isEmpty else { return }
+        MainActor.assumeIsolated {
+            let markdownURLs = urls.filter { $0.pathExtension.lowercased() == "md" }
+            guard !markdownURLs.isEmpty else { return }
 
-        // Traer la ventana principal al frente
-        NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate(ignoringOtherApps: true)
+            markdownURLs.forEach { NSDocumentController.shared.noteNewRecentDocumentURL($0) }
 
-        // Registrar en Open Recent (RECENT-01)
-        markdownURLs.forEach { NSDocumentController.shared.noteNewRecentDocumentURL($0) }
-
-        if markdownURLs.count == 1 {
-            // Un solo archivo → cargar en el editor (comportamiento original)
-            loadInEditor(url: markdownURLs[0])
-        } else {
-            // Múltiples archivos → confirmar y lanzar batch nativo (DOCK-01)
-            confirmAndBatch(markdownURLs)
+            if markdownURLs.count == 1 {
+                loadInEditor(url: markdownURLs[0])
+            } else {
+                confirmAndBatch(markdownURLs)
+            }
         }
     }
 
     // MARK: - Privado: cargar en editor
 
+    @MainActor
     private func loadInEditor(url: URL) {
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
@@ -63,12 +103,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 object: content
             )
         } catch {
-            presentError("No se pudo abrir el archivo", detail: "\(url.lastPathComponent): \(error.localizedDescription)")
+            presentError("No se pudo abrir el archivo",
+                         detail: "\(url.lastPathComponent): \(error.localizedDescription)")
         }
     }
 
     // MARK: - Privado: batch multi-archivo
 
+    @MainActor
     private func confirmAndBatch(_ urls: [URL]) {
         let alert = NSAlert()
         alert.messageText = "Traducir \(urls.count) archivos"
@@ -83,7 +125,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         guard let port = serverManager?.serverPort,
               serverManager?.state == .running else {
-            presentError("Servidor no disponible", detail: "El servidor Python aún no ha arrancado. Vuelve a intentarlo en unos segundos.")
+            presentError("Servidor no disponible",
+                         detail: "El servidor Python aún no ha arrancado. Vuelve a intentarlo en unos segundos.")
             return
         }
         let targetLang = UserDefaults.standard.string(forKey: "defaultTargetLang") ?? "es"
@@ -124,19 +167,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DockProgressManager.shared.hideProgress()
         DockProgressManager.shared.setBadge(nil)
 
-        // Notificación del sistema
-        let summary = saved.isEmpty ? "Sin traducciones" : "\(saved.count) archivo\(saved.count == 1 ? "" : "s") traducido\(saved.count == 1 ? "" : "s")"
+        let summary = saved.isEmpty
+            ? "Sin traducciones"
+            : "\(saved.count) archivo\(saved.count == 1 ? "" : "s") traducido\(saved.count == 1 ? "" : "s")"
         NotificationManager.shared.sendTranslationDone(filename: summary, langs: targetLang)
 
-        // Revelar carpeta de salida si hubo éxito
         if !saved.isEmpty { OutputManager.shared.revealOutputFolder() }
 
-        // Resumen de errores
         if !failed.isEmpty {
-            presentError(
-                "Algunos archivos fallaron",
-                detail: "No se pudo traducir: \(failed.joined(separator: ", "))"
-            )
+            presentError("Algunos archivos fallaron",
+                         detail: "No se pudo traducir: \(failed.joined(separator: ", "))")
         }
     }
 
@@ -146,16 +186,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var req = URLRequest(url: url, timeoutInterval: 120)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: String] = ["text": text, "target_lang": targetLang]
+        let body: [String: String] = ["content": text, "target_lang": targetLang]
         req.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
-        // La respuesta es {"translation": "...", ...}
-        let json = try JSONDecoder().decode([String: String].self, from: data)
-        guard let translation = json["translation"] else {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let translation = json["content"] as? String else {
             throw URLError(.cannotParseResponse)
         }
         return translation
@@ -163,12 +202,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Helpers
 
+    @MainActor
     private func targetLangLabel() -> String {
         let code = UserDefaults.standard.string(forKey: "defaultTargetLang") ?? "es"
         let locale = Locale(identifier: "es")
         return locale.localizedString(forLanguageCode: code) ?? code.uppercased()
     }
 
+    @MainActor
     private func presentError(_ title: String, detail: String) {
         let alert = NSAlert()
         alert.messageText = title

@@ -288,10 +288,25 @@ La app integra el servidor FastAPI/uvicorn como subprocess embebido y expone la 
 
 Mientras escribes o pegas en el editor, aparece automáticamente bajo el área de texto una estimación de segmentos, caracteres y coste aproximado en USD — calculada vía `/api/translate/estimate` con debounce de 500 ms.
 
+### Diagnóstico y crash reporter (Phase 15)
+
+Si la app se cierra de forma inesperada, en el siguiente arranque aparecerá una alerta
+ofreciendo enviar un informe anónimo al autor (opt-in en **Configuración → Privacidad**).
+El informe abre un issue de GitHub pre-relleno con las últimas líneas del log del servidor
+y la versión de macOS — sin API keys ni contenido personal.
+
+### Smoke test
+
+```bash
+# Verificar que el servidor arranca y el pipeline funciona (sin API key real):
+source .venv/bin/activate
+make smoke-test
+```
+
 ### Build
 
 ```bash
-# Paso 1 (una vez): generar el bundle CPython
+# Paso 1 (una vez): generar el bundle CPython (< 120 MB tras limpieza automática)
 ./scripts/build-python-bundle.sh
 
 # Paso 2: abrir en Xcode y compilar (⌘B + ⌘R)

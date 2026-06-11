@@ -215,8 +215,8 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 |-------|--------|--------|------------|
 | 13 | Native macOS Integration | ✅ Shipped | 2026-06-10 |
 | 14 | Keyboard & Workflow | ✅ Shipped | 2026-06-11 |
-| 15 | Performance & Quality | Planificado | — |
+| 15 | Performance & Quality | ✅ Shipped | 2026-06-11 |
 | 16 | Distribution Upgrade | En espera (Apple Dev account) | — |
 
 ---
-*Last updated: 2026-06-11 — Phase 14 complete (HOTKEY-03, ESTIMATE-01, UNDO-01)*
+*Last updated: 2026-06-11 — Phase 15 complete (PERF-01, PERF-02, PERF-03, CRASH-01, TEST-01)*

@@ -21,13 +21,19 @@ ZIP          := build/$(APP_NAME)-$(VERSION).zip
 DMG          := build/$(APP_NAME)-$(VERSION).dmg
 APPCAST      := docs/appcast.xml
 SPARKLE_BIN  := /tmp/sparkle/bin
+# ~/Applications/ está en el volumen del sistema (no en un volumen externo),
+# por lo que pbs sí registra sus servicios. /Volumes/ESSAGER/ (externo) es el
+# que pbs ignora, no ~/Applications/.
+# El build via xcodebuild CLI no incluye el python-bundle (el Run Script de
+# Xcode no se ejecuta igual desde CLI). Por eso dev-install registra la app
+# que Xcode ya construyó en ~/Applications/, en lugar de copiar desde build/.
 INSTALL_DIR  := $(HOME)/Applications
 INSTALL_APP  := $(INSTALL_DIR)/$(APP_NAME).app
 LSREGISTER   := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
 # ---------------------------------------------------------------------------
 
-.PHONY: all build sign zip dmg appcast dev-install register-service clean
+.PHONY: all build sign zip dmg appcast dev-install register-service clean smoke-test
 
 all: dmg
 
@@ -100,11 +106,17 @@ appcast: zip
 	echo "  length=\"$$ZIP_SIZE\""; \
 	echo "  url=\"https://github.com/edefrutos/auto-trans-markdown/releases/download/v$(VERSION)/$(APP_NAME)-$(VERSION).zip\""
 
-## Instalar build Debug en ~/Applications/ y registrar el servicio del sistema.
-## Necesario para que "Traducir con MDTranslator" aparezca en Services de otras apps.
-## Despues de ejecutar: reinicia TextEdit u otra app para ver el item.
+## Actualiza el binario e Info.plist en ~/Applications/ con la build CLI (sin python-bundle),
+## preservando el python-bundle que Xcode ya instaló ahi.
+## Flujo: xcodebuild -> patch binario+plist en ~/Applications/ -> firma -> registra.
+## Requiere que ~/Applications/MDTranslator.app exista con python-bundle (build de Xcode).
 dev-install:
-	@echo "-> Compilando Debug..."
+	@if [ ! -d "$(INSTALL_APP)" ]; then \
+		echo "ERROR: $(INSTALL_APP) no existe."; \
+		echo "Construye primero desde Xcode (cmd+B) y ejecuta la app una vez."; \
+		exit 1; \
+	fi
+	@echo "-> Compilando Swift (Debug) para obtener binario e Info.plist actualizados..."
 	@mkdir -p build/debug
 	xcodebuild build \
 		-project "$(PROJECT)" \
@@ -114,25 +126,87 @@ dev-install:
 		CONFIGURATION_BUILD_DIR="$(PWD)/build/debug" \
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
-		CODE_SIGNING_ALLOWED=NO | tail -5
-	@echo "-> Firmando ad-hoc (necesario para Services en macOS 14+)..."
-	codesign --force --deep --sign - build/debug/$(APP_NAME).app
-	@echo "-> Instalando en $(INSTALL_DIR)/..."
-	@mkdir -p $(INSTALL_DIR)
-	@rm -rf $(INSTALL_APP)
-	@cp -R build/debug/$(APP_NAME).app $(INSTALL_APP)
+		CODE_SIGNING_ALLOWED=NO \
+		ENABLE_DEBUG_DYLIB=NO | tail -5
+	@echo "-> Parcheando binario e Info.plist en $(INSTALL_APP)..."
+	cp "build/debug/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)" \
+	   "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"
+	cp "build/debug/$(APP_NAME).app/Contents/Info.plist" \
+	   "$(INSTALL_APP)/Contents/Info.plist"
+	@echo "-> Firmando ad-hoc..."
+	codesign --force --deep --sign - "$(INSTALL_APP)"
 	@$(MAKE) register-service
 
 ## Registrar el servicio del sistema para la app en ~/Applications/.
+## Desregistra explícitamente paths de build (volumen externo ESSAGER)
+## para que macOS use solo la copia en el volumen del sistema.
 register-service:
+	@echo "-> Desregistrando paths de build anteriores..."
+	-$(LSREGISTER) -u "$(PWD)/build/debug/$(APP_NAME).app" 2>/dev/null || true
+	-$(LSREGISTER) -u "$(PWD)/build/$(APP_NAME).app" 2>/dev/null || true
 	@echo "-> Registrando $(INSTALL_APP) en Launch Services..."
-	$(LSREGISTER) -f -R -trusted $(INSTALL_APP)
+	$(LSREGISTER) -f -trusted $(INSTALL_APP)
 	@echo "-> Flushing pbs..."
 	@/System/Library/CoreServices/pbs -flush 2>/dev/null || true
 	@echo ""
 	@echo "OK Servicio registrado."
 	@echo "   Reinicia TextEdit para ver Traducir con MDTranslator en Services."
 	@echo "   Abre MDTranslator desde $(INSTALL_APP) para probar."
+
+## smoke-test (TEST-01): arranca el servidor, verifica health check y el endpoint estimate.
+## No requiere API key real — /api/translate/estimate devuelve 200 (con key) o 503 (sin key).
+## Uso: make smoke-test
+## Requiere .venv activo: source .venv/bin/activate && make smoke-test
+smoke-test:
+	@echo "-> smoke-test Phase 15 — TEST-01"
+	@PYTHON="$$([ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)"; \
+	TEST_PORT=15499; \
+	LOGFILE=/tmp/md-translate-smoke.log; \
+	echo "   python: $$PYTHON | puerto: $$TEST_PORT | log: $$LOGFILE"; \
+	\
+	echo "-> Arrancando servidor Python..."; \
+	$$PYTHON -m uvicorn src.main:app \
+	    --port $$TEST_PORT --host 127.0.0.1 \
+	    --no-access-log --log-level warning > "$$LOGFILE" 2>&1 & \
+	SERVER_PID=$$!; \
+	trap "echo '   cleanup PID $$SERVER_PID'; kill $$SERVER_PID 2>/dev/null; wait $$SERVER_PID 2>/dev/null || true" EXIT INT TERM; \
+	\
+	echo "-> Health check /api/languages (máx 15 s, poll 500 ms)..."; \
+	READY=0; i=0; \
+	while [ $$i -lt 30 ]; do \
+	    sleep 0.5; \
+	    HTTP=$$(curl -sf -o /dev/null -w "%{http_code}" \
+	        http://127.0.0.1:$$TEST_PORT/api/languages 2>/dev/null || echo 0); \
+	    if [ "$$HTTP" = "200" ]; then READY=1; break; fi; \
+	    i=$$((i+1)); \
+	done; \
+	\
+	if [ $$READY -eq 0 ]; then \
+	    echo "FAIL: servidor no respondió en 15 s"; \
+	    echo "--- log ---"; tail -20 "$$LOGFILE" 2>/dev/null || true; \
+	    exit 1; \
+	fi; \
+	echo "   PASS  GET /api/languages  → 200"; \
+	\
+	echo "-> POST /api/translate/estimate (no requiere API key real)..."; \
+	EST=$$(curl -sf -o /tmp/md-smoke-est.json -w "%{http_code}" \
+	    -X POST http://127.0.0.1:$$TEST_PORT/api/translate/estimate \
+	    -H "Content-Type: application/json" \
+	    -d '{"content":"# Hola mundo\n\nEsto es una prueba de smoke test.","target_lang":"en"}' \
+	    2>/dev/null || echo 0); \
+	if [ "$$EST" = "200" ]; then \
+	    echo "   PASS  POST /api/translate/estimate  → 200"; \
+	    cat /tmp/md-smoke-est.json; printf "\n"; \
+	elif [ "$$EST" = "503" ]; then \
+	    echo "   SKIP  POST /api/translate/estimate  → 503 (API key no configurada — normal en CI)"; \
+	else \
+	    echo "FAIL: /api/translate/estimate → $$EST (esperado 200 o 503)"; \
+	    cat /tmp/md-smoke-est.json 2>/dev/null || true; \
+	    exit 1; \
+	fi; \
+	\
+	echo ""; \
+	echo "smoke-test OK"
 
 ## Limpiar artefactos de build
 clean:
