@@ -29,7 +29,7 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/edefrutos/auto-trans-markdown/main/docs/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/edfrutos/auto-trans-markdown/main/docs/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>pdjSqDBJV9/d5LtjgvRvAQ+FzR4V7K/Q2qCaF2Zjrlk=</string>
 	<key>SUEnableAutomaticChecks</key>
@@ -69,6 +69,12 @@
 			<key>NSPortName</key>
 			<string>MDTranslator</string>
 			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>NSStringPboardType</string>
+			</array>
+			<!-- NSReturnTypes: la traducción reemplaza la selección directamente en la app origen -->
+			<key>NSReturnTypes</key>
 			<array>
 				<string>public.utf8-plain-text</string>
 				<string>NSStringPboardType</string>

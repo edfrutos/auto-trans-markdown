@@ -30,29 +30,36 @@ final class GlobalHotkeyManager {
     // MARK: - Registro
 
     /// Intenta registrar el hotkey global ⌥⇧M.
-    /// Si falta el permiso de Accesibilidad publica `hotkeyNeedsAccessibility`.
+    /// Es idempotente: puede llamarse varias veces sin duplicar monitores.
+    /// - El monitor local se crea una sola vez (no requiere Accesibilidad).
+    /// - El monitor global se crea cuando AX está concedida y aún no existe.
+    ///   Llamar cuando la app se activa permite registrarlo justo después de que
+    ///   el usuario conceda el permiso sin necesidad de reiniciar la app.
     func register() {
-        guard globalMonitor == nil else { return }
-
         // Monitor local: siempre activo, no requiere Accesibilidad.
-        // Permite probar el atajo con MDTranslator en primer plano.
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if self.isHotKey(event) {
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .globalHotkeyActivate, object: nil)
+        // Solo se crea una vez — guard evita duplicados.
+        if localMonitor == nil {
+            localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self else { return event }
+                if self.isHotKey(event) {
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .globalHotkeyActivate, object: nil)
+                    }
                 }
+                return event  // no consumir el evento
             }
-            return event  // no consumir el evento
         }
 
+        // Monitor global: requiere Accesibilidad. Solo se crea si AX está concedida y aún no existe.
+        // Si AX no está concedida, publicar notificación para que la UI muestre el banner.
+        guard globalMonitor == nil else { return }
         guard AXIsProcessTrusted() else {
             NotificationCenter.default.post(name: .hotkeyNeedsAccessibility, object: nil)
             return
         }
 
-        // Monitor global: eventos de cualquier otra app.
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
-            guard self.isHotKey(event) else { return }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.isHotKey(event) else { return }
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .globalHotkeyActivate, object: nil)
             }

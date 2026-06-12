@@ -20,21 +20,21 @@
 		699862752FD0B0B700582E86 /* MDTranslator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MDTranslator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		699862AA2FD0B0B800582E86 /* Info.plist excluded from Resources */ = {
+		699862AA2FD0B0B800582E86 /* Exceptions for "MDTranslator" folder in "MDTranslator" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Info.plist",
+				Info.plist,
 			);
 			target = 699862742FD0B0B700582E86 /* MDTranslator */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		699862772FD0B0B700582E86 /* MDTranslator */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				699862AA2FD0B0B800582E86 /* Info.plist excluded from Resources */,
+				699862AA2FD0B0B800582E86 /* Exceptions for "MDTranslator" folder in "MDTranslator" target */,
 			);
 			path = MDTranslator;
 			sourceTree = "<group>";
@@ -323,7 +323,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = MDTranslator;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_SUEnableAutomaticChecks = YES;
-				INFOPLIST_KEY_SUFeedURL = "https://raw.githubusercontent.com/edefrutos/auto-trans-markdown/main/docs/appcast.xml";
+				INFOPLIST_KEY_SUFeedURL = "https://raw.githubusercontent.com/edfrutos/auto-trans-markdown/main/docs/appcast.xml";
 				INFOPLIST_KEY_SUPublicEDKey = "pdjSqDBJV9/d5LtjgvRvAQ+FzR4V7K/Q2qCaF2Zjrlk=";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -359,7 +359,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = MDTranslator;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_SUEnableAutomaticChecks = YES;
-				INFOPLIST_KEY_SUFeedURL = "https://raw.githubusercontent.com/edefrutos/auto-trans-markdown/main/docs/appcast.xml";
+				INFOPLIST_KEY_SUFeedURL = "https://raw.githubusercontent.com/edfrutos/auto-trans-markdown/main/docs/appcast.xml";
 				INFOPLIST_KEY_SUPublicEDKey = "pdjSqDBJV9/d5LtjgvRvAQ+FzR4V7K/Q2qCaF2Zjrlk=";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -1,0 +1,47 @@
+MDTranslator — Instrucciones de instalación
+============================================
+
+REQUISITOS
+----------
+• macOS 14.0 (Sonoma) o superior
+• Al menos una API key: OpenAI (https://platform.openai.com) o DeepL (https://www.deepl.com/pro-api)
+
+INSTALACIÓN
+-----------
+1. Abre el DMG haciendo doble clic.
+2. Arrastra MDTranslator.app a la carpeta Applications.
+3. Expulsa el DMG.
+
+PRIMERA EJECUCIÓN — bypass de Gatekeeper (macOS 14 Sonoma)
+-----------------------------------------------------------
+Esta app no está notarizada por Apple. Para abrirla la primera vez:
+
+  Opción A (recomendada):
+    1. Haz clic DERECHO sobre MDTranslator.app en Finder.
+    2. Selecciona "Abrir" en el menú contextual.
+    3. En el diálogo que aparece, haz clic en "Abrir".
+    La app recordará tu decisión en adelante.
+
+  Opción B (Terminal):
+    xattr -dr com.apple.quarantine /Applications/MDTranslator.app
+
+PRIMERA EJECUCIÓN — bypass de Gatekeeper (macOS 15 Sequoia)
+------------------------------------------------------------
+En macOS 15 el proceso es el mismo (clic derecho → Abrir), pero si
+el sistema bloquea la app igualmente:
+
+  1. Abre Preferencias del Sistema → Privacidad y Seguridad.
+  2. En la sección "Seguridad", busca el mensaje sobre MDTranslator.
+  3. Haz clic en "Abrir igualmente".
+
+CONFIGURACIÓN
+-------------
+Al primer arranque, MDTranslator pedirá tu API key:
+• OpenAI: empieza por "sk-..."
+• DeepL: disponible en tu cuenta DeepL Pro
+
+Las claves se guardan en el Keychain de macOS — nunca en disco.
+
+SOPORTE
+-------
+https://github.com/edfrutos/auto-trans-markdown/issues

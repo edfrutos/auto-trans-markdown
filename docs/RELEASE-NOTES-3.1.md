@@ -58,4 +58,4 @@ La app comprueba actualizaciones automáticamente (Sparkle, firma EdDSA). Quiene
 
 ## Soporte
 
-Incidencias: https://github.com/edefrutos/auto-trans-markdown/issues
+Incidencias: https://github.com/edfrutos/auto-trans-markdown/issues

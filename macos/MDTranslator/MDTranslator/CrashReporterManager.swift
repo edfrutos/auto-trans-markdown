@@ -112,7 +112,7 @@ final class CrashReporterManager {
         // Abrir una URL de GitHub Issues pre-rellena. No requiere ningún backend.
         let title   = "Crash report v\(version)"
         let encoded = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let urlString = "https://github.com/edefrutos/auto-trans-markdown/issues/new"
+        let urlString = "https://github.com/edfrutos/auto-trans-markdown/issues/new"
             + "?title=\(title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
             + "&body=\(encoded)"
 

@@ -23,6 +23,18 @@ struct MDTranslatorApp: App {
         let _ = (delegate.serverManager = serverManager)
         let _ = (ServiceHandler.shared.serverManager = serverManager)
 
+        // SERVICES-01 (respaldo): garantizar que servicesProvider quede registrado una vez.
+        // Usa flag estático para que sea inmune a re-evaluaciones de body y a que SwiftUI
+        // inicialice NSApp.servicesProvider internamente (lo que rompería el guard == nil).
+        let _ = {
+            struct Once { static var done = false }
+            guard !Once.done else { return }
+            Once.done = true
+            NSApp.servicesProvider = ServiceHandler.shared
+            NSUpdateDynamicServices()
+            NSLog("[App] servicesProvider = ServiceHandler.shared (body respaldo)")
+        }()
+
         // Solicitar permiso de notificaciones al primer arranque (macOS recuerda la decisión).
         let _ = { NotificationManager.shared.requestPermission() }()
 
@@ -68,14 +80,11 @@ struct MDTranslatorApp: App {
                 NSApp.windows.first(where: { $0.isVisible || !$0.isMiniaturized })?.makeKeyAndOrderFront(nil)
             }
             // HOTKEY-01: re-intentar registrar el hotkey cuando la app vuelve al primer plano.
-            // Útil en desarrollo (nueva build → nuevo hash → AX pierde el permiso)
-            // y para cuando el usuario concede Accesibilidad sin reiniciar la app.
+            // register() es idempotente: si AX acaba de concederse (y globalMonitor == nil),
+            // añade el monitor global en ese momento. Si ya estaba registrado, es no-op.
             .onReceive(
                 NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             ) { _ in
-                guard !GlobalHotkeyManager.shared.isAccessibilityGranted else { return }
-                // AX no concedida: silencio (el banner en SettingsView ya avisa si está abierto).
-                // Cuando se conceda, el próximo activate registrará el hotkey.
                 GlobalHotkeyManager.shared.register()
             }
             // Reiniciar el servidor cuando el usuario guarda nuevas API keys en medio de sesión.

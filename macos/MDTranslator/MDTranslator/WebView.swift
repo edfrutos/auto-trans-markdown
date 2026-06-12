@@ -51,6 +51,8 @@ struct WebView: NSViewRepresentable {
         let handler = WeakScriptMessageHandler(context.coordinator)
         config.userContentController.add(handler, name: "translationDone")
         config.userContentController.add(handler, name: "saveTranslatedFile")
+        // DOWNLOAD-01: descarga nativa de archivos (MD, ZIP) desde WKWebView.
+        config.userContentController.add(handler, name: "nativeDownload")
 
         // Inyectar funciones globales que el frontend puede llamar opcionalmente.
         let helperScript = WKUserScript(source: """
@@ -241,6 +243,17 @@ struct WebView: NSViewRepresentable {
                     OutputManager.shared.saveTranslatedFile(name: filename, content: content)
                 }
 
+            case "nativeDownload":
+                // DOWNLOAD-01: descarga nativa para archivos binarios (ZIP) y MD desde WKWebView.
+                // El JS lee el Blob como DataURL base64 y lo envía aquí para
+                // decodificarlo y guardarlo vía NSSavePanel (OutputManager.saveDownload).
+                let filename = body["filename"] as? String ?? "descarga"
+                let base64   = body["base64"]   as? String ?? ""
+                guard let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters) else { return }
+                Task { @MainActor in
+                    OutputManager.shared.saveDownload(name: filename, data: data)
+                }
+
             default:
                 break
             }
@@ -319,6 +332,10 @@ struct WebView: NSViewRepresentable {
             // Ignorar cancelaciones de carga (ocurren al llamar a .reload() mientras ya carga)
             let nsError = error as NSError
             if nsError.code == NSURLErrorCancelled { return }
+            // Ignorar WebKitErrorFrameLoadInterruptedByPolicyChange (102) — se dispara cuando
+            // WKWebView intenta navegar a un blob: URL. Con DOWNLOAD-01 esto no debería ocurrir,
+            // pero lo ignoramos de forma defensiva para no mostrar la página de error.
+            if nsError.domain == "WebKitErrorDomain" && nsError.code == 102 { return }
 
             // Mostrar página de error inline con botón de reintento.
             let html = """

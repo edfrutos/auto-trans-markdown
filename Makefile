@@ -106,7 +106,7 @@ appcast: zip
 	echo "Pega estos valores en $(APPCAST) -> <enclosure>:"; \
 	echo ""; \
 	echo "  $$SIGNATURE"; \
-	echo "  url=\"https://github.com/edefrutos/auto-trans-markdown/releases/download/v$(VERSION)/$(APP_NAME)-$(VERSION).zip\""
+	echo "  url=\"https://github.com/edfrutos/auto-trans-markdown/releases/download/v$(VERSION)/$(APP_NAME)-$(VERSION).zip\""
 
 ## Actualiza el binario e Info.plist en ~/Applications/ con la build CLI (sin python-bundle),
 ## preservando el python-bundle que Xcode ya instaló ahi.

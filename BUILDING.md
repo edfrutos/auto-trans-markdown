@@ -15,7 +15,7 @@ Instrucciones para generar `MDTranslator.app` y `MDTranslator.dmg` desde el cód
 ## 1. Clonar y preparar el entorno Python
 
 ```bash
-git clone https://github.com/edefrutos/auto-trans-markdown.git
+git clone https://github.com/edfrutos/auto-trans-markdown.git
 cd auto-trans-markdown
 
 # Instalar dependencias Python

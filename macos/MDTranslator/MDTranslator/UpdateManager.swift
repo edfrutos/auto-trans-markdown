@@ -10,7 +10,7 @@ import Sparkle
 /// Wrapper @MainActor sobre SPUStandardUpdaterController.
 /// Se inicializa una única vez (singleton) al primer acceso desde el hilo principal.
 @MainActor
-final class UpdateManager {
+final class UpdateManager: NSObject {
 
     static let shared = UpdateManager()
 
@@ -25,7 +25,7 @@ final class UpdateManager {
         )
     }()
 
-    private init() {}
+    override private init() { super.init() }
 
     // MARK: - API pública
 
