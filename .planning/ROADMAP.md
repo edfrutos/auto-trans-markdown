@@ -226,8 +226,8 @@ Antiguos requisitos de Phase 16, fuera de alcance por decisión del usuario (202
 | 13 | Native macOS Integration | ✅ Shipped | 2026-06-10 |
 | 14 | Keyboard & Workflow | ✅ Shipped | 2026-06-11 |
 | 15 | Performance & Quality | ✅ Shipped | 2026-06-11 |
-| 16 | Release v3.1 Distribuible (sin Apple Dev) | 🔄 Preparada — build pendiente en el Mac | — |
+| 16 | Release v3.1 Distribuible (sin Apple Dev) | 🔄 Build + verificación ✓ — falta GitHub Release | — |
 | 17 | Notarización & MAS (futura) | ⏸ Descartada/diferida | — |
 
 ---
-*Last updated: 2026-06-12 — Phase 16 redefinida sin App Store: REL-01/REL-02 preparados, REL-03/REL-04 pendientes de `make dmg && make appcast` en el Mac*
+*Last updated: 2026-06-12 — Phase 16: REL-01..03 completados y verificados en el Mac (tras fix del export anidado del Makefile y corrección de usuario GitHub edfrutos); REL-04 pendiente: tag v3.1 + push + GitHub Release con los assets de build/*

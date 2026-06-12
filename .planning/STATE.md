@@ -34,11 +34,13 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
 
 ## Next Work
 
-1. **Phase 16: Release v3.1 Distribuible** (redefinida 2026-06-12, sin App Store/notarización por decisión del usuario):
-   - ✅ REL-01: Makefile VERSION=3.1/BUILD_NUM=2, SHA-256 automático en `make dmg`
-   - ✅ REL-02: `docs/RELEASE-NOTES-3.1.md`
-   - 🔄 REL-03/REL-04 — **ejecutar en el Mac**: `make dmg && make appcast` → pegar edSignature/length en el item v3.1 comentado de `docs/appcast.xml` → tags `v3.0`/`v3.1` → GitHub Release con DMG+ZIP+SHA-256
-   - REL-05 (opcional): registrar medición PERF-03 en `docs/performance.md` al verificar el DMG
+1. **Phase 16: Release v3.1 Distribuible** (redefinida 2026-06-12, sin App Store/notarización):
+   - ✅ REL-01: Makefile VERSION=3.1/BUILD_NUM=2; fixes críticos del pipeline (export anidado, DMG vía /tmp, verificación de versión del bundle)
+   - ✅ REL-02: `docs/RELEASE-NOTES-3.1.md` (incluye limitaciones NSServices y TCC)
+   - ✅ REL-03: appcast v3.1 firmado (edSignature `561dpL…`, length 43991291); URLs corregidas a `edfrutos`
+   - ✅ Verificación funcional en Mac: app 3.1 instalada, hotkey global ✓, Services ✓ (apps AppKit), API keys ✓
+   - 🔄 REL-04 — **pendiente (usuario)**: `git tag v3.1 && git push origin main --tags` + GitHub Release v3.1 con `build/MDTranslator-3.1.{zip,dmg,dmg.sha256}` y RELEASE-NOTES-3.1.md
+   - REL-05 (opcional): registrar medición PERF-03 en `docs/performance.md`
 2. **Phase 17 (futura, descartada/diferida)**: NOTARIZE/SANDBOX/MAS/HARDENED — solo si se contrata Apple Developer Program.
 3. **Próximo milestone**: sin definir. Candidatos en `REQUIREMENTS.md` (SSE batch nativo, Universal Binary, deuda v2.0, iCloud sync, file association).
 
@@ -78,6 +80,12 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
 6. Security-Scoped Bookmarks necesitarán entitlement extra si se activa Sandbox
 7. NSServices requiere re-registro con `lsregister` tras cambios (fix e4860e5; usar `$(HOME)` en Makefile, no `~`)
 8. Keychain ACL + firma ad-hoc: re-firmar invalida el acceso — ver fix 8e4f802
+9. **`cp -R` con destino existente ANIDA el bundle** — el Makefile distribuía la app v3.0 rancia en cada build. Fix: `rm -rf "$(APP)"` antes de exportar + verificación de versión (2026-06-12)
+10. `hdiutil create` falla con "Recurso ocupado" escribiendo en volúmenes externos — crear DMG en /tmp y copiar (fix en Makefile)
+11. TCC (Accesibilidad) se invalida con cada re-firma ad-hoc — entrada antigua falla en silencio sin re-preguntar: `tccutil reset Accessibility com.edefrutos.md-translator` + re-conceder + relanzar
+12. NSServices de texto solo funciona en apps AppKit (TextEdit, Notas, Mail…) — Electron/Java no lo implementan; el workaround es el hotkey global
+13. El usuario de GitHub es **edfrutos** (no edefrutos) — verificar URLs de appcast/SUFeedURL contra el remote real
+14. Mantener UNA sola copia instalada de la app — duplicados (~/Applications + /Applications) confunden Services, hotkeys y TCC
 
 ## Session Continuity
 
@@ -86,3 +94,4 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
 - 2026-06-10: Phase 13 shipped (Dock, Open Recent, Drop, Services).
 - 2026-06-11: Phases 14 y 15 shipped (hotkeys, estimación, undo; perf, crash reporter, smoke-test).
 - 2026-06-12: Cierre administrativo — v3.0/v3.1 archivadas, STATE/REQUIREMENTS/MILESTONES/ROADMAP sincronizados, suite verificada (148 passed).
+- 2026-06-12 (tarde): Phase 16 ejecutada — build 3.1 real tras descubrir y corregir el bug de export anidado del Makefile; usuario GitHub corregido (edfrutos) en appcast/SUFeedURL/docs; appcast firmado; verificación funcional completa en el Mac (hotkey, Services, keys); limpieza de worktrees huérfanos y artefactos; pendiente solo REL-04 (tag + GitHub Release).
