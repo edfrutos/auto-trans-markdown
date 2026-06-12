@@ -5,7 +5,9 @@
 - ✅ **v1.0 NOTEBOOK A→E** — Phases 0–5 (shipped 2026-05-29) → [archive](milestones/v1.0-ROADMAP.md)
 - ✅ **v2.0 Production Polish & PDF** — Phases 6–7 (shipped 2026-05-29) → [archive](milestones/v2.0-ROADMAP.md)
 - ⏸ **v2.1 Reproducible Dependencies** — Phase 8 (deferred → incorporated in v3.0 build system)
-- ✅ **v3.0 macOS Native App** — Phases 9–12 (shipped 2026-06-09)
+- ✅ **v3.0 macOS Native App** — Phases 9–12 (shipped 2026-06-09) → [requirements](milestones/v3.0-REQUIREMENTS.md)
+- ✅ **v3.1 Native macOS Polish** — Phases 13–15 (shipped 2026-06-11) → [requirements](milestones/v3.1-REQUIREMENTS.md)
+- ⏸ **Phase 16 Distribution Upgrade** — bloqueada: requiere Apple Developer Program
 
 ## Phases (v1.0 — shipped)
 
@@ -133,9 +135,9 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 
 ## Milestones (v3.1)
 
-- 🔄 **v3.1 Native macOS Polish** — Phases 13–16 (planned)
+- ✅ **v3.1 Native macOS Polish** — Phases 13–15 (shipped 2026-06-11); Phase 16 separada y en espera de Apple Developer account
 
-## Phases (v3.1 — planned)
+## Phases (v3.1 — shipped; Phase 16 en espera)
 
 ### Phase 13: Native macOS Integration
 **Goal**: La app se comporta como una app macOS de primera clase — acepta archivos desde el Finder, Dock y Services, y tiene historial de archivos recientes.
@@ -219,4 +221,4 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 | 16 | Distribution Upgrade | En espera (Apple Dev account) | — |
 
 ---
-*Last updated: 2026-06-11 — Phase 15 complete (PERF-01, PERF-02, PERF-03, CRASH-01, TEST-01)*
+*Last updated: 2026-06-12 — v3.1 cerrada y archivada (phases 13–15); Phase 16 bloqueada por Apple Developer Program; pendiente menor: registrar medición PERF-03 en docs/performance.md*
