@@ -704,26 +704,26 @@ func createJob(urls: [URL], targetLang: String, port: Int) async throws -> Strin
 **Deprecated en esta fase:**
 - `confirmAndBatch(_:)` en `AppDelegate.swift` — se sustituye por `openBatchSheet(_:)`.
 - `batchTranslate(urls:port:targetLang:)` en `AppDelegate.swift` — se elimina; la lógica pasa a `BatchJobManager`.
-- `callTranslateAPI(text:targetLang:port:)` en `AppDelegate.swift` — ya no se usa desde el flujo batch (se mantiene si otras rutas lo usan, pero verificar).
+- `callTranslateAPI(text:targetLang:port:)` en `AppDelegate.swift` — se elimina (verificado 2026-06-12: su único llamador es `batchTranslate`, que también se elimina).
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Auth token en el stream SSE**
    - Qué sabemos: `_require_api_token` acepta `Authorization: Bearer` o query `?access_token=`. `URLSession.bytes` puede añadir headers pero no query params fácilmente.
    - Qué no está claro: si en el entorno macOS local `API_TOKEN` está vacío (deployment.py: `return token or None`), la auth es no-op. Si el usuario configura `API_TOKEN`, hay que inyectarlo.
-   - Recomendación: `BatchJobManager` debe leer `API_TOKEN` del mismo origen que `ServerManager` usa para otras calls (no hay Keychain entry específico para esto — verificar con `KeychainManager` o asumir vacío en desarrollo local). Si `API_TOKEN` está vacío, no añadir header.
+   - RESOLVED: En el entorno macOS local `API_TOKEN` está vacío (la app lanza el servidor sin configurarlo), así que la auth es no-op y `BatchJobManager` no añade header `Authorization`. Si el usuario configurara `API_TOKEN` manualmente, las llamadas fallarían con 401 — escenario documentado en el threat model y fuera del alcance de esta fase.
 
 2. **Readability de archivos grandes en multipart**
    - Qué sabemos: `Data(contentsOf: url)` carga el archivo completo en memoria antes de construir el cuerpo multipart.
    - Qué no está claro: el límite `MAX_BATCH_UPLOAD_MB` es 50 MB total — con archivos `.md` de documentación técnica esto raramente se alcanza, pero en lotes grandes podría ser un problema.
-   - Recomendación: Aceptable para Phase 18. Si es necesario, Phase futura puede usar `uploadTask(with:fromFile:)` o streaming body.
+   - RESOLVED: Aceptable para Phase 18 — el límite de 50 MB del backend acota el peor caso y los `.md` de documentación rara vez se acercan. Si hiciera falta, una fase futura puede usar `uploadTask(with:fromFile:)` o streaming body.
 
 3. **Reapertura de la sheet en modo segundo plano (D-04)**
    - Qué sabemos: D-04 dice que la sheet puede reabrirse mientras el job corre. `BatchJobManager.shared.jobState == .running` indica que hay un job activo.
    - Qué no está claro: ¿qué botón/menú re-abre la sheet? ¿File → "Traducir lote…" muestra la sheet existente si hay un job en curso?
-   - Recomendación: Si `BatchJobManager.shared.isRunning` cuando se activa "Traducir lote…", abrir la sheet directamente en estado de progreso (no en estado "preparado"). Esto requiere que `Commands.swift` publique `.openBatchSheet` y que `MDTranslatorApp` maneje el caso "ya hay un job activo".
+   - RESOLVED: File → "Traducir lote…" (vía `.onReceive(.openBatchSheet)`) simplemente activa `showBatchSheet = true`; como la sheet renderiza según `BatchJobManager.shared.jobState`, con un job activo se abre directamente en estado de progreso (no en "preparado"). Implementado en los planes 18-02 (switch sobre `jobState`) y 18-03 (CAMBIO 3 de MDTranslatorApp.swift); se verifica en el checkpoint humano del plan 18-03.
 
 ---
 
