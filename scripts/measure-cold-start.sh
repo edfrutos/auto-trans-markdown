@@ -66,7 +66,7 @@ for i in $(seq 1 "$RUNS"); do
 done
 
 echo ""
-printf '%s\n' "${results[@]}" | sort -n | awk '
+printf '%s\n' "${results[@]}" | LC_ALL=C sort -n | LC_ALL=C awk '
   {a[NR]=$1}
   END {
     m = (NR % 2) ? a[(NR+1)/2] : (a[NR/2] + a[NR/2+1]) / 2

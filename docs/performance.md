@@ -4,8 +4,8 @@
 
 | Métrica | Baseline v3.0 | Objetivo v3.1 | Estado |
 |---------|--------------|---------------|--------|
-| Arranque en frío (doble clic → UI lista) | ~8–10 s | < 5 s | 🔄 en progreso |
-| Tamaño `python-bundle/` | ~200 MB | < 120 MB | 🔄 en progreso |
+| Arranque en frío (doble clic → UI lista) | ~8–10 s | < 5 s | ✅ **1,46 s** (medido 2026-06-12) |
+| Tamaño `python-bundle/` | ~200 MB | < 120 MB | ✅ **116 MB** |
 | RSS en reposo (app sin traducir) | ~180 MB | < 200 MB | ✅ dentro de objetivo |
 | Tiempo respuesta `/api/translate` (texto corto) | ~2–4 s | < 4 s | ✅ dentro de objetivo |
 
@@ -120,13 +120,13 @@ el tiempo de importación en el primer arranque.
 
 ## Mediciones objetivo post-v3.1
 
-> Actualizar esta tabla tras ejecutar `make smoke-test` en el hardware de referencia.
+> Medición con `./scripts/measure-cold-start.sh` (open → health check `/api/languages`, puerto vía PID file).
 
 | Métrica | Objetivo | Medido | Fecha |
 |---------|----------|--------|-------|
-| Arranque en frío | < 5 s | — | — |
-| `python-bundle/` | < 120 MB | — | — |
-| RSS en reposo | < 200 MB | — | — |
+| Arranque en frío | < 5 s | **1,46 s** (mediana de 1,45 / 1,46 / 1,53 — Mac Studio M2, app v3.1) | 2026-06-12 |
+| `python-bundle/` | < 120 MB | **116 MB** | 2026-06-12 |
+| RSS en reposo | < 200 MB | — (pendiente; sin urgencia) | — |
 
 ---
 

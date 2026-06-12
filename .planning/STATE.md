@@ -40,9 +40,9 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
    - ✅ REL-03: appcast v3.1 firmado (edSignature `561dpL…`, length 43991291); URLs corregidas a `edfrutos`
    - ✅ Verificación funcional en Mac: app 3.1 instalada, hotkey global ✓, Services ✓ (apps AppKit), API keys ✓
    - ✅ REL-04: tag `v3.1` pusheado, GitHub Release publicada, **actualización Sparkle verificada end-to-end** (2026-06-12)
-   - REL-05 (opcional, único pendiente): registrar medición PERF-03 en `docs/performance.md`
+   - ✅ REL-05: PERF-03 medido — **arranque en frío 1,46 s** (mediana, Mac Studio M2, 2026-06-12) con `scripts/measure-cold-start.sh`; registrado en `docs/performance.md`
 
-   **PHASE 16 COMPLETADA ✅ — v3.1 publicada y distribuyéndose**
+   **PHASE 16 COMPLETADA AL 100% ✅ — v3.1 publicada, distribuyéndose y con métricas cerradas**
 2. **Phase 17 (futura, descartada/diferida)**: NOTARIZE/SANDBOX/MAS/HARDENED — solo si se contrata Apple Developer Program.
 3. **Milestone v3.2 Native Workflow & Sync — DEFINIDO (2026-06-12)**: Phases 18–21, 14 REQ-IDs en `REQUIREMENTS.md`:
    - Phase 18: SSE Batch Nativo (SSE-01..04) — progreso real + cancelación, consume endpoints existentes de `src/jobs.py`
