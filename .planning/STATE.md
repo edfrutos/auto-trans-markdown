@@ -3,14 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Native macOS Polish
 status: shipped
-last_updated: "2026-06-12T00:00:00.000Z"
-last_activity: 2026-06-12 -- v3.1 cerrada y archivada; sin milestone activo
+last_updated: "2026-06-12T16:30:40.763Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
+  total_phases: 4
+  completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # Project State
@@ -43,6 +42,7 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
    - ✅ REL-05: PERF-03 medido — **arranque en frío 1,46 s** (mediana, Mac Studio M2, 2026-06-12) con `scripts/measure-cold-start.sh`; registrado en `docs/performance.md`
 
    **PHASE 16 COMPLETADA AL 100% ✅ — v3.1 publicada, distribuyéndose y con métricas cerradas**
+
 2. **Phase 17 (futura, descartada/diferida)**: NOTARIZE/SANDBOX/MAS/HARDENED — solo si se contrata Apple Developer Program.
 3. **Milestone v3.2 Native Workflow & Sync — DEFINIDO (2026-06-12)**: Phases 18–21, 14 REQ-IDs en `REQUIREMENTS.md`:
    - Phase 18: SSE Batch Nativo (SSE-01..04) — progreso real + cancelación, consume endpoints existentes de `src/jobs.py`
