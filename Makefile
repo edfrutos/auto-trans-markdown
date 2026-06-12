@@ -52,9 +52,17 @@ build:
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO
-	@# Exportar .app desde el archive
+	@# Exportar .app desde el archive — borrar antes el destino: si existe,
+	@# cp -R anida la app nueva DENTRO de la vieja y se distribuye la rancia
+	@rm -rf "$(APP)"
 	cp -R "$(ARCHIVE)/Products/Applications/$(APP_NAME).app" "$(APP)"
 	@echo "OK App: $(APP)"
+	@# Verificación: la versión del bundle debe coincidir con VERSION
+	@PLIST_V=$$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$(APP)/Contents/Info.plist" 2>/dev/null || plutil -extract CFBundleShortVersionString raw "$(APP)/Contents/Info.plist"); \
+	if [ "$$PLIST_V" != "$(VERSION)" ]; then \
+		echo "ERROR: el bundle exportado es v$$PLIST_V, se esperaba v$(VERSION)"; exit 1; \
+	fi; \
+	echo "OK Versión del bundle: $$PLIST_V"
 
 ## 2. Firma ad-hoc
 sign: build
