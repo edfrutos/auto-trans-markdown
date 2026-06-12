@@ -68,8 +68,10 @@
 
 **Deferred:** Phase 16 Distribution Upgrade (notarización, Sandbox, MAS) — bloqueada por Apple Developer Program.
 
+**Distribution (Phase 16, 2026-06-12):** GitHub Release v3.1 publicada con DMG (firma ad-hoc) + ZIP Sparkle + SHA-256; appcast en producción y actualización automática verificada end-to-end. Durante el release se corrigieron dos bugs críticos del pipeline: export anidado de `cp -R` en el Makefile (distribuía el bundle v3.0 rancio) y usuario GitHub erróneo (`edefrutos` → `edfrutos`) en SUFeedURL/appcast.
+
 **Archives:** [v3.1-REQUIREMENTS.md](milestones/v3.1-REQUIREMENTS.md)
 
-**Tag:** — (sin tag; commit `05c08c0`)
+**Tags:** `v3.1` (release final, `2c6fb32`)
 
 ---

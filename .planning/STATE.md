@@ -39,8 +39,10 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
    - ✅ REL-02: `docs/RELEASE-NOTES-3.1.md` (incluye limitaciones NSServices y TCC)
    - ✅ REL-03: appcast v3.1 firmado (edSignature `561dpL…`, length 43991291); URLs corregidas a `edfrutos`
    - ✅ Verificación funcional en Mac: app 3.1 instalada, hotkey global ✓, Services ✓ (apps AppKit), API keys ✓
-   - 🔄 REL-04 — **pendiente (usuario)**: `git tag v3.1 && git push origin main --tags` + GitHub Release v3.1 con `build/MDTranslator-3.1.{zip,dmg,dmg.sha256}` y RELEASE-NOTES-3.1.md
-   - REL-05 (opcional): registrar medición PERF-03 en `docs/performance.md`
+   - ✅ REL-04: tag `v3.1` pusheado, GitHub Release publicada, **actualización Sparkle verificada end-to-end** (2026-06-12)
+   - REL-05 (opcional, único pendiente): registrar medición PERF-03 en `docs/performance.md`
+
+   **PHASE 16 COMPLETADA ✅ — v3.1 publicada y distribuyéndose**
 2. **Phase 17 (futura, descartada/diferida)**: NOTARIZE/SANDBOX/MAS/HARDENED — solo si se contrata Apple Developer Program.
 3. **Próximo milestone**: sin definir. Candidatos en `REQUIREMENTS.md` (SSE batch nativo, Universal Binary, deuda v2.0, iCloud sync, file association).
 
