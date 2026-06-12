@@ -26,15 +26,15 @@
       <sparkle:releaseNotesLink>
         https://github.com/edfrutos/auto-trans-markdown/releases/tag/v3.1
       </sparkle:releaseNotesLink>
-      <pubDate>Fri, 12 Jun 2026 08:50:00 +0000</pubDate>
+      <pubDate>Fri, 12 Jun 2026 09:45:00 +0000</pubDate>
       <sparkle:version>2</sparkle:version>
       <sparkle:shortVersionString>3.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1.zip"
-        length="43889049"
+        length="43991291"
         type="application/octet-stream"
-        sparkle:edSignature="hUFofJ4H7jD2MxgebETGmccFn2sIVdm+SxYxVNk/b1X4vRC07jtEkeWO6gRD9g/6j6cg2sSCAJRJZRo9GVfVAQ=="
+        sparkle:edSignature="561dpLMcXlHFt6DZRMsRXLmm49YivaQfLFOUFqtD1P162AVa8M/Ct8V4OjwS1yPc4BHHt/vPlgQj8cWd719jBg=="
       />
     </item>
 
