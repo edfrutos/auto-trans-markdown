@@ -61,7 +61,7 @@ Adaptar para BatchJobManager:
 final class BatchJobManager {
     static let shared = BatchJobManager()
 
-    enum JobState {
+    enum BatchJobState {   // nombre real en plan 18-01: BatchJobState (evita colisión conceptual con src/jobs.py)
         case idle
         case prepared(urls: [URL])
         case running(jobId: String)
@@ -69,7 +69,7 @@ final class BatchJobManager {
         case done(ok: Int, errors: [(String, String)], cancelled: Bool)
     }
 
-    private(set) var jobState: JobState = .idle
+    private(set) var jobState: BatchJobState = .idle
     private var streamTask: Task<Void, Never>?
     // Progreso — actualizados por eventos SSE desde handleSSELine()
     private(set) var currentFile: String = ""
