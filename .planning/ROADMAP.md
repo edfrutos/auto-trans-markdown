@@ -7,7 +7,7 @@
 - ⏸ **v2.1 Reproducible Dependencies** — Phase 8 (deferred → incorporated in v3.0 build system)
 - ✅ **v3.0 macOS Native App** — Phases 9–12 (shipped 2026-06-09) → [requirements](milestones/v3.0-REQUIREMENTS.md)
 - ✅ **v3.1 Native macOS Polish** — Phases 13–15 (shipped 2026-06-11) → [requirements](milestones/v3.1-REQUIREMENTS.md)
-- ⏸ **Phase 16 Distribution Upgrade** — bloqueada: requiere Apple Developer Program
+- 🔄 **Phase 16 Release v3.1 Distribuible** — redefinida sin App Store/notarización; preparada, build pendiente en el Mac
 
 ## Phases (v1.0 — shipped)
 
@@ -195,19 +195,27 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 
 ---
 
-### Phase 16: Distribution Upgrade *(requiere Apple Developer account)*
-**Goal**: La app pasa Gatekeeper sin clic derecho y puede distribuirse por el Mac App Store.
+### Phase 16: Release v3.1 Distribuible *(redefinida 2026-06-12 — sin Apple Developer account)*
+**Goal**: Publicar MD Translator 3.1 como DMG distribuible (firma ad-hoc) con release notes, checksum, appcast Sparkle y tags git. Mac App Store y notarización quedan fuera por decisión del usuario.
 **Depends on**: Phase 15
-**⚠️ Requiere Apple Developer Program ($99/año). Aplazar hasta renovar la cuenta.**
 **Requirements**:
-- `NOTARIZE-01` — `make notarize` llama a `xcrun notarytool` con las credenciales de App Store Connect y produce un `.dmg` notarizado que macOS abre sin advertencias
-- `SANDBOX-01` — La app funciona con App Sandbox activado (entitlements para subprocess, red saliente, acceso a ficheros con Security-Scoped Bookmarks)
-- `MAS-01` — La app pasa la validación de `xcrun altool --validate-app` para Mac App Store (sin APIs privadas, sin subprocess arbitrario — requiere rediseño del servidor embebido o usar XPC)
-- `HARDENED-01` — Hardened Runtime activado con solo los entitlements mínimos necesarios
+- `REL-01` — Makefile con `VERSION=3.1` / `BUILD_NUM=2`; `make dmg` produce `MDTranslator-3.1.dmg` + `.sha256` ✅ (preparado 2026-06-12)
+- `REL-02` — `docs/RELEASE-NOTES-3.1.md` con novedades, requisitos, instalación (bypass Gatekeeper) y verificación de integridad ✅ (preparado 2026-06-12)
+- `REL-03` — Item v3.1 en `docs/appcast.xml` (sparkle:version=2) con edSignature/length reales tras `make appcast` — bloque preparado comentado, pendiente de build en el Mac
+- `REL-04` — Tags git `v3.0` y `v3.1` creados; GitHub Release v3.1 con DMG, ZIP, SHA-256 y release notes
+- `REL-05` — (opcional) Registrar medición PERF-03 de arranque en frío en `docs/performance.md` durante la verificación del DMG
 
 **Success Criteria**:
-1. Doble clic en el DMG notarizado en macOS 14/15 abre la app sin ningún diálogo de Gatekeeper
-2. `spctl --assess --verbose` devuelve `accepted` para la app
+1. `make dmg && make appcast` completan sin errores en el Mac y el DMG instala y arranca tras clic derecho → Abrir
+2. GitHub Release v3.1 publicada con DMG + ZIP + SHA-256 + release notes
+3. Una instalación de la 3.0 recibe el aviso de actualización a 3.1 vía Sparkle
+
+**Ejecución**: los pasos que requieren Xcode/macOS se ejecutan en el Mac del usuario (ver checklist en BUILDING.md §4–5 y comentario del appcast).
+
+---
+
+### Phase 17 (futura): Notarización & Mac App Store *(descartada/diferida indefinidamente)*
+Antiguos requisitos de Phase 16, fuera de alcance por decisión del usuario (2026-06-12): `NOTARIZE-01`, `SANDBOX-01`, `MAS-01`, `HARDENED-01`. Retomar solo si se contrata Apple Developer Program y se desea distribución más allá del DMG ad-hoc.
 
 ---
 
@@ -218,7 +226,8 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 | 13 | Native macOS Integration | ✅ Shipped | 2026-06-10 |
 | 14 | Keyboard & Workflow | ✅ Shipped | 2026-06-11 |
 | 15 | Performance & Quality | ✅ Shipped | 2026-06-11 |
-| 16 | Distribution Upgrade | En espera (Apple Dev account) | — |
+| 16 | Release v3.1 Distribuible (sin Apple Dev) | 🔄 Preparada — build pendiente en el Mac | — |
+| 17 | Notarización & MAS (futura) | ⏸ Descartada/diferida | — |
 
 ---
-*Last updated: 2026-06-12 — v3.1 cerrada y archivada (phases 13–15); Phase 16 bloqueada por Apple Developer Program; pendiente menor: registrar medición PERF-03 en docs/performance.md*
+*Last updated: 2026-06-12 — Phase 16 redefinida sin App Store: REL-01/REL-02 preparados, REL-03/REL-04 pendientes de `make dmg && make appcast` en el Mac*

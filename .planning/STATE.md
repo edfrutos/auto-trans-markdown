@@ -34,8 +34,12 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
 
 ## Next Work
 
-1. **Phase 16: Distribution Upgrade** (NOTARIZE-01, SANDBOX-01, MAS-01, HARDENED-01) — **BLOQUEADA**: requiere Apple Developer Program ($99/año). Retomar al renovar la cuenta.
-2. **Pendiente menor v3.1**: registrar medición de arranque en frío (PERF-03) en `docs/performance.md` — requiere Mac Studio M2 (hardware de referencia). La tabla "Mediciones objetivo post-v3.1" está vacía.
+1. **Phase 16: Release v3.1 Distribuible** (redefinida 2026-06-12, sin App Store/notarización por decisión del usuario):
+   - ✅ REL-01: Makefile VERSION=3.1/BUILD_NUM=2, SHA-256 automático en `make dmg`
+   - ✅ REL-02: `docs/RELEASE-NOTES-3.1.md`
+   - 🔄 REL-03/REL-04 — **ejecutar en el Mac**: `make dmg && make appcast` → pegar edSignature/length en el item v3.1 comentado de `docs/appcast.xml` → tags `v3.0`/`v3.1` → GitHub Release con DMG+ZIP+SHA-256
+   - REL-05 (opcional): registrar medición PERF-03 en `docs/performance.md` al verificar el DMG
+2. **Phase 17 (futura, descartada/diferida)**: NOTARIZE/SANDBOX/MAS/HARDENED — solo si se contrata Apple Developer Program.
 3. **Próximo milestone**: sin definir. Candidatos en `REQUIREMENTS.md` (SSE batch nativo, Universal Binary, deuda v2.0, iCloud sync, file association).
 
 ## Accumulated Context
@@ -53,7 +57,8 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
 
 ### Blockers
 
-- Phase 16 completa: Apple Developer Program no renovado.
+- Ninguno para la release v3.1 ad-hoc. Notarización/MAS (Phase 17 futura) seguiría requiriendo Apple Developer Program.
+- Los pasos `make dmg`/`make appcast` requieren Xcode en el Mac del usuario (no ejecutables desde el sandbox de Cowork).
 
 ### Technical Context
 

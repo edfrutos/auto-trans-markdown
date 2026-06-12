@@ -1,4 +1,4 @@
-# Makefile — Pipeline de distribución MDTranslator v3.0
+# Makefile — Pipeline de distribución MDTranslator v3.1
 # Uso:
 #   make dmg              -> build Release + firma ad-hoc + DMG listo para distribuir
 #   make appcast          -> firma el ZIP con Sparkle y muestra la edSignature
@@ -11,8 +11,8 @@
 #   - /tmp/sparkle/bin/sign_update  (ver target appcast)
 
 APP_NAME     := MDTranslator
-VERSION      := 3.0
-BUILD_NUM    := 1
+VERSION      := 3.1
+BUILD_NUM    := 2
 SCHEME       := MDTranslator
 PROJECT      := macos/MDTranslator/MDTranslator.xcodeproj
 ARCHIVE      := build/$(APP_NAME).xcarchive
@@ -33,7 +33,7 @@ LSREGISTER   := /System/Library/Frameworks/CoreServices.framework/Frameworks/Lau
 
 # ---------------------------------------------------------------------------
 
-.PHONY: all build sign zip dmg appcast dev-install register-service clean smoke-test
+.PHONY: all build sign zip dmg appcast dev-install dev-patch register-service clean smoke-test
 
 all: dmg
 
@@ -87,6 +87,7 @@ dmg: zip
 	@rm -rf build/dmg_stage
 	@echo ""
 	@echo "OK DMG listo: $(DMG)"
+	@shasum -a 256 "$(DMG)" | tee build/$(APP_NAME)-$(VERSION).dmg.sha256
 	@echo "   Siguiente: make appcast"
 
 ## 5. Firmar con Sparkle y mostrar edSignature para appcast.xml
@@ -118,6 +119,7 @@ dev-install:
 	fi
 	@echo "-> Compilando Swift (Debug) para obtener binario e Info.plist actualizados..."
 	@mkdir -p build/debug
+	@set -o pipefail; \
 	xcodebuild build \
 		-project "$(PROJECT)" \
 		-scheme "$(SCHEME)" \
@@ -127,12 +129,50 @@ dev-install:
 		CODE_SIGN_IDENTITY="" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=NO \
-		ENABLE_DEBUG_DYLIB=NO | tail -5
+		ENABLE_DEBUG_DYLIB=NO 2>&1 | tee /tmp/xcodebuild-dev.log | tail -10; \
+	if grep -q "BUILD FAILED" /tmp/xcodebuild-dev.log; then \
+		echo ""; \
+		echo "ERROR: xcodebuild falló. Errores Swift:"; \
+		grep "error:" /tmp/xcodebuild-dev.log | head -20; \
+		echo ""; \
+		echo "ALTERNATIVA: abre Xcode → ⌘B → luego ejecuta make dev-patch"; \
+		exit 1; \
+	fi
 	@echo "-> Parcheando binario e Info.plist en $(INSTALL_APP)..."
 	cp "build/debug/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)" \
 	   "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"
 	cp "build/debug/$(APP_NAME).app/Contents/Info.plist" \
 	   "$(INSTALL_APP)/Contents/Info.plist"
+	@echo "-> Sincronizando backend Python y estáticos (src/ + static/)..."
+	rsync -a --delete src/    "$(INSTALL_APP)/Contents/Resources/backend/src/"
+	rsync -a --delete static/ "$(INSTALL_APP)/Contents/Resources/backend/static/"
+	@echo "-> Firmando ad-hoc..."
+	codesign --force --deep --sign - "$(INSTALL_APP)"
+	@$(MAKE) register-service
+
+## Parchea ~/Applications/ con el binario más reciente del DerivedData de Xcode.
+## Usar cuando xcodebuild CLI falla pero Xcode GUI (⌘B) compila correctamente.
+## Flujo: abrir Xcode → ⌘B → make dev-patch
+dev-patch:
+	@if [ ! -d "$(INSTALL_APP)" ]; then \
+		echo "ERROR: $(INSTALL_APP) no existe. Construye primero desde Xcode."; \
+		exit 1; \
+	fi
+	@DERIVED=$$(find ~/Library/Developer/Xcode/DerivedData -name "$(APP_NAME)" \
+		-path "*/Debug/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)" \
+		-print0 2>/dev/null \
+		| xargs -0 ls -t 2>/dev/null | head -1); \
+	if [ -z "$$DERIVED" ]; then \
+		echo "ERROR: binario no encontrado en DerivedData. Ejecuta ⌘B en Xcode primero."; \
+		exit 1; \
+	fi; \
+	echo "-> Usando binario: $$DERIVED"; \
+	cp "$$DERIVED" "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"; \
+	PLIST=$$(echo "$$DERIVED" | sed 's|Contents/MacOS/$(APP_NAME)|Contents/Info.plist|'); \
+	[ -f "$$PLIST" ] && cp "$$PLIST" "$(INSTALL_APP)/Contents/Info.plist" || true
+	@echo "-> Sincronizando backend Python y estáticos (src/ + static/)..."
+	rsync -a --delete src/    "$(INSTALL_APP)/Contents/Resources/backend/src/"
+	rsync -a --delete static/ "$(INSTALL_APP)/Contents/Resources/backend/static/"
 	@echo "-> Firmando ad-hoc..."
 	codesign --force --deep --sign - "$(INSTALL_APP)"
 	@$(MAKE) register-service
