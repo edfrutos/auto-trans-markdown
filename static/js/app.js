@@ -77,6 +77,7 @@ const els = {
   btnTranslateLabel: $('#btn-translate-label'),
   btnCopy: $('#btn-copy'),
   btnDownload: $('#btn-download'),
+  btnDownloadLabel: $('#btn-download-label'),
   btnSample: $('#btn-sample'),
   status: $('#status'),
   progressWrap: $('#progress-wrap'),
@@ -249,7 +250,7 @@ function showTranslationForLang(lang) {
   const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
   state.downloadBlob = blob;
   state.downloadName = `traduccion.${lang}.md`;
-  els.btnDownload.classList.remove('hidden');
+  showDownloadButton();
   renderPreview(state.sourceContent, els.previewSource);
   renderPreview(result.content, els.previewResult);
   renderDiff(state.sourceContent, result.content);
@@ -503,7 +504,7 @@ async function finalizeReview() {
     const blob = new Blob([data.content], { type: 'text/markdown;charset=utf-8' });
     state.downloadBlob = blob;
     state.downloadName = `traduccion.${primary}.md`;
-    els.btnDownload?.classList.remove('hidden');
+    showDownloadButton();
     els.btnExportHtml?.classList.remove('hidden');
     els.btnExportPdf?.classList.remove('hidden');
     renderPreview(state.sourceContent, els.previewSource);
@@ -761,7 +762,7 @@ async function downloadBatchJobResult(jobId) {
   }
   state.downloadBlob = await res.blob();
   state.downloadName = 'traducciones.zip';
-  els.btnDownload?.classList.remove('hidden');
+  showDownloadButton();
 }
 
 async function cancelBatchJob() {
@@ -1136,7 +1137,7 @@ async function translateEditor() {
       const blob = new Blob([data.content], { type: 'text/markdown;charset=utf-8' });
       state.downloadBlob = blob;
       state.downloadName = `traduccion.${state.targetLangs[0]}.md`;
-      els.btnDownload.classList.remove('hidden');
+      showDownloadButton();
       els.btnExportHtml?.classList.remove('hidden');
       els.btnExportPdf?.classList.remove('hidden');
       renderPreview(content, els.previewSource);
@@ -1199,7 +1200,7 @@ async function translateEditor() {
       const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
       state.downloadBlob = blob;
       state.downloadName = `traduccion.${primary}.md`;
-      els.btnDownload.classList.remove('hidden');
+      showDownloadButton();
       onTranslateSuccess({
         content: result.content,
         source: content,
@@ -1287,7 +1288,7 @@ async function translateFile() {
         window.__saveTranslatedFile(state.downloadName, text);
       }
     }
-    els.btnDownload.classList.remove('hidden');
+    showDownloadButton();
     if (!contentType.includes('zip')) {
       els.btnExportHtml?.classList.remove('hidden');
       els.btnExportPdf?.classList.remove('hidden');
@@ -1438,12 +1439,42 @@ function handleTranslate() {
 
 function downloadResult() {
   if (!state.downloadBlob) return;
+  // En la app macOS (WKWebView), blob: URLs no se pueden navegar para descarga.
+  // Enviamos el archivo codificado en base64 al puente nativo nativeDownload,
+  // que lo decodifica y abre NSSavePanel vía OutputManager.
+  if (window.webkit?.messageHandlers?.nativeDownload) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // e.target.result: "data:<mime>;base64,<datos>" → extraer solo los datos
+      const base64 = e.target.result.split(',')[1];
+      window.webkit.messageHandlers.nativeDownload.postMessage({
+        filename: state.downloadName || 'descarga',
+        base64,
+        mimeType: state.downloadBlob.type || 'application/octet-stream',
+      });
+    };
+    reader.readAsDataURL(state.downloadBlob);
+    return;
+  }
+  // Navegador estándar: descarga vía blob URL
   const url = URL.createObjectURL(state.downloadBlob);
   const a = document.createElement('a');
   a.href = url;
   a.download = state.downloadName;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/// Muestra el botón de descarga y actualiza su etiqueta según el tipo de archivo.
+/// Debe llamarse DESPUÉS de haber establecido state.downloadName.
+function showDownloadButton() {
+  if (!els.btnDownload) return;
+  els.btnDownload.classList.remove('hidden');
+  if (els.btnDownloadLabel) {
+    els.btnDownloadLabel.textContent = (state.downloadName || '').endsWith('.zip')
+      ? 'Descargar ZIP'
+      : 'Descargar .md';
+  }
 }
 
 function setupDropZone(zone, input, onFiles) {

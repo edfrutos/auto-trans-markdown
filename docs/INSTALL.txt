@@ -42,6 +42,15 @@ Al primer arranque, MDTranslator pedirá tu API key:
 
 Las claves se guardan en el Keychain de macOS — nunca en disco.
 
+NOTAS
+-----
+• El atajo global (⌥⇧T por defecto) requiere conceder Accesibilidad:
+  Ajustes del Sistema → Privacidad y seguridad → Accesibilidad → MDTranslator.
+  Tras actualizar la app puede ser necesario volver a concederlo.
+• El servicio "Traducir con MDTranslator" (menú Servicios) solo está
+  disponible en apps nativas de macOS (TextEdit, Notas, Mail, Safari...).
+  En apps Electron/Java (VS Code, Obsidian, JetBrains) usa el atajo global.
+
 SOPORTE
 -------
 https://github.com/edfrutos/auto-trans-markdown/issues

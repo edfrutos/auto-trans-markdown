@@ -46,3 +46,12 @@ htmlcov/
 # --- Logs ---
 *.log
 logs/
+
+# --- macOS app bundle (generado por build-python-bundle.sh) ---
+python-bundle/
+macos/MDTranslator/MDTranslator.xcodeproj/xcuserdata/
+macos/MDTranslator/MDTranslator.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+
+# --- Worktrees de agentes (Claude) ---
+.claude/worktrees/

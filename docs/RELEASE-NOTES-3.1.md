@@ -55,6 +55,8 @@ La app comprueba actualizaciones automáticamente (Sparkle, firma EdDSA). Quiene
 - Sin notarización de Apple: requiere el paso de clic derecho → Abrir en la primera ejecución.
 - Solo Apple Silicon (arm64); no hay build Intel.
 - El progreso de lote en la app nativa es indeterminado (SSE granular pendiente).
+- **El servicio "Traducir con MDTranslator" solo aparece en apps nativas de macOS** (TextEdit, Notas, Mail, Safari, Xcode…). Las apps Electron (VS Code, Obsidian, Typora) o Java (JetBrains) no implementan el protocolo NSServices de texto, una limitación de esas apps que macOS no puede sortear. Workaround: copia el texto (⌘C), pulsa el atajo global (⌥⇧T por defecto) y traduce en MDTranslator con ⌘↩.
+- Al actualizar o reinstalar la app, macOS puede pedir de nuevo el permiso de Accesibilidad (necesario para el atajo global) y las API keys del Keychain — es consecuencia de la firma ad-hoc, basta con volver a concederlos.
 
 ## Soporte
 
