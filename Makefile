@@ -78,12 +78,15 @@ dmg: zip
 	@cp -R "$(APP)" "build/dmg_stage/"
 	@ln -sf /Applications "build/dmg_stage/Applications"
 	@cp docs/INSTALL.txt "build/dmg_stage/" 2>/dev/null || true
+	@# hdiutil falla con "Recurso ocupado" si escribe directamente en un volumen
+	@# externo (ESSAGER): crear el DMG en /tmp y copiarlo después
 	hdiutil create \
 		-volname "$(APP_NAME) $(VERSION)" \
 		-srcfolder "build/dmg_stage" \
 		-ov \
 		-format UDZO \
-		"$(DMG)"
+		"/tmp/$(APP_NAME)-$(VERSION).dmg"
+	@cp "/tmp/$(APP_NAME)-$(VERSION).dmg" "$(DMG)" && rm -f "/tmp/$(APP_NAME)-$(VERSION).dmg"
 	@rm -rf build/dmg_stage
 	@echo ""
 	@echo "OK DMG listo: $(DMG)"
