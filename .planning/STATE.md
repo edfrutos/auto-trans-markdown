@@ -44,7 +44,13 @@ v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / pr
 
    **PHASE 16 COMPLETADA ✅ — v3.1 publicada y distribuyéndose**
 2. **Phase 17 (futura, descartada/diferida)**: NOTARIZE/SANDBOX/MAS/HARDENED — solo si se contrata Apple Developer Program.
-3. **Próximo milestone**: sin definir. Candidatos en `REQUIREMENTS.md` (SSE batch nativo, Universal Binary, deuda v2.0, iCloud sync, file association).
+3. **Milestone v3.2 Native Workflow & Sync — DEFINIDO (2026-06-12)**: Phases 18–21, 14 REQ-IDs en `REQUIREMENTS.md`:
+   - Phase 18: SSE Batch Nativo (SSE-01..04) — progreso real + cancelación, consume endpoints existentes de `src/jobs.py`
+   - Phase 19: Asociación `.md` (ASSOC-01..03) — CFBundleDocumentTypes, reutiliza ruta de apertura del Dock
+   - Phase 20: Export PDF Nativo (PDFN-01..03) — `WKWebView.createPDF`, sin WeasyPrint en el bundle
+   - Phase 21: iCloud Drive Sync (SYNC-01..04) — carpeta iCloud Drive (sin entitlements); requiere parametrizar rutas en glossary.py/memory.py
+   - **Siguiente paso**: research + planificación de Phase 18 con el flujo GSD (`/gsd-execute-phase` en Claude Code)
+   - Descartado para v3.2: Universal Binary, CloudKit, WeasyPrint embebido, deuda servidor v2.0 (ver Out of Scope)
 
 ## Accumulated Context
 

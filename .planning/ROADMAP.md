@@ -7,7 +7,8 @@
 - ⏸ **v2.1 Reproducible Dependencies** — Phase 8 (deferred → incorporated in v3.0 build system)
 - ✅ **v3.0 macOS Native App** — Phases 9–12 (shipped 2026-06-09) → [requirements](milestones/v3.0-REQUIREMENTS.md)
 - ✅ **v3.1 Native macOS Polish** — Phases 13–15 (shipped 2026-06-11) → [requirements](milestones/v3.1-REQUIREMENTS.md)
-- 🔄 **Phase 16 Release v3.1 Distribuible** — redefinida sin App Store/notarización; preparada, build pendiente en el Mac
+- ✅ **Phase 16 Release v3.1 Distribuible** — shipped 2026-06-12 (GitHub Release + Sparkle verificado)
+- 🔄 **v3.2 Native Workflow & Sync** — Phases 18–21 (definido 2026-06-12; pendiente research/planificación)
 
 ## Phases (v1.0 — shipped)
 
@@ -230,4 +231,51 @@ Antiguos requisitos de Phase 16, fuera de alcance por decisión del usuario (202
 | 17 | Notarización & MAS (futura) | ⏸ Descartada/diferida | — |
 
 ---
-*Last updated: 2026-06-12 — Phase 16 SHIPPED: GitHub Release v3.1 publicada, appcast en producción, actualización Sparkle verificada end-to-end. Pendiente opcional: REL-05 (medición PERF-03). Sin milestone activo.*
+
+## Milestones (v3.2)
+
+- 🔄 **v3.2 Native Workflow & Sync** — Phases 18–21 (definido 2026-06-12)
+
+## Phases (v3.2 — definido, pendiente research/planificación)
+
+### Phase 18: SSE Batch Nativo
+**Goal**: El lote en la app macOS muestra progreso real archivo a archivo y permite cancelar, usando los endpoints SSE existentes del backend.
+**Depends on**: Phase 16 · **Requirements**: SSE-01, SSE-02, SSE-03, SSE-04
+**Success Criteria**:
+1. Un lote de 10 archivos muestra barra de progreso determinada que avanza con cada archivo, y el nombre del archivo en curso
+2. "Cancelar" detiene el job y la UI lo refleja sin colgar la app
+3. El icono del Dock muestra el mismo progreso (sustituye al indeterminado)
+
+### Phase 19: Asociación de archivos .md
+**Goal**: Doble clic en un `.md` (o "Abrir con") abre MDTranslator con el archivo cargado en el editor.
+**Depends on**: Phase 18 · **Requirements**: ASSOC-01, ASSOC-02, ASSOC-03
+**Success Criteria**:
+1. "Abrir con → MDTranslator" en Finder carga el archivo en el editor y activa la ventana
+2. La app no se apropia de `.md` por defecto
+
+### Phase 20: Export PDF Nativo
+**Goal**: Botón Export PDF en la app sin añadir WeasyPrint ni dependencias nativas al bundle (vía WKWebView).
+**Depends on**: Phase 18 · **Requirements**: PDFN-01, PDFN-02, PDFN-03
+**Success Criteria**:
+1. Traducir un documento y pulsar "Export PDF" produce un PDF A4 legible con los estilos del export HTML
+2. El bundle no crece más de ~1 MB
+
+### Phase 21: Glosario y TM en iCloud Drive
+**Goal**: El glosario y la memoria de traducción se comparten entre Macs vía iCloud Drive, sin Apple Developer account.
+**Depends on**: Phase 18 · **Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04
+**Success Criteria**:
+1. Activar la opción mueve los datos a iCloud Drive y la traducción sigue funcionando con el glosario/TM sincronizados
+2. Desactivarla devuelve los datos a `data/` local sin pérdida
+3. Un segundo Mac con la opción activa ve los mismos términos del glosario
+
+## Progress Table (v3.2)
+
+| Phase | Nombre | Estado | Completada |
+|-------|--------|--------|------------|
+| 18 | SSE Batch Nativo | Definida | — |
+| 19 | Asociación .md | Definida | — |
+| 20 | Export PDF Nativo | Definida | — |
+| 21 | iCloud Drive Sync | Definida | — |
+
+---
+*Last updated: 2026-06-12 — v3.2 Native Workflow & Sync definido (phases 18–21, 14 REQ-IDs). Siguiente paso: research + planificación de Phase 18 (/gsd-execute-phase o equivalente). Pendiente opcional v3.1: REL-05 (medición PERF-03).*
