@@ -20,30 +20,23 @@
     <description>MarkDown Auto Translator — actualizaciones</description>
     <language>es</language>
 
-    <!-- ===== v3.1 — Native macOS Polish =====
-         PENDIENTE DE PUBLICAR: este item está comentado hasta tener el build real.
-         Tras ejecutar `make dmg && make appcast` en el Mac:
-           1. Sustituir EDSIGNATURE_PENDIENTE y LENGTH_PENDIENTE por los valores impresos
-           2. Descomentar el bloque <item>
-           3. Subir build/MDTranslator-3.1.zip a GitHub Releases (tag v3.1)
-           4. git push de este archivo a main
+    <!-- ===== v3.1 — Native macOS Polish ===== -->
     <item>
       <title>MD Translator 3.1</title>
       <sparkle:releaseNotesLink>
         https://github.com/edefrutos/auto-trans-markdown/releases/tag/v3.1
       </sparkle:releaseNotesLink>
-      <pubDate>PUBDATE_PENDIENTE</pubDate>
+      <pubDate>Fri, 12 Jun 2026 08:15:00 +0000</pubDate>
       <sparkle:version>2</sparkle:version>
       <sparkle:shortVersionString>3.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/edefrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1.zip"
-        length="LENGTH_PENDIENTE"
+        length="43889049"
         type="application/octet-stream"
-        sparkle:edSignature="EDSIGNATURE_PENDIENTE"
+        sparkle:edSignature="TAfCS3KzhyYQVlVEd/rw/bVbdVHCoTiQ3DjWUB5y/CV2644JrhHWeVWbrSNxTvltVKnDxbobiZei6GG7VI5RCg=="
       />
     </item>
-    -->
 
     <!-- ===== v3.0 — primer release ===== -->
     <item>

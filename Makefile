@@ -98,13 +98,11 @@ appcast: zip
 		echo "Ejecuta: curl -L https://github.com/sparkle-project/Sparkle/releases/download/2.9.3/Sparkle-2.9.3.tar.xz | tar xJ -C /tmp/"; \
 		exit 1; \
 	fi
-	@ZIP_SIZE=$$(wc -c < "$(ZIP)" | tr -d ' '); \
-	SIGNATURE=$$($(SPARKLE_BIN)/sign_update "$(ZIP)"); \
+	@SIGNATURE=$$($(SPARKLE_BIN)/sign_update "$(ZIP)"); \
 	echo ""; \
 	echo "Pega estos valores en $(APPCAST) -> <enclosure>:"; \
 	echo ""; \
-	echo "  sparkle:edSignature=\"$$SIGNATURE\""; \
-	echo "  length=\"$$ZIP_SIZE\""; \
+	echo "  $$SIGNATURE"; \
 	echo "  url=\"https://github.com/edefrutos/auto-trans-markdown/releases/download/v$(VERSION)/$(APP_NAME)-$(VERSION).zip\""
 
 ## Actualiza el binario e Info.plist en ~/Applications/ con la build CLI (sin python-bundle),
