@@ -241,6 +241,13 @@ Antiguos requisitos de Phase 16, fuera de alcance por decisión del usuario (202
 ### Phase 18: SSE Batch Nativo
 **Goal**: El lote en la app macOS muestra progreso real archivo a archivo y permite cancelar, usando los endpoints SSE existentes del backend.
 **Depends on**: Phase 16 · **Requirements**: SSE-01, SSE-02, SSE-03, SSE-04
+**Plans**: 3 planes
+
+Plans:
+- [ ] 18-01-PLAN.md — BatchJobManager (cliente SSE) + Commands (Notification.Name + menú Traducir lote…)
+- [ ] 18-02-PLAN.md — BatchSheet (vista SwiftUI 3 estados: prepared / running / done)
+- [ ] 18-03-PLAN.md — Integración AppDelegate + MDTranslatorApp (wiring .sheet + applicationShouldTerminate)
+
 **Success Criteria**:
 1. Un lote de 10 archivos muestra barra de progreso determinada que avanza con cada archivo, y el nombre del archivo en curso
 2. "Cancelar" detiene el job y la UI lo refleja sin colgar la app
@@ -272,10 +279,10 @@ Antiguos requisitos de Phase 16, fuera de alcance por decisión del usuario (202
 
 | Phase | Nombre | Estado | Completada |
 |-------|--------|--------|------------|
-| 18 | SSE Batch Nativo | Definida | — |
+| 18 | SSE Batch Nativo | Planificada (3 planes) | — |
 | 19 | Asociación .md | Definida | — |
 | 20 | Export PDF Nativo | Definida | — |
 | 21 | iCloud Drive Sync | Definida | — |
 
 ---
-*Last updated: 2026-06-12 — v3.2 Native Workflow & Sync definido (phases 18–21, 14 REQ-IDs). Siguiente paso: research + planificación de Phase 18 (/gsd-execute-phase o equivalente). Pendiente opcional v3.1: REL-05 (medición PERF-03).*
+*Last updated: 2026-06-12 — Phase 18 planificada (3 planes, waves 1–3). Siguiente paso: /gsd:execute-phase 18.*
