@@ -29,6 +29,12 @@ struct AppCommands: Commands {
                 NotificationCenter.default.post(name: WebView.copyResultNotification, object: nil)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
+            // SSE-01/D-11: traducción en lote — posta .openBatchSheet vía openBatchFiles()
+            Divider()
+            Button("Traducir lote…") {
+                openBatchFiles()  // → NotificationCenter.post(.openBatchSheet, object: [URL])
+            }
+            .keyboardShortcut("b", modifiers: [.command, .shift])
         }
 
         // MARK: Undo / Redo — interceptar ⌘Z y ⌘⇧Z para redirigirlos al WKWebView (UNDO-01).
@@ -109,6 +115,26 @@ struct AppCommands: Commands {
         }
     }
 
+    /// Abre un NSOpenPanel con selección múltiple de archivos .md y publica la lista vía notificación.
+    /// Si BatchJobManager ya tiene un job activo, abre la sheet igualmente (D-04: reabrir en curso).
+    private func openBatchFiles() {
+        let panel = NSOpenPanel()
+        panel.title = "Seleccionar archivos Markdown para traducir en lote"
+        panel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .text]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        // T-18-01: filtrar solo .md (lowercased) — silencia archivos no Markdown (pitfall Tampering)
+        let urls = panel.urls.filter { $0.pathExtension.lowercased() == "md" }
+        guard !urls.isEmpty else { return }
+        // Registrar cada URL en Open Recent
+        urls.forEach { NSDocumentController.shared.noteNewRecentDocumentURL($0) }
+        // Postear siempre, incluso si hay un job en curso (D-04: la sheet muestra el estado en curso)
+        NotificationCenter.default.post(name: .openBatchSheet, object: urls)
+    }
+
     /// Muestra el About panel estándar de macOS con metadatos de la app.
     private func showAboutPanel() {
         NSApp.orderFrontStandardAboutPanel(options: [
@@ -129,4 +155,7 @@ extension Notification.Name {
     static let openSettings = Notification.Name("openSettings")
     /// Publicada por SettingsView cuando el usuario guarda las keys con éxito.
     static let settingsSaved = Notification.Name("settingsSaved")
+    /// Publicada por Commands (openBatchFiles) y AppDelegate para abrir BatchSheet.
+    /// El objeto adjunto es [URL] con los archivos .md seleccionados.
+    static let openBatchSheet = Notification.Name("openBatchSheet")
 }

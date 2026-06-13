@@ -118,6 +118,14 @@ final class OutputManager {
         resolveBookmarkedFolder()?.lastPathComponent
     }
 
+    // MARK: - API pública para acceso a la carpeta bookmarked
+
+    /// Devuelve la URL de la carpeta de salida configurada, si existe y el bookmark es válido.
+    /// Usado por BatchJobManager para determinar el destino de extracción del ZIP (D-05).
+    func resolvedOutputFolder() -> URL? {
+        resolveBookmarkedFolder()
+    }
+
     // MARK: - Private helpers
 
     /// Resuelve el bookmark guardado y devuelve la URL si el acceso sigue siendo válido.
