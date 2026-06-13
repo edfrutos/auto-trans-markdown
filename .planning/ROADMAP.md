@@ -271,7 +271,7 @@ Antiguos requisitos de Phase 16, fuera de alcance por decisión del usuario (202
 Plans:
 **Wave 1**
 
-- [ ] 18-01-PLAN.md — BatchJobManager (cliente SSE) + Commands (Notification.Name + menú Traducir lote…)
+- [x] 18-01-PLAN.md — BatchJobManager (cliente SSE) + Commands (Notification.Name + menú Traducir lote…)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -319,7 +319,7 @@ Plans:
 
 | Phase | Nombre | Estado | Completada |
 |-------|--------|--------|------------|
-| 18 | SSE Batch Nativo | Planificada (3 planes) | — |
+| 18 | 1/3 | In Progress|  |
 | 19 | Asociación .md | Definida | — |
 | 20 | Export PDF Nativo | Definida | — |
 | 21 | iCloud Drive Sync | Definida | — |

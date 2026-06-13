@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Native macOS Polish
 status: shipped
-last_updated: "2026-06-12T17:12:09.596Z"
+last_updated: "2026-06-13T09:15:01.843Z"
 progress:
   total_phases: 4
   completed_phases: 0
@@ -16,6 +16,8 @@ progress:
 
 ## Current Position
 
+Phase: 18 (sse-batch-nativo) — EXECUTING
+Plan: 1 of 3
 **v3.1 COMPLETADA Y ARCHIVADA ✅ — sin milestone activo**
 
 ```
