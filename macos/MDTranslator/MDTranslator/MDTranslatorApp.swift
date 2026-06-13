@@ -4,6 +4,7 @@
 // Phase 11: reinicio automático del servidor al cambiar API keys + menu bar icon.
 // Phase 13: DROP-01 — onDrop de archivos .md sobre la ventana.
 // Phase 14: HOTKEY-01 — hotkey global ⌥⇧M para activar la app (requiere Accesibilidad).
+// Phase 18: showBatchSheet + .sheet(BatchSheet) + .onReceive(.openBatchSheet) (SSE batch nativo).
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -12,6 +13,7 @@ struct MDTranslatorApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @State private var serverManager  = ServerManager()
     @State private var showSettings   = false
+    @State private var showBatchSheet = false
     @State private var isDropTargeted = false   // resalta la ventana durante el arrastre
 
     // Dimensiones de ventana según estado del servidor.
@@ -66,11 +68,26 @@ struct MDTranslatorApp: App {
             .sheet(isPresented: $showSettings) {
                 SettingsView(isPresented: $showSettings, serverManager: serverManager)
             }
+            // Sheet de lote SSE — se activa desde AppDelegate (drag Dock) o Commands (⌘⇧B).
+            .sheet(isPresented: $showBatchSheet) {
+                BatchSheet(isPresented: $showBatchSheet,
+                           manager: BatchJobManager.shared,
+                           serverManager: serverManager)
+            }
             // Escuchar notificación de apertura de settings desde Commands.swift.
             .onReceive(
                 NotificationCenter.default.publisher(for: .openSettings)
             ) { _ in
                 showSettings = true
+            }
+            // Escuchar notificación de apertura de la sheet de lote (Phase 18).
+            // BatchJobManager.shared.prepareWith(urls:) ya habrá sido llamado por el emisor
+            // (AppDelegate.openBatchSheet o Commands.openBatchFiles).
+            // Si isRunning, la sheet abre directamente en estado de progreso (D-04).
+            .onReceive(
+                NotificationCenter.default.publisher(for: .openBatchSheet)
+            ) { _ in
+                showBatchSheet = true
             }
             // HOTKEY-01: ⌥⇧M — activar ventana desde cualquier app.
             .onReceive(
