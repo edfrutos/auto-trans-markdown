@@ -16,22 +16,22 @@ progress:
 
 ## Current Position
 
-Phase: 18 (sse-batch-nativo) — EXECUTING
-Plan: 1 of 3
+Phase: 18 (sse-batch-nativo) — COMPLETE ✅
+Plan: 3 of 3
 **v3.1 COMPLETADA Y ARCHIVADA ✅ — sin milestone activo**
 
-```
+```text
 v1.0 ✅ → v2.0 ✅ → v3.0 ✅ → v3.1 ✅ → [Phase 16 ⏸ bloqueada / próximo milestone TBD]
 ```
 
 ## Milestone Summary
 
-| Milestone | Phases | Shipped | Archive |
-|-----------|--------|---------|---------|
-| v1.0 NOTEBOOK A→E | 0–5 | 2026-05-29 | milestones/v1.0-* |
-| v2.0 Production Polish & PDF | 6–7 | 2026-05-29 | milestones/v2.0-* |
-| v3.0 macOS Native App | 9–12 | 2026-06-09 | milestones/v3.0-REQUIREMENTS.md |
-| v3.1 Native macOS Polish | 13–15 | 2026-06-11 | milestones/v3.1-REQUIREMENTS.md |
+| Milestone                    | Phases   | Shipped    | Archive                         |
+| ---------------------------- | -------- | ---------- | ------------------------------- |
+| v1.0 NOTEBOOK A→E            | 0–5      | 2026-05-29 | milestones/v1.0-*               |
+| v2.0 Production Polish & PDF | 6–7      | 2026-05-29 | milestones/v2.0-*               |
+| v3.0 macOS Native App        | 9–12     | 2026-06-09 | milestones/v3.0-REQUIREMENTS.md |
+| v3.1 Native macOS Polish     | 13–15    | 2026-06-11 | milestones/v3.1-REQUIREMENTS.md |
 
 ## Next Work
 

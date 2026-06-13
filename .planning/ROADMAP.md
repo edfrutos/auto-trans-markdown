@@ -15,14 +15,14 @@
 <details>
 <summary>✅ v1.0 NOTEBOOK A→E (Phases 0–5) — SHIPPED 2026-05-29</summary>
 
-| Phase | Name | Plans | Completed |
-|-------|------|-------|-----------|
-| 0 | MVP Hardening | 4/4 | 2026-05-28 |
-| 1 | Production Table Stakes | 5/5 | 2026-05-28 |
-| 2 | Trust & QA | 5/5 | 2026-05-29 |
-| 3 | Batch UX & Cost Control | 4/4 | 2026-05-29 |
-| 4 | Team Scale | 5/5 | 2026-05-29 |
-| 5 | Editorial & Pro Workflow | 6/6 | 2026-05-29 |
+| Phase   | Name                     | Plans   | Completed   |
+| ------- | ------------------------ | ------- | ----------- |
+| 0       | MVP Hardening            | 4/4     | 2026-05-28  |
+| 1       | Production Table Stakes  | 5/5     | 2026-05-28  |
+| 2       | Trust & QA               | 5/5     | 2026-05-29  |
+| 3       | Batch UX & Cost Control  | 4/4     | 2026-05-29  |
+| 4       | Team Scale               | 5/5     | 2026-05-29  |
+| 5       | Editorial & Pro Workflow | 6/6     | 2026-05-29  |
 
 Detalle: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
@@ -33,10 +33,10 @@ Detalle: [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 <details>
 <summary>✅ v2.0 Production Polish & PDF (Phases 6–7) — SHIPPED 2026-05-29</summary>
 
-| Phase | Name | Plans | Completed |
-|-------|------|-------|-----------|
-| 6 | v1 Tech Debt Closure | 4/4 | 2026-05-29 |
-| 7 | PDF Export | 3/3 | 2026-05-29 |
+| Phase   | Name                 | Plans   | Completed   |
+| ------- | -------------------- | ------- | ----------- |
+| 6       | v1 Tech Debt Closure | 4/4     | 2026-05-29  |
+| 7       | PDF Export           | 3/3     | 2026-05-29  |
 
 Detalle: [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md)
 
@@ -125,21 +125,21 @@ Detalle histórico: [.planning/phases/08-PHASE.md](.planning/phases/08-PHASE.md)
 
 ## Progress Table
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 0. MVP Hardening | 4/4 | Shipped | 2026-05-28 |
-| 1. Production Table Stakes | 5/5 | Shipped | 2026-05-28 |
-| 2. Trust & QA | 5/5 | Shipped | 2026-05-29 |
-| 3. Batch UX & Cost Control | 4/4 | Shipped | 2026-05-29 |
-| 4. Team Scale | 5/5 | Shipped | 2026-05-29 |
-| 5. Editorial & Pro Workflow | 6/6 | Shipped | 2026-05-29 |
-| 6. v1 Tech Debt Closure | 4/4 | Shipped | 2026-05-29 |
-| 7. PDF Export | 3/3 | Shipped | 2026-05-29 |
-| 8. Reproducible Dependencies | — | Deferred (absorbed in Phase 9) | - |
-| 9. Python Embedding Foundation | ✅ | Shipped | 2026-06-07 |
-| 10. Swift App Shell & Auth | ✅ | Shipped | 2026-06-07 |
-| 11. Translation Features & Native UI | ✅ | Shipped | 2026-06-07 |
-| 12. Distribution & Auto-Update | ✅ | Shipped | 2026-06-09 |
+| Phase                                | Plans Complete   | Status                         | Completed   |
+| ------------------------------------ | ---------------- | ------------------------------ | ----------- |
+| 0. MVP Hardening                     | 4/4              | Shipped                        | 2026-05-28  |
+| 1. Production Table Stakes           | 5/5              | Shipped                        | 2026-05-28  |
+| 2. Trust & QA                        | 5/5              | Shipped                        | 2026-05-29  |
+| 3. Batch UX & Cost Control           | 4/4              | Shipped                        | 2026-05-29  |
+| 4. Team Scale                        | 5/5              | Shipped                        | 2026-05-29  |
+| 5. Editorial & Pro Workflow          | 6/6              | Shipped                        | 2026-05-29  |
+| 6. v1 Tech Debt Closure              | 4/4              | Shipped                        | 2026-05-29  |
+| 7. PDF Export                        | 3/3              | Shipped                        | 2026-05-29  |
+| 8. Reproducible Dependencies         | —                | Deferred (absorbed in Phase 9) | -           |
+| 9. Python Embedding Foundation       | ✅                | Shipped                        | 2026-06-07  |
+| 10. Swift App Shell & Auth           | ✅                | Shipped                        | 2026-06-07  |
+| 11. Translation Features & Native UI | ✅                | Shipped                        | 2026-06-07  |
+| 12. Distribution & Auto-Update       | ✅                | Shipped                        | 2026-06-09  |
 
 ---
 *Last updated: 2026-06-09 — v3.0 shipped (phases 9–12 complete, DMG + Sparkle)
@@ -247,13 +247,13 @@ Antiguos requisitos de Phase 16, fuera de alcance por decisión del usuario (202
 
 ## Progress Table (v3.1)
 
-| Phase | Nombre | Estado | Completada |
-|-------|--------|--------|------------|
-| 13 | Native macOS Integration | ✅ Shipped | 2026-06-10 |
-| 14 | Keyboard & Workflow | ✅ Shipped | 2026-06-11 |
-| 15 | Performance & Quality | ✅ Shipped | 2026-06-11 |
-| 16 | Release v3.1 Distribuible (sin Apple Dev) | ✅ Shipped | 2026-06-12 |
-| 17 | Notarización & MAS (futura) | ⏸ Descartada/diferida | — |
+| Phase   | Nombre                                    | Estado                | Completada   |
+| ------- | ----------------------------------------- | --------------------- | ------------ |
+| 13      | Native macOS Integration                  | ✅ Shipped             | 2026-06-10   |
+| 14      | Keyboard & Workflow                       | ✅ Shipped             | 2026-06-11   |
+| 15      | Performance & Quality                     | ✅ Shipped             | 2026-06-11   |
+| 16      | Release v3.1 Distribuible (sin Apple Dev) | ✅ Shipped             | 2026-06-12   |
+| 17      | Notarización & MAS (futura)               | ⏸ Descartada/diferida | —            |
 
 ---
 
@@ -279,7 +279,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 18-03-PLAN.md — Integración AppDelegate + MDTranslatorApp (wiring .sheet + applicationShouldTerminate)
+- [x] 18-03-PLAN.md — Integración AppDelegate + MDTranslatorApp (wiring .sheet + applicationShouldTerminate)
 
 **Success Criteria**:
 
@@ -317,12 +317,12 @@ Plans:
 
 ## Progress Table (v3.2)
 
-| Phase | Nombre | Estado | Completada |
-|-------|--------|--------|------------|
-| 18 | 2/3 | In Progress|  |
-| 19 | Asociación .md | Definida | — |
-| 20 | Export PDF Nativo | Definida | — |
-| 21 | iCloud Drive Sync | Definida | — |
+| Phase   | Nombre            | Estado      | Completada   |
+| ------- | ----------------- | ----------- | ------------ |
+| 18      | 2/3               | In Progress |              |
+| 19      | Asociación .md    | Definida    | —            |
+| 20      | Export PDF Nativo | Definida    | —            |
+| 21      | iCloud Drive Sync | Definida    | —            |
 
 ---
-*Last updated: 2026-06-12 — Phase 18 planificada (3 planes, waves 1–3). Siguiente paso: /gsd:execute-phase 18.*
+*Last updated: 2026-06-13 — Phase 18 completada (3 planes ejecutados, checkpoint humano aprobado). D-10 via NSEvent monitor. Siguiente fase: Phase 19 (Asociación .md).*
