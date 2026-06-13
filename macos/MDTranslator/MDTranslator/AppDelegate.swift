@@ -98,22 +98,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // La limpieza de huérfanos se gestiona en ServerManager.init() via /tmp/md-translator-python.pid
     }
 
-    // MARK: - Shutdown: D-10 — interceptar ⌘Q con lote activo
+    // MARK: - Shutdown: D-10 — fallback para terminación directa vía NSApp.terminate()
 
-    // applicationShouldTerminate se llama en el hilo principal antes de que NSApp termine.
-    // Devolver .terminateLater congela el ciclo de terminación; NSApp.reply() lo desbloquea.
-    // Task { @MainActor } evita MainActor.assumeIsolated desde el contexto nonisolated.
+    // El path principal de D-10 es el NSEvent monitor en applicationDidFinishLaunching
+    // (captura ⌘Q antes del menú). Este método actúa como fallback para llamadas directas
+    // a NSApp.terminate() que el monitor no intercepta (p. ej. clic en Archivo → Salir).
+    // NOTA: @NSApplicationDelegateAdaptor crea dos instancias; este método puede no
+    // ser invocado sobre la misma instancia que applicationDidFinishLaunching.
     nonisolated
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // Diagnóstico D-10: confirmar que el método se invoca en este proceso.
-        // Comprueba con: cat /tmp/md-shouldterminate.txt
-        let diagText = "applicationShouldTerminate called at \(Date()) — delegate=\(type(of: self))\n"
-        try? diagText.write(toFile: "/tmp/md-shouldterminate.txt", atomically: true, encoding: .utf8)
-        NSLog("[D-10] applicationShouldTerminate — returning .terminateLater")
-
         Task { @MainActor in
-            NSLog("[D-10] Task @MainActor running — isRunning=%@",
-                  BatchJobManager.shared.isRunning ? "true" : "false")
             guard BatchJobManager.shared.isRunning else {
                 NSApp.reply(toApplicationShouldTerminate: true)
                 return
