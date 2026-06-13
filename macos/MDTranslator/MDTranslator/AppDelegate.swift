@@ -4,7 +4,7 @@
 // Phase 15: SERVICES-01 — nonisolated en métodos @objc del delegate para evitar thunk
 //   async de Swift 6. Sin @MainActor a nivel de clase para compatibilidad con
 //   @NSApplicationDelegateAdaptor en Xcode 17/Swift 6.
-// Phase 18: flujo batch reemplazado por openBatchSheet + applicationShouldTerminate (SSE nativo).
+// Phase 18: flujo batch reemplazado por openBatchSheet + SSE nativo; D-10 via applicationShouldTerminate+.terminateLater.
 import AppKit
 
 /// AppDelegate sin @MainActor a nivel de clase para que @NSApplicationDelegateAdaptor
@@ -74,9 +74,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // La limpieza de huérfanos se gestiona en ServerManager.init() via /tmp/md-translator-python.pid
     }
 
+    // MARK: - Shutdown: D-10 — interceptar ⌘Q con lote activo
+
+    // applicationShouldTerminate se llama en el hilo principal antes de que NSApp termine.
+    // Devolver .terminateLater congela el ciclo de terminación; NSApp.reply() lo desbloquea.
+    // Task { @MainActor } evita MainActor.assumeIsolated desde el contexto nonisolated.
+    nonisolated
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        Task { @MainActor in
+            guard BatchJobManager.shared.isRunning else {
+                NSApp.reply(toApplicationShouldTerminate: true)
+                return
+            }
+            let n = BatchJobManager.shared.completedCount
+            let m = BatchJobManager.shared.totalCount
+            let alert = NSAlert()
+            alert.messageText = "Hay un lote en curso (\(n) de \(m) archivos)"
+            alert.informativeText = "Si sales ahora, el servidor Python se detendrá y se perderán los archivos que aún no se han traducido."
+            alert.addButton(withTitle: "Salir y cancelar")
+            alert.addButton(withTitle: "Continuar en segundo plano")
+            alert.alertStyle = .warning
+            NSApp.reply(toApplicationShouldTerminate: alert.runModal() == .alertFirstButtonReturn)
+        }
+        return .terminateLater
+    }
+
     // MARK: - Apertura de archivos (Dock drag & drop, "Abrir con…", Open Recent, doble clic Finder)
-    // D-10: la intercepción de ⌘Q se gestiona en MDTranslatorApp.commands via
-    // CommandGroup(replacing: .appTermination) — patrón correcto para SwiftUI apps.
 
     nonisolated
     func application(_ application: NSApplication, open urls: [URL]) {
