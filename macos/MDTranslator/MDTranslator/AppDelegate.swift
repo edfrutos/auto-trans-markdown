@@ -4,6 +4,7 @@
 // Phase 15: SERVICES-01 — nonisolated en métodos @objc del delegate para evitar thunk
 //   async de Swift 6. Sin @MainActor a nivel de clase para compatibilidad con
 //   @NSApplicationDelegateAdaptor en Xcode 17/Swift 6.
+// Phase 18: flujo batch reemplazado por openBatchSheet + applicationShouldTerminate (SSE nativo).
 import AppKit
 
 /// AppDelegate sin @MainActor a nivel de clase para que @NSApplicationDelegateAdaptor
@@ -73,6 +74,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // La limpieza de huérfanos se gestiona en ServerManager.init() via /tmp/md-translator-python.pid
     }
 
+    /// Protege la salida con ⌘Q cuando hay un lote SSE en curso (D-10).
+    /// Muestra un alert de confirmación; si el usuario elige "Salir y cancelar", la app termina.
+    /// Si elige "Continuar en segundo plano", cancela la terminación y el job continúa.
+    nonisolated
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        MainActor.assumeIsolated {
+            guard BatchJobManager.shared.isRunning else { return .terminateNow }
+            let n = BatchJobManager.shared.completedCount
+            let m = BatchJobManager.shared.totalCount
+            let alert = NSAlert()
+            alert.messageText = "Hay un lote en curso (\(n) de \(m) archivos)"
+            alert.informativeText = "Si sales ahora, el servidor Python se detendrá y se perderán los archivos que aún no se han traducido."
+            alert.addButton(withTitle: "Salir y cancelar")
+            alert.addButton(withTitle: "Continuar en segundo plano")
+            alert.alertStyle = .warning
+            return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+        }
+    }
+
     // MARK: - Apertura de archivos (Dock drag & drop, "Abrir con…", Open Recent, doble clic Finder)
 
     nonisolated
@@ -87,7 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if markdownURLs.count == 1 {
                 loadInEditor(url: markdownURLs[0])
             } else {
-                confirmAndBatch(markdownURLs)
+                openBatchSheet(markdownURLs)
             }
         }
     }
@@ -108,106 +128,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Privado: batch multi-archivo
+    // MARK: - Privado: abrir BatchSheet
 
+    /// Prepara el BatchJobManager con las URLs indicadas y publica la notificación
+    /// .openBatchSheet para que MDTranslatorApp presente la sheet (Phase 18).
     @MainActor
-    private func confirmAndBatch(_ urls: [URL]) {
-        let alert = NSAlert()
-        alert.messageText = "Traducir \(urls.count) archivos"
-        alert.informativeText = """
-        Se han arrastrado \(urls.count) archivos .md.
-        Idioma destino: \(targetLangLabel())
-        Los archivos traducidos se guardarán en la carpeta de salida configurada (o en Descargas si no hay ninguna).
-        """
-        alert.addButton(withTitle: "Traducir")
-        alert.addButton(withTitle: "Cancelar")
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        guard let port = serverManager?.serverPort,
-              serverManager?.state == .running else {
-            presentError("Servidor no disponible",
-                         detail: "El servidor Python aún no ha arrancado. Vuelve a intentarlo en unos segundos.")
-            return
-        }
-        let targetLang = UserDefaults.standard.string(forKey: "defaultTargetLang") ?? "es"
-        Task { await batchTranslate(urls: urls, port: port, targetLang: targetLang) }
-    }
-
-    /// Llama a /api/translate para cada archivo, actualiza el Dock tile y guarda los resultados.
-    @MainActor
-    private func batchTranslate(urls: [URL], port: Int, targetLang: String) async {
-        let total = urls.count
-        DockProgressManager.shared.showProgress(current: 0, total: total)
-        DockProgressManager.shared.setBadge("\(total)")
-
-        var saved: [String]  = []
-        var failed: [String] = []
-
-        for (index, url) in urls.enumerated() {
-            DockProgressManager.shared.showProgress(current: index, total: total)
-
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
-                failed.append(url.lastPathComponent)
-                continue
-            }
-
-            do {
-                let translation = try await callTranslateAPI(text: text, targetLang: targetLang, port: port)
-                let outName = url.deletingPathExtension().lastPathComponent + ".\(targetLang).md"
-                if OutputManager.shared.saveFileSilently(name: outName, content: translation) {
-                    saved.append(outName)
-                } else {
-                    failed.append(url.lastPathComponent)
-                }
-            } catch {
-                failed.append(url.lastPathComponent)
-            }
-        }
-
-        DockProgressManager.shared.hideProgress()
-        DockProgressManager.shared.setBadge(nil)
-
-        let summary = saved.isEmpty
-            ? "Sin traducciones"
-            : "\(saved.count) archivo\(saved.count == 1 ? "" : "s") traducido\(saved.count == 1 ? "" : "s")"
-        NotificationManager.shared.sendTranslationDone(filename: summary, langs: targetLang)
-
-        if !saved.isEmpty { OutputManager.shared.revealOutputFolder() }
-
-        if !failed.isEmpty {
-            presentError("Algunos archivos fallaron",
-                         detail: "No se pudo traducir: \(failed.joined(separator: ", "))")
-        }
-    }
-
-    /// POST /api/translate → devuelve el texto traducido.
-    private func callTranslateAPI(text: String, targetLang: String, port: Int) async throws -> String {
-        let url = URL(string: "http://127.0.0.1:\(port)/api/translate")!
-        var req = URLRequest(url: url, timeoutInterval: 120)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: String] = ["content": text, "target_lang": targetLang]
-        req.httpBody = try JSONEncoder().encode(body)
-
-        let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw URLError(.badServerResponse)
-        }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let translation = json["content"] as? String else {
-            throw URLError(.cannotParseResponse)
-        }
-        return translation
+    private func openBatchSheet(_ urls: [URL]) {
+        BatchJobManager.shared.prepareWith(urls: urls)
+        NotificationCenter.default.post(name: .openBatchSheet, object: nil)
     }
 
     // MARK: - Helpers
-
-    @MainActor
-    private func targetLangLabel() -> String {
-        let code = UserDefaults.standard.string(forKey: "defaultTargetLang") ?? "es"
-        let locale = Locale(identifier: "es")
-        return locale.localizedString(forLanguageCode: code) ?? code.uppercased()
-    }
 
     @MainActor
     private func presentError(_ title: String, detail: String) {
