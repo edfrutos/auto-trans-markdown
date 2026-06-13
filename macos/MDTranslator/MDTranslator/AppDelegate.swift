@@ -74,26 +74,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // La limpieza de huérfanos se gestiona en ServerManager.init() via /tmp/md-translator-python.pid
     }
 
-    /// Protege la salida con ⌘Q cuando hay un lote SSE en curso (D-10).
-    /// Muestra un alert de confirmación; si el usuario elige "Salir y cancelar", la app termina.
-    /// Si elige "Continuar en segundo plano", cancela la terminación y el job continúa.
-    nonisolated
-    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        MainActor.assumeIsolated {
-            guard BatchJobManager.shared.isRunning else { return .terminateNow }
-            let n = BatchJobManager.shared.completedCount
-            let m = BatchJobManager.shared.totalCount
-            let alert = NSAlert()
-            alert.messageText = "Hay un lote en curso (\(n) de \(m) archivos)"
-            alert.informativeText = "Si sales ahora, el servidor Python se detendrá y se perderán los archivos que aún no se han traducido."
-            alert.addButton(withTitle: "Salir y cancelar")
-            alert.addButton(withTitle: "Continuar en segundo plano")
-            alert.alertStyle = .warning
-            return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
-        }
-    }
-
     // MARK: - Apertura de archivos (Dock drag & drop, "Abrir con…", Open Recent, doble clic Finder)
+    // D-10: la intercepción de ⌘Q se gestiona en MDTranslatorApp.commands via
+    // CommandGroup(replacing: .appTermination) — patrón correcto para SwiftUI apps.
 
     nonisolated
     func application(_ application: NSApplication, open urls: [URL]) {

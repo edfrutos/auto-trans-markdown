@@ -121,6 +121,31 @@ struct MDTranslatorApp: App {
         .commands {
             AppCommands(serverPort: serverManager.serverPort)
         }
+        // D-10: interceptar ⌘Q cuando hay un lote SSE en curso.
+        // CommandGroup(replacing: .appTermination) es el patrón correcto en SwiftUI apps
+        // (applicationShouldTerminate no es fiable con @NSApplicationDelegateAdaptor).
+        .commands {
+            CommandGroup(replacing: .appTermination) {
+                Button("Salir") {
+                    guard BatchJobManager.shared.isRunning else {
+                        NSApp.terminate(nil)
+                        return
+                    }
+                    let n = BatchJobManager.shared.completedCount
+                    let m = BatchJobManager.shared.totalCount
+                    let alert = NSAlert()
+                    alert.messageText = "Hay un lote en curso (\(n) de \(m) archivos)"
+                    alert.informativeText = "Si sales ahora, el servidor Python se detendrá y se perderán los archivos que aún no se han traducido."
+                    alert.addButton(withTitle: "Salir y cancelar")
+                    alert.addButton(withTitle: "Continuar en segundo plano")
+                    alert.alertStyle = .warning
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        NSApp.terminate(nil)
+                    }
+                }
+                .keyboardShortcut("q")
+            }
+        }
 
         // MARK: Menu bar icon (Phase 11)
         MenuBarExtra {

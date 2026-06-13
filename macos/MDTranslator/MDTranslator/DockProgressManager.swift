@@ -20,7 +20,9 @@ final class DockProgressManager {
     ///   - total:   Total de archivos en el lote.
     func showProgress(current: Int, total: Int) {
         let tile = NSApp.dockTile
-        let size  = tile.size  // ~128×128 pt
+        // tile.size puede devolver .zero en contextos async antes de que AppKit inicialice el tile.
+        let rawSize = tile.size
+        let size = rawSize == .zero ? CGSize(width: 128, height: 128) : rawSize
 
         if containerView == nil {
             buildTileView(size: size, tile: tile)
