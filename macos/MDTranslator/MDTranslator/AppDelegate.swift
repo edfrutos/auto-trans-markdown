@@ -44,12 +44,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // SERVICES-01: registrar el proveedor del servicio del sistema.
             // MDTranslatorApp.body también lo hace como respaldo.
             NSApp.servicesProvider = ServiceHandler.shared
-            NSLog("[AppDelegate] servicesProvider: %@",
-                  String(describing: type(of: NSApp.servicesProvider)))
             NSUpdateDynamicServices()
             NSLog("[AppDelegate] applicationDidFinishLaunching OK")
             // HOTKEY-01: registrar hotkey global ⌥⇧M (NSEvent, necesita Accesibilidad).
             GlobalHotkeyManager.shared.register()
+            // D-10: interceptar ⌘Q a nivel de evento, antes del sistema de menús.
+            // Fiable aunque @NSApplicationDelegateAdaptor cree dos instancias de AppDelegate
+            // y applicationShouldTerminate se llame en la instancia incorrecta.
+            // NSEvent monitors corren en el hilo principal → MainActor.assumeIsolated seguro.
+            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                      event.charactersIgnoringModifiers == "q" else { return event }
+                // consumeEvent: Bool cruza contexto como Sendable; NSEvent no se pasa al actor.
+                var consumeEvent = false
+                MainActor.assumeIsolated {
+                    guard BatchJobManager.shared.isRunning else { return }
+                    let n = BatchJobManager.shared.completedCount
+                    let m = BatchJobManager.shared.totalCount
+                    let alert = NSAlert()
+                    alert.messageText = "Hay un lote en curso (\(n) de \(m) archivos)"
+                    alert.informativeText = "Si sales ahora, el servidor Python se detendrá y se perderán los archivos que aún no se han traducido."
+                    alert.addButton(withTitle: "Salir y cancelar")
+                    alert.addButton(withTitle: "Continuar en segundo plano")
+                    alert.alertStyle = .warning
+                    consumeEvent = true  // siempre consumir ⌘Q cuando hay lote activo
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        NSApp.terminate(nil)
+                    }
+                }
+                return consumeEvent ? nil : event
+            }
             // CRASH-01: inicializar el crash reporter (detecta cierre anómalo de la sesión
             // anterior) y mostrar alerta opt-in si el usuario lo ha habilitado.
             // checkAndPromptIfNeeded() aplica un delay de 2 s para no bloquear el arranque.
@@ -81,7 +105,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Task { @MainActor } evita MainActor.assumeIsolated desde el contexto nonisolated.
     nonisolated
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Diagnóstico D-10: confirmar que el método se invoca en este proceso.
+        // Comprueba con: cat /tmp/md-shouldterminate.txt
+        let diagText = "applicationShouldTerminate called at \(Date()) — delegate=\(type(of: self))\n"
+        try? diagText.write(toFile: "/tmp/md-shouldterminate.txt", atomically: true, encoding: .utf8)
+        NSLog("[D-10] applicationShouldTerminate — returning .terminateLater")
+
         Task { @MainActor in
+            NSLog("[D-10] Task @MainActor running — isRunning=%@",
+                  BatchJobManager.shared.isRunning ? "true" : "false")
             guard BatchJobManager.shared.isRunning else {
                 NSApp.reply(toApplicationShouldTerminate: true)
                 return
