@@ -275,7 +275,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 18-02-PLAN.md — BatchSheet (vista SwiftUI 3 estados: prepared / running / done)
+- [x] 18-02-PLAN.md — BatchSheet (vista SwiftUI 3 estados: prepared / running / done)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -319,7 +319,7 @@ Plans:
 
 | Phase | Nombre | Estado | Completada |
 |-------|--------|--------|------------|
-| 18 | 1/3 | In Progress|  |
+| 18 | 2/3 | In Progress|  |
 | 19 | Asociación .md | Definida | — |
 | 20 | Export PDF Nativo | Definida | — |
 | 21 | iCloud Drive Sync | Definida | — |
