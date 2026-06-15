@@ -138,11 +138,10 @@ struct AppCommands: Commands {
     /// Muestra el About panel estándar de macOS con metadatos de la app.
     private func showAboutPanel() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "3.1"
-        let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
-        let buildStr = build.isEmpty ? "" : " (build \(build))"
+        // macOS añade CFBundleVersion automáticamente en paréntesis; no lo duplicamos.
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName:    "MD Translator",
-            .applicationVersion: "\(version)\(buildStr)",
+            .applicationVersion: version,
             .credits: NSAttributedString(
                 string: "Traductor de Markdown con backend FastAPI + uvicorn embebido.\n\nhttps://github.com/edfrutos/auto-trans-markdown",
                 attributes: [.font: NSFont.systemFont(ofSize: 11)]
