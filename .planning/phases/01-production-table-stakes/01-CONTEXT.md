@@ -17,6 +17,7 @@ Fuera de alcance: validador post-traducción (Phase 2), SSE/jobs (Phase 3), Dock
 ## Implementation Decisions
 
 ### Pipeline unificado (PIPE-01)
+
 - **D-01:** Crear `src/pipeline.py` con `translate_markdown(content: str, options: TranslateOptions) -> TranslateResult` como única fachada para API, CLI y web.
 - **D-02:** `TranslateOptions` es `@dataclass` con campos: `target_lang`, `source_lang: str | None` (None = auto), `dry_run: bool = False`, `use_memory: bool = True`, `use_glossary: bool = True`, `glossary_path: Path | None = None`, `memory_path: Path | None = None`, `on_progress: ProgressCallback | None = None`.
 - **D-03:** `TranslateResult` incluye `content: str`, `segments_total: int`, `segments_translated: int`, `cache_hits: int`, `cache_misses: int`, `dry_run_segments: list[tuple[int, str]] | None = None`.
@@ -24,6 +25,7 @@ Fuera de alcance: validador post-traducción (Phase 2), SSE/jobs (Phase 3), Dock
 - **D-05:** Orden en pipeline: `segment_markdown` → `collect_translatable` → TM lookup (pre-glossary text) → glossary pre-process → `translate_segments` (solo misses) → glossary post-process → TM store → `reassemble`.
 
 ### Memoria de traducción (TM-01, TM-02, TM-03)
+
 - **D-06:** `src/memory.py` usa stdlib `sqlite3`; archivo en `data/translation_memory.db`; modo WAL (`PRAGMA journal_mode=WAL`).
 - **D-07:** Clave de cache: `sha256(normalize(text) + "|" + source_lang + "|" + target_lang)` donde `normalize()` colapsa whitespace interno a un espacio y hace strip.
 - **D-08:** TM lookup usa texto **pre-glossary** del segmento; store persiste traducción **post-glossary** (texto final que verá el usuario).
@@ -31,6 +33,7 @@ Fuera de alcance: validador post-traducción (Phase 2), SSE/jobs (Phase 3), Dock
 - **D-10:** Crear `data/` en startup si no existe; añadir `data/` a `.gitignore` (DB puede contener docs privados).
 
 ### Glosario (GLOS-01, GLOS-02, GLOS-03)
+
 - **D-11:** Archivo por defecto `glossary.yaml` en raíz del proyecto; formato YAML con `safe_load`/`safe_dump` exclusivamente.
 - **D-12:** Esquema YAML:
   ```yaml
@@ -51,6 +54,7 @@ Fuera de alcance: validador post-traducción (Phase 2), SSE/jobs (Phase 3), Dock
 - **D-16:** UI panel colapsable «Glosario» bajo controles de idioma; tabla editable; guardar vía PUT; aplicado automáticamente en editor, archivo y lote (misma fachada pipeline).
 
 ### CLI Typer (CLI-01 … CLI-05)
+
 - **D-17:** `src/cli.py` con Typer app; entry point `md-translate = "src.cli:app"` en `pyproject.toml`.
 - **D-18:** Subcomandos: `file`, `dir`, `batch`, `serve`, `memory` (con subcomando `clear`).
 - **D-19:** Flags comunes: `--target/-t`, `--source/-s` (default `auto`), `--dry-run`, `--no-memory`, `--no-glossary`, `--glossary-path`, `--provider` (override env).
@@ -62,6 +66,7 @@ Fuera de alcance: validador post-traducción (Phase 2), SSE/jobs (Phase 3), Dock
 - **D-25:** Dependencias nuevas: `typer>=0.21`, `pyyaml>=6.0.2`; actualizar `requirements.txt` y `pyproject.toml`.
 
 ### Claude's Discretion
+
 - Formato exacto de salida `--dry-run` (JSON vs tabla Rich).
 - Ubicación del panel glosario en DOM (debajo de idiomas vs drawer lateral).
 - Mensaje exacto del modal «Limpiar memoria».
@@ -85,18 +90,21 @@ Fuera de alcance: validador post-traducción (Phase 2), SSE/jobs (Phase 3), Dock
 ## Existing Code Insights
 
 ### Reusable Assets
+
 - `segment_markdown`, `collect_translatable`, `reassemble` — sin cambios de contrato
 - `translate_segments` con `on_progress`, `IncompleteTranslationError` — invocado desde pipeline
 - `get_supported_languages`, `is_valid_target_lang`, `is_valid_source_lang` — reutilizar en CLI
 - `tests/conftest.py`, `tests/test_api.py` — extender con mocks pipeline/TM/glossary
 
 ### Established Patterns
+
 - FastAPI async + `run_in_executor` para I/O bloqueante
 - `HTTPException` 400/502/503; errores en español
 - Frontend vanilla: `state`, `els`, `$`, fetch API
 - Tests sin API keys reales (mock en frontera)
 
 ### Integration Points
+
 - `_translate_file_content()` → reemplazar por `pipeline.translate_markdown`
 - `/api/languages` → sin cambio; CLI valida idiomas igual que API
 - `pyproject.toml` scripts → cambiar entry point crítico para CLI-05

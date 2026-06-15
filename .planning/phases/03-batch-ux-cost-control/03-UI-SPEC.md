@@ -14,7 +14,7 @@ Reemplazar la barra de progreso simulada (30%) en traducción por lote con **pro
 
 ## Layout — Batch tab
 
-```
+```json
 [ Idioma origen | Idioma destino ]
 [ ▼ Glosario ]  ← existing
 
@@ -46,12 +46,14 @@ Batch panel (#panel-batch):
 ## Batch progress (JOB-02)
 
 ### Global bar
+
 - Container: `#batch-progress-section` — `class="hidden mb-4"`
 - Bar track: reuse `#progress-wrap` styling OR dedicated `#batch-progress-bar` in section (prefer dedicated to avoid editor/file conflict — D-03)
 - Width: `(completed_files + current_file_segment_ratio) / total_files * 100`
 - Text `#batch-progress-text`: `{current}/{total} archivos · {pct}% · {current_filename}`
 
 ### Per-file list
+
 - `#batch-file-progress-list` — `<ul class="space-y-1 text-sm max-h-48 overflow-y-auto">`
 - Each `<li data-filename="...">` with icon + name:
   - `pending`: ○ gray (`text-ink-muted`)
@@ -61,6 +63,7 @@ Batch panel (#panel-batch):
   - `cancelled`: — (`text-ink-muted`) for unprocessed after cancel
 
 ### SSE client flow (app.js)
+
 1. `POST /api/translate/batch/jobs` with FormData (files + langs) → `{ job_id }`
 2. `EventSource('/api/translate/batch/jobs/{id}/events')`
 3. On events:
@@ -72,11 +75,13 @@ Batch panel (#panel-batch):
 4. On `complete` or cancel: `GET .../download` → blob → `state.downloadBlob`
 
 ### Summary states
+
 - Full success: `showStatus('10/10 archivos traducidos — validation.json incluido en ZIP.', 'success')`
 - Partial: `showStatus('8/10 OK — 2 errores. Revisa errors.json en el ZIP.', 'warning')`
 - Cancelled: `showStatus('Cancelado: 5/10 completados. Descarga parcial disponible.', 'warning')` then reset file list after user dismisses or on new job
 
 ### Mobile (D-04)
+
 - `#batch-progress-section`: `flex flex-col gap-3`
 - File list: `max-h-40 overflow-y-auto` stacked below bar
 
@@ -98,19 +103,23 @@ Batch panel (#panel-batch):
 ## Cost estimate (COST-02)
 
 ### Batch tab
+
 - `#estimate-batch` — `text-sm text-ink-muted mb-3 hidden`
 - Trigger: when `state.batchFiles.length > 0` and languages selected → debounced `POST /api/translate/estimate` with file list
 - Display format (D-15): `` `~${segments} segmentos · ~${chars} chars · ~$${cost} (${model})` ``
 - Warning `#estimate-warn`: if `estimate.exceeds_threshold` → `class="text-amber-600 text-sm mt-1"` «Coste estimado superior al umbral configurado»
 
 ### File tab
+
 - `#estimate-file` — same pattern when `state.selectedFile` set
 - Estimate before Traducir; no extra confirm modal (D-17)
 
 ### Editor tab
+
 - **No estimate block** (D-14)
 
 ### Loading estimate
+
 - Show «Calculando…» in estimate block while fetch pending
 - On error: hide block or show «Estimación no disponible»
 

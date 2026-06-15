@@ -30,6 +30,7 @@ def estimate_files(contents: list[str], ...) -> EstimateResult: ...  # aggregate
 ```
 
 ### Logic
+
 1. `segment_markdown` → `collect_translatable` per file (same as pipeline, no translate).
 2. **characters** = sum of `len(text)` for translatable segments (after TM partition if `use_memory` — count only cache misses for cost).
 3. **Pricing table** in `src/estimate.py` constants (OpenAI: per-1M-input tokens heuristic from chars/4; DeepL: per-char rate). Read `OPENAI_MODEL`, `TRANSLATION_PROVIDER` from env.
@@ -37,6 +38,7 @@ def estimate_files(contents: list[str], ...) -> EstimateResult: ...  # aggregate
 
 ### Endpoint
 `POST /api/translate/estimate`
+
 - JSON body: `{ "content": "..." }` OR multipart files (mirror batch upload)
 - Response: `EstimateResult` as JSON (COST-01)
 
@@ -79,6 +81,7 @@ def build_batch_zip(
 ## Jobs (`src/jobs.py`)
 
 ### Registry
+
 - Module-level `dict[str, BatchJob]` guarded by `asyncio.Lock` (single process, D-18).
 - TTL cleanup optional (Claude discretion — evict completed jobs after 1h).
 
@@ -107,6 +110,7 @@ class BatchJob:
 
 ### Worker loop (per job)
 For each `(filename, content)`:
+
 1. If `cancel_requested` before file: append error `{filename, "Cancelado: job cancelado por el usuario"}`; skip.
 2. Emit `file_start`.
 3. Define `on_progress(done, total)` → emit `segment_progress` with filename.
@@ -117,23 +121,23 @@ For each `(filename, content)`:
 8. Build ZIP via `build_batch_zip`, emit `complete`.
 
 ### SSE events (NOTEBOOK §5, D-02)
-| type | payload fields |
-|------|----------------|
-| `file_start` | `filename`, `file_index`, `total_files` |
-| `segment_progress` | `filename`, `done`, `total` |
-| `file_done` | `filename`, `file_index` |
-| `error` | `filename`, `message` |
-| `complete` | `ok_count`, `error_count`, `total_files`, `cancelled` (bool) |
+| type               | payload fields                                               |
+| ------------------ | ------------------------------------------------------------ |
+| `file_start`       | `filename`, `file_index`, `total_files`                      |
+| `segment_progress` | `filename`, `done`, `total`                                  |
+| `file_done`        | `filename`, `file_index`                                     |
+| `error`            | `filename`, `message`                                        |
+| `complete`         | `ok_count`, `error_count`, `total_files`, `cancelled` (bool) |
 
 Format: `data: {json}\n\n` (standard SSE).
 
 ### HTTP routes (main.py)
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/api/translate/batch/jobs` | Create job, start worker, return `{job_id}` |
-| GET | `/api/translate/batch/jobs/{job_id}/events` | `StreamingResponse` SSE |
-| DELETE | `/api/translate/batch/jobs/{job_id}` | Set `cancel_requested=True` |
-| GET | `/api/translate/batch/jobs/{job_id}/download` | ZIP when state completed/cancelled |
+| Method   | Path                                          | Purpose                                     |
+| -------- | --------------------------------------------- | ------------------------------------------- |
+| POST     | `/api/translate/batch/jobs`                   | Create job, start worker, return `{job_id}` |
+| GET      | `/api/translate/batch/jobs/{job_id}/events`   | `StreamingResponse` SSE                     |
+| DELETE   | `/api/translate/batch/jobs/{job_id}`          | Set `cancel_requested=True`                 |
+| GET      | `/api/translate/batch/jobs/{job_id}/download` | ZIP when state completed/cancelled          |
 
 Keep `POST /api/translate/batch` synchronous — refactor internals to use `build_batch_zip` after per-file try/except for partial support (optional improvement) or leave sync fail-fast; **jobs path is primary for partial** (D-19).
 
@@ -172,12 +176,12 @@ Send heartbeat comment `: keepalive\n\n` every 15s if queue idle (discretion).
 
 ## Test strategy
 
-| Module | Tests |
-|--------|-------|
-| `estimate.py` | segment count, cost math, threshold flag |
-| `batch_zip.py` | successes only; partial + errors.json |
-| `jobs.py` | mock translate; cancel after file 1; error continues |
-| `test_api.py` | estimate endpoint; job create + SSE parse; download |
+| Module         | Tests                                                |
+| -------------- | ---------------------------------------------------- |
+| `estimate.py`  | segment count, cost math, threshold flag             |
+| `batch_zip.py` | successes only; partial + errors.json                |
+| `jobs.py`      | mock translate; cancel after file 1; error continues |
+| `test_api.py`  | estimate endpoint; job create + SSE parse; download  |
 
 Use `TestClient` + mock `translate_markdown` via dependency or patch.
 
@@ -185,14 +189,14 @@ Use `TestClient` + mock `translate_markdown` via dependency or patch.
 
 ## Validation Architecture
 
-| Requirement | Verification |
-|-------------|--------------|
-| JOB-01 | `test_api.py -k job` creates job returns id; SSE stream emits events |
-| JOB-02 | Manual UI or test parses segment_progress + file_start |
-| JOB-03 | DELETE sets cancel; worker stops after current file |
-| JOB-04 | ZIP contains errors.json when errors list non-empty |
-| COST-01 | `test_estimate.py` + API estimate returns segments/chars/cost |
-| COST-02 | Manual: estimate block visible in batch/file tabs |
+| Requirement   | Verification                                                         |
+| ------------- | -------------------------------------------------------------------- |
+| JOB-01        | `test_api.py -k job` creates job returns id; SSE stream emits events |
+| JOB-02        | Manual UI or test parses segment_progress + file_start               |
+| JOB-03        | DELETE sets cancel; worker stops after current file                  |
+| JOB-04        | ZIP contains errors.json when errors list non-empty                  |
+| COST-01       | `test_estimate.py` + API estimate returns segments/chars/cost        |
+| COST-02       | Manual: estimate block visible in batch/file tabs                    |
 
 **Quick run:** `pytest tests/test_estimate.py tests/test_batch_zip.py tests/test_jobs.py -q`
 **Full:** `pytest tests/ -q`

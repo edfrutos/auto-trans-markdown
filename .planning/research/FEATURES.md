@@ -11,16 +11,16 @@
 
 Features que un usuario macOS espera. Su ausencia hace que la app parezca un port barato.
 
-| Feature | Por qué se espera | Complejidad | Patrón SwiftUI | Backend Python |
-|---------|-------------------|-------------|----------------|----------------|
-| **Sidebar + content area (NavigationSplitView)** | Estándar en apps macOS con múltiples modos (Mail, Finder, Notes) | Media | `NavigationSplitView(sidebar:detail:)` — macOS 13+ | No |
-| **Drag & drop de archivos .md desde Finder** | Comportamiento nativo macOS esperado en cualquier editor de texto | Media | `onDrop(of: [.fileURL], isTargeted:perform:)` + `NSItemProvider.loadFileRepresentation` | No |
-| **API keys en Keychain (no .env)** | Estándar de seguridad macOS; los usuarios esperan no manejar ficheros de config | Alta | `SecItemAdd` / `SecItemCopyMatching` con `kSecClassGenericPassword` | No (Keychain → env vars antes de lanzar subprocess) |
-| **Ventana Preferencias nativa (Cmd+,)** | Convención macOS inviolable | Baja | `Settings { SettingsView() }` scene en `App.body` — macOS 11+ | No |
-| **Atajos de teclado en menú** | Usuarios power user esperan Cmd+T (traducir), Cmd+O (abrir), etc. | Baja | `.commands { CommandMenu(...) }` + `.keyboardShortcut("T")` | No |
-| **Notificaciones nativas al completar batch** | Feedback sin mantener ventana abierta; la app puede estar en background | Media | `UNUserNotificationCenter.current().add(request)` + `requestAuthorization` al arrancar | No (disparo desde Swift al recibir respuesta HTTP de la API local) |
-| **Backend Python embebido (sin instalar Python)** | App autocontenida; el usuario no instala nada extra | Muy Alta | `Process()` + `executableURL` apuntando a python-build-standalone en `Bundle.main.resourceURL` | Sí — el .app bundle contiene el intérprete + deps |
-| **Health check antes de primera request** | El subprocess tarda ~1-2 s en arrancar; sin esto hay race condition | Media | Loop `URLSession` con retry en Swift hasta recibir 200 en `/health` | Requiere endpoint `/health` en FastAPI (trivial añadir si no existe) |
+| Feature                                           | Por qué se espera                                                               | Complejidad   | Patrón SwiftUI                                                                                 | Backend Python                                                       |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Sidebar + content area (NavigationSplitView)**  | Estándar en apps macOS con múltiples modos (Mail, Finder, Notes)                | Media         | `NavigationSplitView(sidebar:detail:)` — macOS 13+                                             | No                                                                   |
+| **Drag & drop de archivos .md desde Finder**      | Comportamiento nativo macOS esperado en cualquier editor de texto               | Media         | `onDrop(of: [.fileURL], isTargeted:perform:)` + `NSItemProvider.loadFileRepresentation`        | No                                                                   |
+| **API keys en Keychain (no .env)**                | Estándar de seguridad macOS; los usuarios esperan no manejar ficheros de config | Alta          | `SecItemAdd` / `SecItemCopyMatching` con `kSecClassGenericPassword`                            | No (Keychain → env vars antes de lanzar subprocess)                  |
+| **Ventana Preferencias nativa (Cmd+,)**           | Convención macOS inviolable                                                     | Baja          | `Settings { SettingsView() }` scene en `App.body` — macOS 11+                                  | No                                                                   |
+| **Atajos de teclado en menú**                     | Usuarios power user esperan Cmd+T (traducir), Cmd+O (abrir), etc.               | Baja          | `.commands { CommandMenu(...) }` + `.keyboardShortcut("T")`                                    | No                                                                   |
+| **Notificaciones nativas al completar batch**     | Feedback sin mantener ventana abierta; la app puede estar en background         | Media         | `UNUserNotificationCenter.current().add(request)` + `requestAuthorization` al arrancar         | No (disparo desde Swift al recibir respuesta HTTP de la API local)   |
+| **Backend Python embebido (sin instalar Python)** | App autocontenida; el usuario no instala nada extra                             | Muy Alta      | `Process()` + `executableURL` apuntando a python-build-standalone en `Bundle.main.resourceURL` | Sí — el .app bundle contiene el intérprete + deps                    |
+| **Health check antes de primera request**         | El subprocess tarda ~1-2 s en arrancar; sin esto hay race condition             | Media         | Loop `URLSession` con retry en Swift hasta recibir 200 en `/health`                            | Requiere endpoint `/health` en FastAPI (trivial añadir si no existe) |
 
 ---
 
@@ -28,27 +28,27 @@ Features que un usuario macOS espera. Su ausencia hace que la app parezca un por
 
 Features que la web app no puede ofrecer o que en macOS son significativamente mejor.
 
-| Feature | Valor añadido | Complejidad | Patrón SwiftUI | Backend Python |
-|---------|---------------|-------------|----------------|----------------|
-| **Menubar icon (MenuBarExtra)** | Traducción rápida sin abrir ventana principal; acceso desde cualquier contexto | Media | `MenuBarExtra("MDTranslate", systemImage: "doc.text")` con `.menuBarExtraStyle(.menu)` para acciones rápidas o `.window` para UI rica. Coexiste con `WindowGroup` en el mismo `App.body` | No (solo llama a la API local) |
-| **File association: abrir .md con doble-click** | El usuario puede registrar la app como editora de .md en Finder | Media | `CFBundleDocumentTypes` + `UTExportedTypeDeclarations` en `Info.plist` con `public.utf8-plain-text` conformance | No |
-| **Auto-update (Sparkle 2)** | Distribución fuera del App Store con updates automáticos | Alta | SPM: `https://github.com/sparkle-project/Sparkle`. `SPUStandardUpdaterController` en `App.init()`. `CheckForUpdatesView` en `CommandGroup(after: .appInfo)`. Requiere appcast XML en servidor y firma EdDSA | No |
-| **Drop zone visual con feedback isTargeted** | En la web hay un botón; en macOS el drop desde Finder con feedback visual es más natural | Baja-Media | `dropDestination(for:action:isTargeted:)` con animación de borde en `isTargeted = true` | No |
-| **Glosario y TM en `~/Library/Application Support/`** | Ubicación estándar macOS para datos de usuario; backup automático con Time Machine | Media | `FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)` para resolver ruta | Sí — el servidor Python recibe la ruta via variable de entorno `GLOSSARY_PATH` / `TM_DB_PATH` |
-| **Badge en Dock al completar batch** | Feedback visible incluso cuando la app está minimizada | Baja | `NSApplication.shared.dockTile.badgeLabel = "\(count)"` + resetear al activar la app | No |
-| **Modo offline con mensaje claro** | Detección de red antes de intentar llamada a API; en la web simplemente falla con error HTTP | Baja | `NWPathMonitor` (Network framework) para detectar conectividad antes de disparar request | No |
+| Feature                                               | Valor añadido                                                                                | Complejidad   | Patrón SwiftUI                                                                                                                                                                                              | Backend Python                                                                                |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Menubar icon (MenuBarExtra)**                       | Traducción rápida sin abrir ventana principal; acceso desde cualquier contexto               | Media         | `MenuBarExtra("MDTranslate", systemImage: "doc.text")` con `.menuBarExtraStyle(.menu)` para acciones rápidas o `.window` para UI rica. Coexiste con `WindowGroup` en el mismo `App.body`                    | No (solo llama a la API local)                                                                |
+| **File association: abrir .md con doble-click**       | El usuario puede registrar la app como editora de .md en Finder                              | Media         | `CFBundleDocumentTypes` + `UTExportedTypeDeclarations` en `Info.plist` con `public.utf8-plain-text` conformance                                                                                             | No                                                                                            |
+| **Auto-update (Sparkle 2)**                           | Distribución fuera del App Store con updates automáticos                                     | Alta          | SPM: `https://github.com/sparkle-project/Sparkle`. `SPUStandardUpdaterController` en `App.init()`. `CheckForUpdatesView` en `CommandGroup(after: .appInfo)`. Requiere appcast XML en servidor y firma EdDSA | No                                                                                            |
+| **Drop zone visual con feedback isTargeted**          | En la web hay un botón; en macOS el drop desde Finder con feedback visual es más natural     | Baja-Media    | `dropDestination(for:action:isTargeted:)` con animación de borde en `isTargeted = true`                                                                                                                     | No                                                                                            |
+| **Glosario y TM en `~/Library/Application Support/`** | Ubicación estándar macOS para datos de usuario; backup automático con Time Machine           | Media         | `FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)` para resolver ruta                                                                                                       | Sí — el servidor Python recibe la ruta via variable de entorno `GLOSSARY_PATH` / `TM_DB_PATH` |
+| **Badge en Dock al completar batch**                  | Feedback visible incluso cuando la app está minimizada                                       | Baja          | `NSApplication.shared.dockTile.badgeLabel = "\(count)"` + resetear al activar la app                                                                                                                        | No                                                                                            |
+| **Modo offline con mensaje claro**                    | Detección de red antes de intentar llamada a API; en la web simplemente falla con error HTTP | Baja          | `NWPathMonitor` (Network framework) para detectar conectividad antes de disparar request                                                                                                                    | No                                                                                            |
 
 ---
 
 ## Nice-to-Have (diferir post-MVP macOS)
 
-| Feature | Motivo de diferimiento | Alternativa inmediata |
-|---------|------------------------|----------------------|
-| **iCloud Drive sync del glosario/TM** | Requiere entitlement + Apple Developer account ($99/año); PROJECT.md dice distribuir ad-hoc | `~/Library/Application Support/` con sync manual |
-| **Quick Look preview del .md traducido** | Buena UX pero requiere `QLPreviewPanel` y plugin separado | Split view con texto renderizado como `Text` scrollable |
-| **Spotlight indexing (NSMetadataItem)** | Permite buscar traducciones pasadas desde Spotlight | Omitir en v3.0 |
-| **Notarización con Apple Developer** | PROJECT.md dice ad-hoc explícitamente | Instrucciones para bypassear Gatekeeper (clic derecho → Abrir) en README |
-| **Touch Bar support** | Deprecado en hardware actual (MacBook Pro M3+) | Omitir |
+| Feature                                  | Motivo de diferimiento                                                                      | Alternativa inmediata                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **iCloud Drive sync del glosario/TM**    | Requiere entitlement + Apple Developer account ($99/año); PROJECT.md dice distribuir ad-hoc | `~/Library/Application Support/` con sync manual                         |
+| **Quick Look preview del .md traducido** | Buena UX pero requiere `QLPreviewPanel` y plugin separado                                   | Split view con texto renderizado como `Text` scrollable                  |
+| **Spotlight indexing (NSMetadataItem)**  | Permite buscar traducciones pasadas desde Spotlight                                         | Omitir en v3.0                                                           |
+| **Notarización con Apple Developer**     | PROJECT.md dice ad-hoc explícitamente                                                       | Instrucciones para bypassear Gatekeeper (clic derecho → Abrir) en README |
+| **Touch Bar support**                    | Deprecado en hardware actual (MacBook Pro M3+)                                              | Omitir                                                                   |
 
 ---
 
@@ -56,34 +56,34 @@ Features que la web app no puede ofrecer o que en macOS son significativamente m
 
 Features a NO construir en v3.0.
 
-| Anti-Feature | Por qué evitar | En su lugar |
-|--------------|----------------|-------------|
-| **WebView embebido de la UI web existente** | Derrota el propósito; pierde integración nativa; PROJECT.md eligió SwiftUI explícitamente | SwiftUI nativo desde cero |
-| **Autenticación multi-usuario / Bearer en app** | La app es mono-usuario local; la API key es del usuario, no multi-tenant | Keychain con un conjunto de keys por proveedor |
-| **Plugin manager en app** | Scope demasiado grande para v3.0 | Plugin Obsidian/VS Code es backlog separado (V2-02) |
-| **Redux-style state management** | Sobre-ingeniería para una app de escritorio con poco estado compartido | `@StateObject` + `@EnvironmentObject` es suficiente |
-| **Servidor expuesto en red local** | Sin auth Bearer, el servidor embebido solo debe escuchar `127.0.0.1` | `HOST=127.0.0.1` forzado en subprocess env |
+| Anti-Feature                                    | Por qué evitar                                                                            | En su lugar                                         |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **WebView embebido de la UI web existente**     | Derrota el propósito; pierde integración nativa; PROJECT.md eligió SwiftUI explícitamente | SwiftUI nativo desde cero                           |
+| **Autenticación multi-usuario / Bearer en app** | La app es mono-usuario local; la API key es del usuario, no multi-tenant                  | Keychain con un conjunto de keys por proveedor      |
+| **Plugin manager en app**                       | Scope demasiado grande para v3.0                                                          | Plugin Obsidian/VS Code es backlog separado (V2-02) |
+| **Redux-style state management**                | Sobre-ingeniería para una app de escritorio con poco estado compartido                    | `@StateObject` + `@EnvironmentObject` es suficiente |
+| **Servidor expuesto en red local**              | Sin auth Bearer, el servidor embebido solo debe escuchar `127.0.0.1`                      | `HOST=127.0.0.1` forzado en subprocess env          |
 
 ---
 
 ## Diferenciadores macOS vs Web (resumen ejecutivo)
 
-| Dimensión | App Web | App macOS nativa |
-|-----------|---------|-----------------|
-| **Ingesta de archivos** | Botón upload en browser | Drag desde Finder, doble-click en .md, file association |
-| **Gestión de credenciales** | .env en disco (riesgo) | Keychain encriptado del OS |
-| **Accesibilidad del servicio** | Requiere abrir browser y navegar | Menubar icon siempre accesible desde cualquier app |
-| **Feedback de completado** | Visible solo si la pestaña está abierta | Notificación nativa con sonido + badge en Dock |
-| **Persistencia de preferencias** | localStorage / sin backup | `~/Library/Application Support/` + Time Machine |
-| **Updates** | Recargar página | Auto-update Sparkle sin intervención del usuario |
-| **Arranque** | Depende de un servidor externo en ejecución | Backend embebido se lanza y termina con la app |
-| **Privacidad** | Los archivos transitan por el browser + servidor | Todo local; los .md nunca salen del Mac salvo a la API de traducción |
+| Dimensión                        | App Web                                          | App macOS nativa                                                     |
+| -------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
+| **Ingesta de archivos**          | Botón upload en browser                          | Drag desde Finder, doble-click en .md, file association              |
+| **Gestión de credenciales**      | .env en disco (riesgo)                           | Keychain encriptado del OS                                           |
+| **Accesibilidad del servicio**   | Requiere abrir browser y navegar                 | Menubar icon siempre accesible desde cualquier app                   |
+| **Feedback de completado**       | Visible solo si la pestaña está abierta          | Notificación nativa con sonido + badge en Dock                       |
+| **Persistencia de preferencias** | localStorage / sin backup                        | `~/Library/Application Support/` + Time Machine                      |
+| **Updates**                      | Recargar página                                  | Auto-update Sparkle sin intervención del usuario                     |
+| **Arranque**                     | Depende de un servidor externo en ejecución      | Backend embebido se lanza y termina con la app                       |
+| **Privacidad**                   | Los archivos transitan por el browser + servidor | Todo local; los .md nunca salen del Mac salvo a la API de traducción |
 
 ---
 
 ## Feature Dependencies
 
-```
+```text
 Backend embebido (subprocess Python)
   → Health check en /health (FastAPI)
     → Todo el resto de features de traducción
@@ -408,12 +408,12 @@ Diferir a iteración posterior dentro de v3.0:
 
 ## Sources
 
-| Fuente | Usado para | Confianza |
-|--------|-----------|-----------|
-| Context7 `/websites/developer_apple_swiftui` | NavigationSplitView, onDrop, MenuBarExtra, Settings, CommandMenu, AppStorage | HIGH |
-| developer.apple.com/documentation/usernotifications | UNUserNotificationCenter, requestAuthorization, UNNotificationRequest | HIGH |
-| developer.apple.com/documentation/security/keychain_services | SecItemAdd, SecItemCopyMatching, kSecClassGenericPassword | HIGH |
-| developer.apple.com/documentation/foundation/process | Process, executableURL, standardError, terminate | HIGH |
-| Context7 `/websites/sparkle-project` | SPUStandardUpdaterController, appcast, EdDSA, XPC signing, SPM setup | HIGH |
-| developer.apple.com (UTType) | No existe UTType nativo para .md; usar .fileURL + filtro por extensión | MEDIUM |
-| .planning/PROJECT.md | Restricciones del proyecto, decisiones clave (ad-hoc DMG, no notarización) | HIGH |
+| Fuente                                                       | Usado para                                                                   | Confianza   |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------- | ----------- |
+| Context7 `/websites/developer_apple_swiftui`                 | NavigationSplitView, onDrop, MenuBarExtra, Settings, CommandMenu, AppStorage | HIGH        |
+| developer.apple.com/documentation/usernotifications          | UNUserNotificationCenter, requestAuthorization, UNNotificationRequest        | HIGH        |
+| developer.apple.com/documentation/security/keychain_services | SecItemAdd, SecItemCopyMatching, kSecClassGenericPassword                    | HIGH        |
+| developer.apple.com/documentation/foundation/process         | Process, executableURL, standardError, terminate                             | HIGH        |
+| Context7 `/websites/sparkle-project`                         | SPUStandardUpdaterController, appcast, EdDSA, XPC signing, SPM setup         | HIGH        |
+| developer.apple.com (UTType)                                 | No existe UTType nativo para .md; usar .fileURL + filtro por extensión       | MEDIUM      |
+| .planning/PROJECT.md                                         | Restricciones del proyecto, decisiones clave (ad-hoc DMG, no notarización)   | HIGH        |

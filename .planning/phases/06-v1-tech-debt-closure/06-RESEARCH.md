@@ -30,11 +30,11 @@ options = _build_options(lang, source, dry_run, no_memory, no_glossary, glossary
 
 **SSE constraint:** Native `EventSource` does not support custom headers. Options:
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| Query `?access_token=` | Simple, works with EventSource | Token in URL/logs — mitigated: localhost deploy, optional feature |
-| fetch + ReadableStream SSE polyfill | Headers supported | More JS complexity |
-| Cookie session | Clean SSE | Requires server session — out of scope |
+| Approach                            | Pros                           | Cons                                                              |
+| ----------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
+| Query `?access_token=`              | Simple, works with EventSource | Token in URL/logs — mitigated: localhost deploy, optional feature |
+| fetch + ReadableStream SSE polyfill | Headers supported              | More JS complexity                                                |
+| Cookie session                      | Clean SSE                      | Requires server session — out of scope                            |
 
 **Chosen:** D-01 — extend `_require_api_token` to accept `access_token` query param OR `Authorization` header; UI appends token to EventSource URL when set.
 
@@ -62,8 +62,8 @@ Phase 2 has `02-VALIDATION.md` (Nyquist map) but no sign-off `02-VERIFICATION.md
 
 ## Risks
 
-| Risk | Mitigation |
-|------|------------|
-| Token in SSE URL logged by proxies | Document localhost/single-user; optional feature |
-| Tab switch loses unsaved editor edits | Disable tabs during review mode or warn on switch |
-| Retroactive verification inaccurate | Cross-check against summaries + pytest module list |
+| Risk                                  | Mitigation                                         |
+| ------------------------------------- | -------------------------------------------------- |
+| Token in SSE URL logged by proxies    | Document localhost/single-user; optional feature   |
+| Tab switch loses unsaved editor edits | Disable tabs during review mode or warn on switch  |
+| Retroactive verification inaccurate   | Cross-check against summaries + pytest module list |

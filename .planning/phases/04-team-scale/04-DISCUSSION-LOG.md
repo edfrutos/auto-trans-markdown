@@ -11,12 +11,12 @@
 
 ## Multi-destino en UI
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Multi-select nativo | select multiple / checkboxes | |
-| Chips/tags | etiquetas removibles | ✓ (Claude) |
-| Principal + añadir idioma | un idioma + botón | |
-| Tú decides | | ✓ (selector) |
+| Option                    | Description                  | Selected     |
+| ------------------------- | ---------------------------- | ------------ |
+| Multi-select nativo       | select multiple / checkboxes |              |
+| Chips/tags                | etiquetas removibles         | ✓ (Claude)   |
+| Principal + añadir idioma | un idioma + botón            |              |
+| Tú decides                |                              | ✓ (selector) |
 
 **User's choice:** Modos = **todos** (editor, archivo, lote). Selector, estimate y progreso = **Claude decide** → chips; estimate agregado; progreso anidado archivo×idioma.
 
@@ -24,46 +24,46 @@
 
 ## Multi-destino en backend
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Por archivo luego idiomas | file_then_lang | ✓ |
-| Por idioma luego archivos | lang_then_file | |
-| Serial | concurrencia 1 | |
-| Env MULTI_LANG_CONCURRENCY | configurable | ✓ (Claude, default 1) |
-| ZIP plano stem.{lang}.md | MULTI-02 | ✓ (Claude) |
-| target_lang + target_langs[] | compatibilidad | ✓ |
+| Option                       | Description    | Selected              |
+| ---------------------------- | -------------- | --------------------- |
+| Por archivo luego idiomas    | file_then_lang | ✓                     |
+| Por idioma luego archivos    | lang_then_file |                       |
+| Serial                       | concurrencia 1 |                       |
+| Env MULTI_LANG_CONCURRENCY   | configurable   | ✓ (Claude, default 1) |
+| ZIP plano stem.{lang}.md     | MULTI-02       | ✓ (Claude)            |
+| target_lang + target_langs[] | compatibilidad | ✓                     |
 
 ---
 
 ## Docker y despliegue
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| LAN + VPS documentados | both | ✓ |
-| requirements.txt vs uv.lock | brownfield | ✓ (Claude → requirements.txt) |
-| Compose minimal + healthcheck | | ✓ (Claude) |
-| Puerto 5400 default | usuario free-text | ✓ |
+| Option                        | Description       | Selected                      |
+| ----------------------------- | ----------------- | ----------------------------- |
+| LAN + VPS documentados        | both              | ✓                             |
+| requirements.txt vs uv.lock   | brownfield        | ✓ (Claude → requirements.txt) |
+| Compose minimal + healthcheck |                   | ✓ (Claude)                    |
+| Puerto 5400 default           | usuario free-text | ✓                             |
 
 ---
 
 ## Hardening SEC
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| CORS_ORIGINS comma-separated | | ✓ |
-| Límite por archivo Y total batch | | ✓ |
-| TTL arranque + periódico | | ✓ |
-| Sin auth obligatorio | | ✓ (Claude; API_TOKEN opcional) |
+| Option                           | Description   | Selected                       |
+| -------------------------------- | ------------- | ------------------------------ |
+| CORS_ORIGINS comma-separated     |               | ✓                              |
+| Límite por archivo Y total batch |               | ✓                              |
+| TTL arranque + periódico         |               | ✓                              |
+| Sin auth obligatorio             |               | ✓ (Claude; API_TOKEN opcional) |
 
 ---
 
 ## CLI multi-idioma
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Paridad web file/dir/batch | | ✓ |
-| `-t es,en,fr` | coma separada | ✓ |
-| Salida stem.{lang}.md | | ✓ |
+| Option                     | Description   | Selected   |
+| -------------------------- | ------------- | ---------- |
+| Paridad web file/dir/batch |               | ✓          |
+| `-t es,en,fr`              | coma separada | ✓          |
+| Salida stem.{lang}.md      |               | ✓          |
 
 ---
 

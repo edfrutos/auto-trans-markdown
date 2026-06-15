@@ -16,16 +16,16 @@ revised: 2026-06-12
 
 ## Test Infrastructure
 
-| Property | Value |
-|----------|-------|
-| **Framework** | pytest 8.x (backend Python) |
-| **Config file** | `pyproject.toml` — sección `[tool.pytest.ini_options]` |
-| **Quick run command** | `pytest tests/test_jobs.py -q` |
-| **Full suite command** | `pytest tests/ -q` |
-| **Build verify command** | ver nota (1) |
-| **Estimated runtime (pytest quick)** | ~5 s |
-| **Estimated runtime (pytest full)** | ~15 s |
-| **Estimated runtime (xcodebuild)** | ~30–90 s (incremental ~30 s; build limpio ~90 s) |
+| Property                             | Value                                                  |
+| ------------------------------------ | ------------------------------------------------------ |
+| **Framework**                        | pytest 8.x (backend Python)                            |
+| **Config file**                      | `pyproject.toml` — sección `[tool.pytest.ini_options]` |
+| **Quick run command**                | `pytest tests/test_jobs.py -q`                         |
+| **Full suite command**               | `pytest tests/ -q`                                     |
+| **Build verify command**             | ver nota (1)                                           |
+| **Estimated runtime (pytest quick)** | ~5 s                                                   |
+| **Estimated runtime (pytest full)**  | ~15 s                                                  |
+| **Estimated runtime (xcodebuild)**   | ~30–90 s (incremental ~30 s; build limpio ~90 s)       |
 
 **(1)** Comando completo de build:
 
@@ -52,13 +52,13 @@ xcodebuild -project macos/MDTranslator/MDTranslator.xcodeproj \
 
 Comando de build abreviado en la tabla como **"xcodebuild build"** — texto completo en nota (1) arriba.
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 18-01-T1 | 01 | 1 | SSE-01, SSE-04 | T-18-01 | NSOpenPanel filtra `.md`; solo URLs `.md` pasan a `prepareWith` | build | xcodebuild build | ✅ Commands.swift | ⬜ pending |
-| 18-01-T2 | 01 | 1 | SSE-01, SSE-04 | T-18-02, T-18-03 | URL hardcodeada a `127.0.0.1:{port}`; flag `-j` impide path traversal | build + unit | xcodebuild build + `pytest tests/test_jobs.py -q` | ✅ nuevo BatchJobManager.swift | ⬜ pending |
-| 18-02-T1 | 02 | 2 | SSE-02, SSE-03 | T-18-06, T-18-08 | Mensajes de error del backend como texto plano en SwiftUI Text() | build + unit | xcodebuild build + `pytest tests/test_jobs.py -q` | ✅ nuevo BatchSheet.swift | ⬜ pending |
-| 18-03-T1 | 03 | 3 | SSE-01, SSE-03 | T-18-09 | `.openBatchSheet` solo activa `showBatchSheet = true`; emisor ya llamó `prepareWith` | build | xcodebuild build | ✅ AppDelegate.swift | ⬜ pending |
-| 18-03-T2 | 03 | 3 | SSE-01..04 | T-18-09, T-18-10 | `.onReceive(.openBatchSheet)` solo activa la sheet; sin lógica de negocio | build + full suite | xcodebuild build + `pytest tests/ -q` | ✅ MDTranslatorApp.swift | ⬜ pending |
+| Task ID   | Plan   | Wave   | Requirement    | Threat Ref       | Secure Behavior                                                                      | Test Type          | Automated Command                                 | File Exists                   | Status    |
+| --------- | ------ | ------ | -------------- | ---------------- | ------------------------------------------------------------------------------------ | ------------------ | ------------------------------------------------- | ----------------------------- | --------- |
+| 18-01-T1  | 01     | 1      | SSE-01, SSE-04 | T-18-01          | NSOpenPanel filtra `.md`; solo URLs `.md` pasan a `prepareWith`                      | build              | xcodebuild build                                  | ✅ Commands.swift              | ⬜ pending |
+| 18-01-T2  | 01     | 1      | SSE-01, SSE-04 | T-18-02, T-18-03 | URL hardcodeada a `127.0.0.1:{port}`; flag `-j` impide path traversal                | build + unit       | xcodebuild build + `pytest tests/test_jobs.py -q` | ✅ nuevo BatchJobManager.swift | ⬜ pending |
+| 18-02-T1  | 02     | 2      | SSE-02, SSE-03 | T-18-06, T-18-08 | Mensajes de error del backend como texto plano en SwiftUI Text()                     | build + unit       | xcodebuild build + `pytest tests/test_jobs.py -q` | ✅ nuevo BatchSheet.swift      | ⬜ pending |
+| 18-03-T1  | 03     | 3      | SSE-01, SSE-03 | T-18-09          | `.openBatchSheet` solo activa `showBatchSheet = true`; emisor ya llamó `prepareWith` | build              | xcodebuild build                                  | ✅ AppDelegate.swift           | ⬜ pending |
+| 18-03-T2  | 03     | 3      | SSE-01..04     | T-18-09, T-18-10 | `.onReceive(.openBatchSheet)` solo activa la sheet; sin lógica de negocio            | build + full suite | xcodebuild build + `pytest tests/ -q`             | ✅ MDTranslatorApp.swift       | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

@@ -6,21 +6,21 @@
 
 ## File Classification
 
-| New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
-|-------------------|------|-----------|----------------|---------------|
-| `src/validator.py` | utility | transform | `src/glossary.py` + `src/parser.py` | exact (dataclass API + `re`) |
-| `tests/test_validator.py` | test | transform | `tests/test_glossary.py` | exact |
-| `src/parser.py` | utility | transform | `src/parser.py` (shell comments) | exact |
-| `src/pipeline.py` | service | batch | `src/pipeline.py` | exact |
-| `src/main.py` | route | request-response, file-I/O, batch | `src/main.py` | exact |
-| `src/cli.py` | route | file-I/O, batch | `src/cli.py` | exact |
-| `static/js/app.js` | component | request-response | `static/js/app.js` (glosario + translate) | exact |
-| `static/index.html` | config | — | `static/index.html` (glossary-section) | exact |
-| `static/css/app.css` | config | — | `static/css/app.css` (`.glossary-chevron`) | role-match |
-| `tests/test_parser.py` | test | transform | `tests/test_parser.py` (`test_bash_*`) | exact |
-| `tests/test_pipeline.py` | test | batch | `tests/test_pipeline.py` | exact |
-| `tests/test_api.py` | test | request-response, batch | `tests/test_api.py` (`test_translate_batch_*`) | exact |
-| `tests/test_cli.py` | test | file-I/O | `tests/test_cli.py` (`test_file_writes_output`) | exact |
+| New/Modified File         | Role      | Data Flow                         | Closest Analog                                  | Match Quality                |
+| ------------------------- | --------- | --------------------------------- | ----------------------------------------------- | ---------------------------- |
+| `src/validator.py`        | utility   | transform                         | `src/glossary.py` + `src/parser.py`             | exact (dataclass API + `re`) |
+| `tests/test_validator.py` | test      | transform                         | `tests/test_glossary.py`                        | exact                        |
+| `src/parser.py`           | utility   | transform                         | `src/parser.py` (shell comments)                | exact                        |
+| `src/pipeline.py`         | service   | batch                             | `src/pipeline.py`                               | exact                        |
+| `src/main.py`             | route     | request-response, file-I/O, batch | `src/main.py`                                   | exact                        |
+| `src/cli.py`              | route     | file-I/O, batch                   | `src/cli.py`                                    | exact                        |
+| `static/js/app.js`        | component | request-response                  | `static/js/app.js` (glosario + translate)       | exact                        |
+| `static/index.html`       | config    | —                                 | `static/index.html` (glossary-section)          | exact                        |
+| `static/css/app.css`      | config    | —                                 | `static/css/app.css` (`.glossary-chevron`)      | role-match                   |
+| `tests/test_parser.py`    | test      | transform                         | `tests/test_parser.py` (`test_bash_*`)          | exact                        |
+| `tests/test_pipeline.py`  | test      | batch                             | `tests/test_pipeline.py`                        | exact                        |
+| `tests/test_api.py`       | test      | request-response, batch           | `tests/test_api.py` (`test_translate_batch_*`)  | exact                        |
+| `tests/test_cli.py`       | test      | file-I/O                          | `tests/test_cli.py` (`test_file_writes_output`) | exact                        |
 
 ---
 
@@ -675,9 +675,9 @@ function hasValidationUi() {
 
 ## No Analog Found
 
-| File | Role | Data Flow | Reason |
-|------|------|-----------|--------|
-| — | — | — | Todos los archivos previstos tienen analog en el repo |
+| File   | Role   | Data Flow   | Reason                                                |
+| ------ | ------ | ----------- | ----------------------------------------------------- |
+| —      | —      | —           | Todos los archivos previstos tienen analog en el repo |
 
 **Nota planner:** `ValidationFailedError` y helper `validation_to_dict` no existen aún — crear siguiendo `IncompleteTranslationError` (`src/translator.py`) y `glossary_to_dict` (`src/glossary.py`) respectivamente.
 

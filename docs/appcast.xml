@@ -20,21 +20,21 @@
     <description>MarkDown Auto Translator — actualizaciones</description>
     <language>es</language>
 
-    <!-- ===== v3.1 — Native macOS Polish ===== -->
+    <!-- ===== v3.1 build 3 — Phase 15 fixes ===== -->
     <item>
       <title>MD Translator 3.1</title>
       <sparkle:releaseNotesLink>
         https://github.com/edfrutos/auto-trans-markdown/releases/tag/v3.1
       </sparkle:releaseNotesLink>
-      <pubDate>Fri, 12 Jun 2026 09:45:00 +0000</pubDate>
-      <sparkle:version>2</sparkle:version>
+      <pubDate>Sun, 15 Jun 2026 12:00:00 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
       <sparkle:shortVersionString>3.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1.zip"
-        length="43991291"
+        length="44074288"
         type="application/octet-stream"
-        sparkle:edSignature="561dpLMcXlHFt6DZRMsRXLmm49YivaQfLFOUFqtD1P162AVa8M/Ct8V4OjwS1yPc4BHHt/vPlgQj8cWd719jBg=="
+        sparkle:edSignature="PAlZmr3L6/yhIuBr6NyAXzKsoNrvm4VvDB+gvDqMn9tc1i2qUF20K5/36t1yzVlMVIoF5f2gUhbm3eLbd5YODA=="
       />
     </item>
 

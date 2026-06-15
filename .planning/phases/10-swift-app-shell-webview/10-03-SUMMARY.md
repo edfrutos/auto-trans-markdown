@@ -8,18 +8,19 @@
 
 ## Archivos creados / modificados
 
-| Archivo | Estado |
-|---------|--------|
-| `macos/MDTranslator/MDTranslator/KeychainManager.swift` | NUEVO |
-| `macos/MDTranslator/MDTranslator/SettingsView.swift` | NUEVO |
-| `macos/MDTranslator/MDTranslator/ServerManager.swift` | MODIFICADO (inyección Keychain en `start()`) |
-| `macos/MDTranslator/MDTranslator/SplashView.swift` | MODIFICADO (flujo primera ejecución) |
+| Archivo                                                 | Estado                                       |
+| ------------------------------------------------------- | -------------------------------------------- |
+| `macos/MDTranslator/MDTranslator/KeychainManager.swift` | NUEVO                                        |
+| `macos/MDTranslator/MDTranslator/SettingsView.swift`    | NUEVO                                        |
+| `macos/MDTranslator/MDTranslator/ServerManager.swift`   | MODIFICADO (inyección Keychain en `start()`) |
+| `macos/MDTranslator/MDTranslator/SplashView.swift`      | MODIFICADO (flujo primera ejecución)         |
 
 ---
 
 ## Funcionalidades implementadas
 
 ### KeychainManager (Security.framework)
+
 - `save(account:value:)` — SecItemUpdate primero; si `errSecItemNotFound`, SecItemAdd. Vacío → elimina la entrada.
 - `load(account:)` → `String?` — SecItemCopyMatching, retorna nil si no existe.
 - `delete(account:)` — silencioso si no existe.
@@ -28,6 +29,7 @@
 - Service: `com.edefrutos.md-translator`.
 
 ### SettingsView
+
 - `SecureField` para ambas API keys (contenido enmascarado).
 - Picker segmentado OpenAI / DeepL.
 - Botón "Guardar" deshabilitado si ambos campos están vacíos.
@@ -46,6 +48,7 @@ if let key = KeychainManager.load(account: KeychainManager.openAIKeyAccount) {
 Las keys se inyectan en `p.environment` — **nunca en `p.arguments` ni en logs**.
 
 ### SplashView — flujo primera ejecución
+
 - Comprueba `KeychainManager.hasAnyKey` antes de llamar `serverManager.start()`.
 - Si no hay keys: publica `.openSettings` → espera `.settingsSaved` via `AsyncSequence`.
 - 400ms de pausa tras el guardado para que el sheet se cierre antes del arranque.

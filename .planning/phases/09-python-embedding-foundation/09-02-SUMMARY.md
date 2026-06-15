@@ -10,12 +10,12 @@
 
 ### Correcciones en Xcode (manual)
 
-| Ajuste | Valor configurado |
-|--------|------------------|
-| Deployment Target | macOS 14.0 |
-| Bundle Identifier | `com.edefrutos.md-translator` |
-| Signing Certificate | Sign to Run Locally |
-| User Script Sandboxing | No (Build Settings) |
+| Ajuste                 | Valor configurado                  |
+| ---------------------- | ---------------------------------- |
+| Deployment Target      | macOS 14.0                         |
+| Bundle Identifier      | `com.edefrutos.md-translator`      |
+| Signing Certificate    | Sign to Run Locally                |
+| User Script Sandboxing | No (Build Settings)                |
 | App Sandbox capability | Eliminado (Signing & Capabilities) |
 
 ### Run Script phase añadida
@@ -43,11 +43,11 @@ cp "${REPO_ROOT}/uv.lock" "${RESOURCES}/backend/"
 
 ## Problemas encontrados y soluciones
 
-| Problema | Causa | Solución |
-|----------|-------|----------|
-| rsync denegado | User Script Sandboxing activo | Build Settings → User Script Sandboxing → No |
-| Run Script omitido en rebuild | "Based on dependency analysis" sin inputs/outputs | Desmarcar ese checkbox |
-| `p.run()` falla silenciosamente | App Sandbox bloquea ejecución de subprocesos | Eliminar capability App Sandbox en Signing & Capabilities |
+| Problema                        | Causa                                             | Solución                                                  |
+| ------------------------------- | ------------------------------------------------- | --------------------------------------------------------- |
+| rsync denegado                  | User Script Sandboxing activo                     | Build Settings → User Script Sandboxing → No              |
+| Run Script omitido en rebuild   | "Based on dependency analysis" sin inputs/outputs | Desmarcar ese checkbox                                    |
+| `p.run()` falla silenciosamente | App Sandbox bloquea ejecución de subprocesos      | Eliminar capability App Sandbox en Signing & Capabilities |
 
 ---
 

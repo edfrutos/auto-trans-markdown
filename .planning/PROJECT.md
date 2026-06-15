@@ -13,6 +13,7 @@ Traducir **solo el texto dirigido al usuario** al idioma destino **sin alterar M
 **Goal:** Empaquetar MarkDown Auto Translator como aplicación macOS nativa con UI SwiftUI, backend Python embebido mediante python-build-standalone e integraciones del sistema operativo.
 
 **Target features:**
+
 - SwiftUI nativa: sidebar + editor (texto) + file picker + batch + glosario/TM
 - Backend Python (FastAPI) embebido como subprocess dentro del .app bundle
 - Drag & drop nativo para archivos .md
@@ -68,16 +69,16 @@ Ver `.planning/milestones/v2.0-REQUIREMENTS.md`.
 
 ## Key Decisions
 
-| Decision | Rationale | Outcome |
-| -------- | --------- | ------- |
-| v2.0 scope = debt + PDF only | Enfoque acotado post-v1.0 | ✓ Shipped 2026-05-29 |
-| WeasyPrint opcional | Deps nativas Cairo/Pango | ✓ `[pdf]` extra, mock tests |
-| PDF vía html_export | Reutilizar CSS HTML existente | ✓ Paridad visual CLI |
-| SSE auth query token | EventSource sin headers custom | ✓ DEBT-02 |
-| v2.1 diferido | El lockfile es pequeño; el salto a macOS app es más valioso ahora | → Incorporar en v3.0 build |
-| SwiftUI nativa vs WebView | Máxima integración macOS, mejor UX a largo plazo | v3.0 target |
-| python-build-standalone para embed | Portable, sin dependencia de Python del sistema | v3.0 Phase 9 |
-| DMG ad-hoc sin Apple Developer | Evitar $99/año; usuario puede bypassar Gatekeeper | v3.0 Phase 12 |
+| Decision                           | Rationale                                                         | Outcome                     |
+| ---------------------------------- | ----------------------------------------------------------------- | --------------------------- |
+| v2.0 scope = debt + PDF only       | Enfoque acotado post-v1.0                                         | ✓ Shipped 2026-05-29        |
+| WeasyPrint opcional                | Deps nativas Cairo/Pango                                          | ✓ `[pdf]` extra, mock tests |
+| PDF vía html_export                | Reutilizar CSS HTML existente                                     | ✓ Paridad visual CLI        |
+| SSE auth query token               | EventSource sin headers custom                                    | ✓ DEBT-02                   |
+| v2.1 diferido                      | El lockfile es pequeño; el salto a macOS app es más valioso ahora | → Incorporar en v3.0 build  |
+| SwiftUI nativa vs WebView          | Máxima integración macOS, mejor UX a largo plazo                  | v3.0 target                 |
+| python-build-standalone para embed | Portable, sin dependencia de Python del sistema                   | v3.0 Phase 9                |
+| DMG ad-hoc sin Apple Developer     | Evitar $99/año; usuario puede bypassar Gatekeeper                 | v3.0 Phase 12               |
 
 ## Evolution
 
@@ -89,6 +90,7 @@ Ver `.planning/milestones/v2.0-REQUIREMENTS.md`.
 This document evolves at phase transitions and milestone boundaries.
 
 **After each phase transition** (via `/gsd-transition`):
+
 1. Requirements invalidated? → Move to Out of Scope with reason
 2. Requirements validated? → Move to Validated with phase reference
 3. New requirements emerged? → Add to Active
@@ -96,6 +98,7 @@ This document evolves at phase transitions and milestone boundaries.
 5. "What This Is" still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd:complete-milestone`):
+
 1. Full review of all sections
 2. Core Value check — still the right priority?
 3. Audit Out of Scope — reasons still valid?

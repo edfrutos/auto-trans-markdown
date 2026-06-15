@@ -8,13 +8,13 @@
 
 ## File Classification
 
-| Archivo nuevo/modificado | Rol | Data Flow | Analog más cercano | Calidad |
-|--------------------------|-----|-----------|--------------------|---------|
-| `BatchJobManager.swift` (nuevo) | manager / singleton | event-driven + request-response | `ServerManager.swift` | exact |
-| `BatchSheet.swift` (nuevo) | view / SwiftUI sheet | event-driven (observa manager) | `SettingsView.swift` + `SplashView.swift` | role-match |
-| `AppDelegate.swift` (mod.) | app delegate | request-response | `AppDelegate.swift` mismo | self |
-| `Commands.swift` (mod.) | commands / menu | request-response | `Commands.swift` mismo | self |
-| `MDTranslatorApp.swift` (mod.) | app entry point / sheet bridge | event-driven | `MDTranslatorApp.swift` mismo | self |
+| Archivo nuevo/modificado        | Rol                            | Data Flow                       | Analog más cercano                        | Calidad    |
+| ------------------------------- | ------------------------------ | ------------------------------- | ----------------------------------------- | ---------- |
+| `BatchJobManager.swift` (nuevo) | manager / singleton            | event-driven + request-response | `ServerManager.swift`                     | exact      |
+| `BatchSheet.swift` (nuevo)      | view / SwiftUI sheet           | event-driven (observa manager)  | `SettingsView.swift` + `SplashView.swift` | role-match |
+| `AppDelegate.swift` (mod.)      | app delegate                   | request-response                | `AppDelegate.swift` mismo                 | self       |
+| `Commands.swift` (mod.)         | commands / menu                | request-response                | `Commands.swift` mismo                    | self       |
+| `MDTranslatorApp.swift` (mod.)  | app entry point / sheet bridge | event-driven                    | `MDTranslatorApp.swift` mismo             | self       |
 
 ---
 
@@ -155,6 +155,7 @@ private func callTranslateAPI(text: String, targetLang: String, port: Int) async
 }
 ```
 El patrón de `URLRequest` + `URLSession.shared.data(for:)` + guard HTTP 200 + JSONSerialization se replica para:
+
 - `createJob()` → POST multipart a `/api/translate/batch/jobs`
 - `cancelJob()` → DELETE a `/api/translate/batch/jobs/{id}`
 - `downloadZIP()` → GET a `/api/translate/batch/jobs/{id}/download`
@@ -586,6 +587,7 @@ func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.Termin
 ### Textos de UI en español
 **Fuente:** `AppDelegate.swift` líneas 116–122, `Commands.swift` líneas 15, 22, 27
 **Aplicar a:** todos los textos visibles en `BatchSheet.swift`, alerts en `AppDelegate.swift`
+
 - Labels de botones: "Traducir", "Cancelar", "Cerrar", "Mostrar en Finder", "Continuar en segundo plano"
 - Mensajes de estado: "Cancelando — terminando archivo en curso…"
 - Resumen: "Cancelado: N de M traducidos", "N archivos traducidos"
@@ -642,6 +644,7 @@ No hay archivos sin analog en esta fase. Todos los patrones tienen referencia di
 
 **Scope de búsqueda:** `macos/MDTranslator/MDTranslator/`
 **Archivos Swift leídos:** 8
+
 - `ServerManager.swift` (219 líneas)
 - `MDTranslatorApp.swift` (145 líneas)
 - `AppDelegate.swift` (220 líneas)

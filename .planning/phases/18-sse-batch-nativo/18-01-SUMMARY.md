@@ -6,6 +6,7 @@ tags: [swift, sse, observable, urlsession, batch, dock-progress, zip-extraction]
 dependency_graph:
   requires: []
   provides:
+
     - BatchJobManager.shared
     - BatchJobState enum
     - Notification.Name.openBatchSheet
@@ -13,8 +14,10 @@ dependency_graph:
     - macos/MDTranslator/MDTranslator/Commands.swift
     - macos/MDTranslator/MDTranslator/BatchJobManager.swift
     - macos/MDTranslator/MDTranslator/OutputManager.swift
+
 tech_stack:
   added:
+
     - "URLSession.shared.bytes(for:) + AsyncBytes.lines — cliente SSE nativo sin dependencias"
     - "Process + /usr/bin/unzip — extraccion ZIP local"
     - "@Observable @MainActor BatchJobManager — singleton de estado del lote"
@@ -24,16 +27,21 @@ tech_stack:
     - "Cancelacion cooperativa: DELETE + esperar complete (no task.cancel antes)"
     - "Task.detached para waitUntilExit (pitfall 3 de RESEARCH.md)"
     - "Security-scoped bookmark activo durante Process.run (pitfall 7)"
+
 key_files:
   created:
+
     - macos/MDTranslator/MDTranslator/BatchJobManager.swift
   modified:
     - macos/MDTranslator/MDTranslator/Commands.swift
     - macos/MDTranslator/MDTranslator/OutputManager.swift
+
 decisions:
+
   - "OutputManager.resolvedOutputFolder() anadido como API publica (internal) para que BatchJobManager acceda al bookmark sin violar el modificador private"
   - "extractMarkdownFiles usa Task.detached + .value para evitar bloqueo del MainActor en waitUntilExit"
   - "SSE stream no se cancela en cancel() — se deja llegar hasta complete{cancelled:true} (D-09, pitfall 2)"
+
 metrics:
   duration_minutes: 40
   completed_date: "2026-06-13"
@@ -47,10 +55,10 @@ metrics:
 
 ## Tasks Completed
 
-| Task | Name | Commit | Files |
-|------|------|--------|-------|
-| 1 | Anadir Notification.Name.openBatchSheet y boton Traducir lote en Commands.swift | 48321ba | Commands.swift (+29 lineas) |
-| 2 | Crear BatchJobManager.swift — singleton @Observable @MainActor con cliente SSE completo | ed68324 | BatchJobManager.swift (nuevo, 416 lineas), OutputManager.swift (+8 lineas) |
+| Task   | Name                                                                                    | Commit   | Files                                                                      |
+| ------ | --------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| 1      | Anadir Notification.Name.openBatchSheet y boton Traducir lote en Commands.swift         | 48321ba  | Commands.swift (+29 lineas)                                                |
+| 2      | Crear BatchJobManager.swift — singleton @Observable @MainActor con cliente SSE completo | ed68324  | BatchJobManager.swift (nuevo, 416 lineas), OutputManager.swift (+8 lineas) |
 
 ## What Was Built
 
@@ -67,26 +75,31 @@ metrics:
 Singleton `@Observable @MainActor final class` siguiendo el patron exacto de `ServerManager.swift`:
 
 **Estado:**
+
 - `enum BatchJobState`: 5 casos — idle, prepared(urls:), running(jobId:), cancelling, done(ok:errors:cancelled:)
 - Propiedades observables: jobState, currentFile, filesDone, filesTotal, segmentsDone, segmentsTotal
 - Propiedades computadas: isRunning, completedCount, totalCount
 
 **API publica:**
+
 - `prepareWith(urls:)` — transicion a .prepared, reset de contadores
 - `start(port:targetLang:)` — POST multipart + stream SSE completo
 - `cancel()` — DELETE cooperativo + estado .cancelling (sin cancelar streamTask)
 - `reset()` — volver a .idle
 
 **Cliente SSE:**
+
 - `URLSession.shared.bytes(for:)` + `for try await line in bytes.lines`
 - Parsing: `guard line.hasPrefix("data: ") else { continue }` — ignora separadores vacios (pitfall 5)
 - 5 tipos de evento: file_start, segment_progress, file_done, error, complete
 
 **DockProgressManager (SSE-04):**
+
 - file_done → `showProgress(current: filesDone, total: filesTotal)`
 - complete → `hideProgress()` + `setBadge(nil)`
 
 **Descarga y extraccion ZIP (D-05, D-06, D-07, D-08):**
+
 - Descarga POST-complete del evento SSE (pitfall 4 — no descargar antes)
 - Extraccion con `/usr/bin/unzip -o -j *.md -d folder` (D-06: solo .md; T-18-03: -j previene zip slip)
 - `p.executableURL` + `p.run()` (no launchPath/launch — obsoletos)
@@ -95,6 +108,7 @@ Singleton `@Observable @MainActor final class` siguiendo el patron exacto de `Se
 - `startAccessingSecurityScopedResource` antes de `p.run()` (pitfall 7)
 
 **Cancelacion cooperativa (D-09):**
+
 - `cancel()` envia DELETE y cambia estado a .cancelling
 - El stream SSE sigue abierto hasta recibir `complete{cancelled:true}` (pitfall 2)
 - El ZIP parcial se descarga y extrae igual que en exito (D-08)
@@ -109,6 +123,7 @@ Singleton `@Observable @MainActor final class` siguiendo el patron exacto de `Se
 ### Auto-fixed Issues
 
 **1. [Rule 2 - Missing critical functionality] OutputManager.resolveBookmarkedFolder() es private**
+
 - **Found during:** Tarea 2 — implementacion de extractMarkdownFiles()
 - **Issue:** El plan dice que BatchJobManager debe llamar `OutputManager.shared.resolveBookmarkedFolder()` pero el metodo es `private` en OutputManager. No se puede acceder desde BatchJobManager.
 - **Fix:** Anadido metodo publico `resolvedOutputFolder() -> URL?` en OutputManager como wrapper publico. BatchJobManager llama este metodo en lugar del privado.
@@ -121,13 +136,13 @@ El archivo BatchJobManager.swift tiene 3 ocurrencias del nombre de clase (declar
 
 ## Verification Results
 
-| Check | Result |
-|-------|--------|
-| BUILD SUCCEEDED (xcodebuild con BatchJobManager.swift) | PASS |
-| openBatchSheet en Commands.swift >= 3 | PASS (4 ocurrencias) |
-| No patrones @Published/ObservableObject/ObservedObject | PASS |
-| pytest tests/test_jobs.py — backend sin cambios | PASS (4 passed) |
-| Todos los pitfalls de RESEARCH.md aplicados | PASS |
+| Check                                                  | Result               |
+| ------------------------------------------------------ | -------------------- |
+| BUILD SUCCEEDED (xcodebuild con BatchJobManager.swift) | PASS                 |
+| openBatchSheet en Commands.swift >= 3                  | PASS (4 ocurrencias) |
+| No patrones @Published/ObservableObject/ObservedObject | PASS                 |
+| pytest tests/test_jobs.py — backend sin cambios        | PASS (4 passed)      |
+| Todos los pitfalls de RESEARCH.md aplicados            | PASS                 |
 
 ## Threat Surface Scan
 

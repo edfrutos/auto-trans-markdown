@@ -7,14 +7,14 @@ Estado del proyecto al crear este documento: traductor web + API con OpenAI/Deep
 
 ## Leyenda de prioridad
 
-| Símbolo | Significado |
-| ------- | ----------- |
-| 🔴 | Alto impacto — recomendado empezar aquí |
-| 🟡 | Calidad y confianza |
-| 🟢 | Potencia «pro» / equipo / despliegue |
-| ⚙️ | Esfuerzo bajo |
-| ⚙️⚙️ | Esfuerzo medio |
-| ⚙️⚙️⚙️ | Esfuerzo alto |
+| Símbolo | Significado                             |
+| ------- | --------------------------------------- |
+| 🔴       | Alto impacto — recomendado empezar aquí |
+| 🟡       | Calidad y confianza                     |
+| 🟢       | Potencia «pro» / equipo / despliegue    |
+| ⚙️      | Esfuerzo bajo                           |
+| ⚙️⚙️    | Esfuerzo medio                          |
+| ⚙️⚙️⚙️  | Esfuerzo alto                           |
 
 ---
 
@@ -152,13 +152,13 @@ Comprobaciones automáticas de que la traducción no rompió la estructura.
 
 **Checks propuestos**
 
-| Check | Descripción |
-| ----- | ----------- |
-| Fences | Mismo número de ` ``` ` abiertos/cerrados |
-| Enlaces | Misma cantidad de `[texto](url)` e `![alt](url)` |
-| Código inline | Mismo número de spans `` ` `` |
-| Encabezados | Misma profundidad `#` por línea |
-| Longitud | Alerta si un segmento creció >300 % (posible alucinación) |
+| Check         | Descripción                                                          |
+| ------------- | -------------------------------------------------------------------- |
+| Fences        | Mismo número de bloques fenced (triple backtick) abiertos y cerrados |
+| Enlaces       | Misma cantidad de `[texto](url)` e `![alt](url)`                     |
+| Código inline | Mismo número de spans con backticks inline                           |
+| Encabezados   | Misma profundidad `#` por línea                                      |
+| Longitud      | Alerta si un segmento creció >300 % (posible alucinación)            |
 
 **Implementación sugerida**
 
@@ -177,13 +177,13 @@ Comprobaciones automáticas de que la traducción no rompió la estructura.
 **Qué es**  
 Extender la lógica actual de comentarios `#` en `bash` a otros fences.
 
-| Lenguaje | Comentario | Traducir |
-| -------- | ---------- | -------- |
-| `bash`, `sh`, `zsh` | `#` | ✅ (ya implementado) |
-| `python`, `ruby` | `#` | 🔲 |
-| `javascript`, `typescript`, `java`, `go` | `//` | 🔲 |
-| `html`, `xml` | `<!-- -->` | 🔲 |
-| `sql` | `--` | 🔲 |
+| Lenguaje                                 | Comentario | Traducir            |
+| ---------------------------------------- | ---------- | ------------------- |
+| `bash`, `sh`, `zsh`                      | `#`        | ✅ (ya implementado) |
+| `python`, `ruby`                         | `#`        | 🔲                   |
+| `javascript`, `typescript`, `java`, `go` | `//`       | 🔲                   |
+| `html`, `xml`                            | `<!-- -->` | 🔲                   |
+| `sql`                                    | `--`       | 🔲                   |
 
 **Precaución**  
 No traducir URLs, shebangs, directivas pragma ni `#` dentro de strings.
@@ -262,7 +262,7 @@ Empaquetado reproducible para equipo o servidor interno.
 
 **Archivos propuestos**
 
-```
+```text
 Dockerfile
 docker-compose.yml
 .env.example → montado como .env
@@ -381,19 +381,19 @@ Hay despliegue compartido; no necesario para uso local.
 
 ## Orden de implementación recomendado
 
-| Fase | Entregables | Motivo |
-| ---- | ----------- | ------ |
-| **A** | Glosario + memoria de traducción + CLI | Máximo ROI en docs técnicas y lotes |
+| Fase  | Entregables                                 | Motivo                                |
+| ----- | ------------------------------------------- | ------------------------------------- |
+| **A** | Glosario + memoria de traducción + CLI      | Máximo ROI en docs técnicas y lotes   |
 | **B** | Validación post-traducción + preview render | Confianza y menos errores silenciosos |
-| **C** | Progreso SSE en lote + estimación de coste | UX y control de gasto |
-| **D** | Multi-destino + Docker | Equipo y despliegue |
-| **E** | Modo revisión + watch + diff | Flujo profesional editorial |
+| **C** | Progreso SSE en lote + estimación de coste  | UX y control de gasto                 |
+| **D** | Multi-destino + Docker                      | Equipo y despliegue                   |
+| **E** | Modo revisión + watch + diff                | Flujo profesional editorial           |
 
 ---
 
 ## Notas técnicas del codebase actual
 
-```
+```text
 src/parser.py      → Segmentación protegido / traducible
 src/translator.py  → OpenAI + DeepL, lotes, reintentos
 src/main.py        → FastAPI, editor / archivo / lote

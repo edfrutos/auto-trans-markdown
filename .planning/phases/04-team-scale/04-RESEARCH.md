@@ -26,12 +26,14 @@ def validate_target_langs_http(target_langs: list[str]) -> None:
 ```
 
 ### Rules (D-05, D-06)
+
 - If `target_langs` provided, use it; elif `target_lang`, wrap as one-element list.
 - Reject empty list.
 - Max languages: **10** (reasonable cap; document in README).
 - Order preserved for UI progress.
 
 ### Output naming (D-07)
+
 - Translated file: `{stem}.{lang}{suffix}` e.g. `README.es.md`
 - Validation sidecar: `{stem}.{lang}.validation.json` (disambiguates multi-lang ZIP)
 
@@ -43,6 +45,7 @@ for filename, content in file_entries:
 ```
 
 ### Concurrency (D-08)
+
 - `MULTI_LANG_CONCURRENCY` env, default `1`.
 - When >1, use `asyncio.Semaphore` around per-lang translate in job worker only (keep sync endpoints serial for simplicity).
 
@@ -61,22 +64,24 @@ Response adds `language_count: int`.
 
 ## Deployment hardening (`src/deployment.py`)
 
-| Env | Default | Purpose |
-|-----|---------|---------|
-| `CORS_ORIGINS` | `http://127.0.0.1:5400,http://localhost:5400` | Comma-separated; `*` only if explicit |
-| `MAX_UPLOAD_MB` | `10` | Per-file upload cap |
-| `MAX_BATCH_UPLOAD_MB` | `50` | Total bytes per batch/job request |
-| `OUTPUT_TTL_HOURS` | `24` | Delete files in `output/` older than TTL |
-| `OUTPUT_SWEEP_INTERVAL_HOURS` | `6` | Background periodic sweep |
-| `API_TOKEN` | unset | If set, require `Authorization: Bearer {token}` on `/api/*` |
+| Env                           | Default                                       | Purpose                                                     |
+| ----------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `CORS_ORIGINS`                | `http://127.0.0.1:5400,http://localhost:5400` | Comma-separated; `*` only if explicit                       |
+| `MAX_UPLOAD_MB`               | `10`                                          | Per-file upload cap                                         |
+| `MAX_BATCH_UPLOAD_MB`         | `50`                                          | Total bytes per batch/job request                           |
+| `OUTPUT_TTL_HOURS`            | `24`                                          | Delete files in `output/` older than TTL                    |
+| `OUTPUT_SWEEP_INTERVAL_HOURS` | `6`                                           | Background periodic sweep                                   |
+| `API_TOKEN`                   | unset                                         | If set, require `Authorization: Bearer {token}` on `/api/*` |
 
 ### Functions
+
 - `get_cors_origins() -> list[str]`
 - `check_upload_size(filename, size_bytes, batch_total)` → raise ValueError
 - `sweep_output_dir(output_dir: Path)` → int deleted count
 - `optional_api_token_middleware` or dependency for FastAPI
 
 ### Startup (main.py)
+
 - `@app.on_event("startup")`: run sweep once
 - `asyncio.create_task` periodic sweep loop (cancel on shutdown)
 
@@ -85,6 +90,7 @@ Response adds `language_count: int`.
 ## Docker (NOTEBOOK §11, D-11–D-15)
 
 ### Dockerfile (multi-stage)
+
 1. **builder:** `python:3.11-slim`, `pip install -r requirements.txt` to `/install`
 2. **runtime:** copy site-packages, `src/`, `static/`, non-root user `appuser`, `WORKDIR /app`
 3. `EXPOSE 5400`, `CMD uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-5400}`
@@ -109,6 +115,7 @@ services:
 Use `python:3.11-slim` + install `curl` for healthcheck OR wget. Alternative: `CMD python -c "urllib.request.urlopen(...)"`.
 
 ### Profiles (Claude discretion)
+
 - Default: prod (no reload)
 - Document `docker compose --profile dev` with reload if added
 
@@ -140,14 +147,14 @@ For `dir`/`batch`: nested loop file × lang.
 
 ## Validation Architecture
 
-| Requirement | Test approach |
-|-------------|---------------|
-| MULTI-01 | API + UI grep + CLI `-t es,en` |
-| MULTI-02 | ZIP namelist `*.es.md`, `*.en.md` |
-| DOCKER-01 | `docker build` succeeds; non-root user |
-| DOCKER-02 | compose volumes documented |
-| SEC-01 | CORS test with allowed/blocked Origin |
-| SEC-02 | 413/400 on oversized upload; sweep tests |
+| Requirement   | Test approach                            |
+| ------------- | ---------------------------------------- |
+| MULTI-01      | API + UI grep + CLI `-t es,en`           |
+| MULTI-02      | ZIP namelist `*.es.md`, `*.en.md`        |
+| DOCKER-01     | `docker build` succeeds; non-root user   |
+| DOCKER-02     | compose volumes documented               |
+| SEC-01        | CORS test with allowed/blocked Origin    |
+| SEC-02        | 413/400 on oversized upload; sweep tests |
 
 ---
 

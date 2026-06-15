@@ -14,7 +14,7 @@ Añadir (1) panel colapsable «Validación» bajo el área de resultado tras tra
 
 ## Layout — Editor tab
 
-```
+```json
 [ Idioma origen | Idioma destino ]
 [ ▼ Glosario ]  ← existing
 
@@ -43,6 +43,7 @@ Editor panel:
 ## Validation Panel (VAL-02)
 
 ### Container
+
 - `<section id="validation-section" class="hidden mb-6">` — visible only after successful translate (editor/file/batch summary)
 - Toggle: `#validation-toggle` with `aria-expanded`, `aria-controls="validation-panel"`
 - Heading: «Validación» — `text-sm font-semibold text-ink`
@@ -50,11 +51,13 @@ Editor panel:
 - Panel: `#validation-panel` hidden by default
 
 ### Summary row
+
 - `#validation-summary` — `text-sm text-ink-muted`
 - Format: `{pass} correctos · {warn} avisos · {error} errores`
 - Overall badge when errors > 0: `text-amber-600` (warn) / `text-red-600` (error) — **does NOT block download** (D-01)
 
 ### Check list
+
 - `#validation-checks` — `<ul class="space-y-2 text-sm">`
 - Each item:
   - Icon: ✓ pass (`text-teal-600`), ⚠ warn (`text-amber-600`), ✗ error (`text-red-600`)
@@ -62,6 +65,7 @@ Editor panel:
   - Detail: short message from API `validation.checks[].message`
 
 ### Data contract (client)
+
 - Expect `validation` object on translate API JSON responses:
   ```json
   {
@@ -74,6 +78,7 @@ Editor panel:
 - Batch: show aggregate summary in status area; per-file detail optional in batch file list tooltip (discretion — minimum: status message «Lote completado — revisa validation.json en ZIP»)
 
 ### Empty / no validation
+
 - If API omits validation (legacy): hide section
 
 ---
@@ -81,11 +86,13 @@ Editor panel:
 ## Markdown Preview (PREV-01, PREV-02)
 
 ### CDN scripts (index.html)
+
 - `marked` — pinned minor version in plan (e.g. 12.x)
 - `DOMPurify` — pinned (e.g. 3.x)
 - Load before `app.js`; guard if CDN fails: preview panels show «Vista previa no disponible»
 
 ### Render flow (app.js)
+
 1. `renderPreview(markdown, targetEl)`:
    - `const raw = marked.parse(markdown, { gfm: true, breaks: false })`
    - `const clean = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } })`
@@ -94,6 +101,7 @@ Editor panel:
 3. **Do NOT** bind to `input`/`keyup` on textareas
 
 ### Layout
+
 - Wrapper: `#preview-row` — `grid grid-cols-1 md:grid-cols-2 gap-4 mt-4`
 - Each panel:
   - Label: «Vista previa — Original» / «Vista previa — Traducido»
@@ -101,6 +109,7 @@ Editor panel:
 - Mobile (`< md`): stack vertical — original above translated (D-10)
 
 ### Styling (PREV dark mode — D-12)
+
 - `.prose-preview` in `app.css`:
   - Headings, links, code, pre: use existing `--ink`, `--ink-muted`, `--primary` CSS variables
   - `pre`, `code`: `bg-teal-50/80` light; `dark:` variant with `surface` tones
@@ -108,6 +117,7 @@ Editor panel:
   - Images: `max-w-full h-auto rounded-lg`
 
 ### XSS safety (PREV-02)
+
 - No `innerHTML` with raw marked output
 - Strip `<script>`, event handlers via DOMPurify default + `FORBID_TAGS: ['script', 'iframe']`
 - Test fixture: `[click me](javascript:alert(1))` renders inert link
@@ -117,10 +127,12 @@ Editor panel:
 ## File & Batch tabs
 
 ### File tab
+
 - After file translate: show validation panel (same component)
 - Preview: optional minimum — if effort low, dual preview under file result textarea; else defer to editor-only (planner discretion)
 
 ### Batch tab
+
 - Post batch: `showStatus('… validation.json incluido en ZIP', 'success')`
 - No per-file preview in batch UI (Phase 3 scope for progress)
 

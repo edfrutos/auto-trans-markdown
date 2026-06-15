@@ -40,12 +40,12 @@ Milestone v3.2 completa el flujo de trabajo nativo de la app macOS: progreso rea
 
 ## Out of Scope (v3.2)
 
-| Item | Motivo |
-|------|--------|
-| Universal Binary (Intel) | Sin demanda; python-bundle x86_64 duplicaría el trabajo de empaquetado |
-| Notarización / Sandbox / MAS (Phase 17) | Requiere Apple Developer Program |
-| CloudKit / contenedor iCloud propio | Requiere Apple Developer Program; iCloud Drive como carpeta cubre el caso de uso |
-| WeasyPrint en el bundle | Sustituido por WKWebView.createPDF (PDFN-01) |
+| Item                                     | Motivo                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Universal Binary (Intel)                 | Sin demanda; python-bundle x86_64 duplicaría el trabajo de empaquetado                    |
+| Notarización / Sandbox / MAS (Phase 17)  | Requiere Apple Developer Program                                                          |
+| CloudKit / contenedor iCloud propio      | Requiere Apple Developer Program; iCloud Drive como carpeta cubre el caso de uso          |
+| WeasyPrint en el bundle                  | Sustituido por WKWebView.createPDF (PDFN-01)                                              |
 | Redis jobs (V2-04), multi-tenant (V2-03) | Deuda servidor/equipo, sin relación con la app nativa; re-evaluar en milestone de backend |
 
 ---
@@ -61,12 +61,12 @@ Milestone v3.2 completa el flujo de trabajo nativo de la app macOS: progreso rea
 
 ## Traceability
 
-| REQ-ID | Phase | Status |
-|--------|-------|--------|
-| SSE-01..04 | Phase 18 | Pending |
-| ASSOC-01..03 | Phase 19 | Pending |
-| PDFN-01..03 | Phase 20 | Pending |
-| SYNC-01..04 | Phase 21 | Pending |
+| REQ-ID       | Phase    | Status   |
+| ------------ | -------- | -------- |
+| SSE-01..04   | Phase 18 | Pending  |
+| ASSOC-01..03 | Phase 19 | Pending  |
+| PDFN-01..03  | Phase 20 | Pending  |
+| SYNC-01..04  | Phase 21 | Pending  |
 
 **Coverage:** 14/14 requisitos v3.2 mapeados (100%) ✓
 

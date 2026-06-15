@@ -9,13 +9,13 @@
 <phase_requirements>
 ## Phase Requirements
 
-| ID | Description | Research Support |
-|----|-------------|------------------|
-| LOCK-01 | Incluir `uv.lock` commiteado en git con versiones exactas de todas las dependencias | `uv lock` resuelve 59 paquetes desde el `pyproject.toml` actual sin modificaciones |
-| LOCK-02 | Reproducir entorno exacto con `uv sync` sin argumentos adicionales | `uv sync` lee `uv.lock` + crea `.venv` en un solo comando |
-| LOCK-03 | Flujo documentado para actualizar lockfile (`uv add`, `uv lock --upgrade`) | Comandos verificados en docs oficiales |
-| LOCK-04 | README actualizado con instrucciones uv (recomendado) y pip (alternativa) | Sección de instalación actual usa solo pip; requiere extensión |
-| LOCK-05 | Dockerfile y docker-compose actualizados para usar `uv sync --frozen` | Dockerfile actual usa `pip install -r requirements.txt` en builder; requiere rediseño |
+| ID      | Description                                                                         | Research Support                                                                      |
+| ------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| LOCK-01 | Incluir `uv.lock` commiteado en git con versiones exactas de todas las dependencias | `uv lock` resuelve 59 paquetes desde el `pyproject.toml` actual sin modificaciones    |
+| LOCK-02 | Reproducir entorno exacto con `uv sync` sin argumentos adicionales                  | `uv sync` lee `uv.lock` + crea `.venv` en un solo comando                             |
+| LOCK-03 | Flujo documentado para actualizar lockfile (`uv add`, `uv lock --upgrade`)          | Comandos verificados en docs oficiales                                                |
+| LOCK-04 | README actualizado con instrucciones uv (recomendado) y pip (alternativa)           | Sección de instalación actual usa solo pip; requiere extensión                        |
+| LOCK-05 | Dockerfile y docker-compose actualizados para usar `uv sync --frozen`               | Dockerfile actual usa `pip install -r requirements.txt` en builder; requiere rediseño |
 </phase_requirements>
 
 ---
@@ -34,13 +34,13 @@ El Dockerfile actual (multi-stage con `python:3.11-slim`) instala dependencias v
 
 ## Architectural Responsibility Map
 
-| Capability | Primary Tier | Secondary Tier | Rationale |
-|------------|-------------|----------------|-----------|
-| Generación del lockfile | Dev local | CI/CD | `uv lock` corre en la máquina del desarrollador; el resultado se commitea |
-| Reproducción del entorno | Dev local + Docker builder | — | `uv sync` y `uv sync --frozen` respectivamente |
-| Instalación en contenedor | Docker builder stage | — | El `.venv` se construye en builder y se copia a runtime |
-| Documentación del flujo | README | — | Sección de instalación dirigida al desarrollador |
-| Fallback pip-compatible | Artefacto generado (`requirements.txt`) | — | `uv export` produce el archivo; pip puede consumirlo sin uv |
+| Capability                | Primary Tier                            | Secondary Tier   | Rationale                                                                 |
+| ------------------------- | --------------------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| Generación del lockfile   | Dev local                               | CI/CD            | `uv lock` corre en la máquina del desarrollador; el resultado se commitea |
+| Reproducción del entorno  | Dev local + Docker builder              | —                | `uv sync` y `uv sync --frozen` respectivamente                            |
+| Instalación en contenedor | Docker builder stage                    | —                | El `.venv` se construye en builder y se copia a runtime                   |
+| Documentación del flujo   | README                                  | —                | Sección de instalación dirigida al desarrollador                          |
+| Fallback pip-compatible   | Artefacto generado (`requirements.txt`) | —                | `uv export` produce el archivo; pip puede consumirlo sin uv               |
 
 ---
 
@@ -48,17 +48,17 @@ El Dockerfile actual (multi-stage con `python:3.11-slim`) instala dependencias v
 
 ### Core
 
-| Herramienta | Versión | Propósito | Por qué estándar |
-|-------------|---------|-----------|------------------|
-| `uv` | 0.11.17 (última en PyPI) | Resolver, lockear y sincronizar dependencias Python | Herramienta oficial de Astral; lockfile universal cross-platform; velocidad 10-100x sobre pip |
+| Herramienta   | Versión                  | Propósito                                           | Por qué estándar                                                                              |
+| ------------- | ------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `uv`          | 0.11.17 (última en PyPI) | Resolver, lockear y sincronizar dependencias Python | Herramienta oficial de Astral; lockfile universal cross-platform; velocidad 10-100x sobre pip |
 
 > **Nota de versión:** El sistema tiene `uv` 0.11.4 (instalado 2026-04-07). La última versión en PyPI es 0.11.17. [VERIFIED: PyPI registry via `pip index versions uv`]. No hay breaking changes entre 0.11.4 y 0.11.17 para el uso de `uv lock`/`uv sync`. La fase puede desarrollarse con la versión instalada; el `uv.lock` generado será válido.
 
 ### Artefactos generados (no instalados como dependencias del proyecto)
 
-| Artefacto | Comando generador | Propósito |
-|-----------|------------------|-----------|
-| `uv.lock` | `uv lock` | Lockfile de versiones exactas — committear en git |
+| Artefacto                        | Comando generador                                 | Propósito                                             |
+| -------------------------------- | ------------------------------------------------- | ----------------------------------------------------- |
+| `uv.lock`                        | `uv lock`                                         | Lockfile de versiones exactas — committear en git     |
 | `requirements.txt` (actualizado) | `uv export --format requirements-txt --no-hashes` | Fallback pip-compatible — generado, no editado a mano |
 
 ### No hay paquetes Python nuevos que instalar en el proyecto
@@ -71,13 +71,13 @@ Esta fase no añade dependencias al `pyproject.toml`. El único cambio de depend
 
 > Esta fase no instala paquetes Python nuevos en el proyecto. `uv` es una herramienta de sistema (developer tool), no una dependencia del paquete.
 
-| Paquete | Registro | Antigüedad | Descargas | Repo fuente | slopcheck | Disposición |
-|---------|----------|-----------|-----------|-------------|-----------|-------------|
-| `uv` (system tool) | PyPI | ~2 años | 15M+/sem | github.com/astral-sh/uv | [OK] | Aprobado — herramienta de sistema, no en requirements.txt |
-| `fastapi` (existente) | PyPI | ~6 años | 30M+/sem | github.com/fastapi/fastapi | [OK] | Existente — sin cambios |
-| `uvicorn` (existente) | PyPI | ~6 años | 20M+/sem | github.com/encode/uvicorn | [OK] | Existente — sin cambios |
-| `openai` (existente) | PyPI | ~3 años | 25M+/sem | github.com/openai/openai-python | [OK] | Existente — sin cambios |
-| `deepl` (existente) | PyPI | ~4 años | 500K+/sem | github.com/DeepLcom/deepl-python | [OK] | Existente — sin cambios |
+| Paquete               | Registro   | Antigüedad  | Descargas   | Repo fuente                      | slopcheck   | Disposición                                               |
+| --------------------- | ---------- | ----------- | ----------- | -------------------------------- | ----------- | --------------------------------------------------------- |
+| `uv` (system tool)    | PyPI       | ~2 años     | 15M+/sem    | github.com/astral-sh/uv          | [OK]        | Aprobado — herramienta de sistema, no en requirements.txt |
+| `fastapi` (existente) | PyPI       | ~6 años     | 30M+/sem    | github.com/fastapi/fastapi       | [OK]        | Existente — sin cambios                                   |
+| `uvicorn` (existente) | PyPI       | ~6 años     | 20M+/sem    | github.com/encode/uvicorn        | [OK]        | Existente — sin cambios                                   |
+| `openai` (existente)  | PyPI       | ~3 años     | 25M+/sem    | github.com/openai/openai-python  | [OK]        | Existente — sin cambios                                   |
+| `deepl` (existente)   | PyPI       | ~4 años     | 500K+/sem   | github.com/DeepLcom/deepl-python | [OK]        | Existente — sin cambios                                   |
 
 **Paquetes eliminados por slopcheck [SLOP]:** ninguno
 **Paquetes marcados como sospechosos [SUS]:** ninguno
@@ -90,7 +90,7 @@ Esta fase no añade dependencias al `pyproject.toml`. El único cambio de depend
 
 ### System Architecture Diagram
 
-```
+```text
 pyproject.toml (fuente de verdad de dependencias)
         │
         ▼
@@ -118,7 +118,7 @@ Docker build:
 
 ### Estructura de archivos afectados
 
-```
+```text
 auto-trans-markdown/
 ├── pyproject.toml          # sin cambios (setuptools, extras [test][pdf])
 ├── uv.lock                 # NUEVO — generado y commiteado
@@ -248,11 +248,11 @@ CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "
 
 **Variables de entorno uv en Docker:**
 
-| Variable | Valor | Efecto |
-|----------|-------|--------|
-| `UV_PYTHON_DOWNLOADS=0` | 0 | Evita que uv descargue Python propio (usa el de la imagen base) |
-| `UV_COMPILE_BYTECODE=1` | 1 | Precompila `.pyc` → mejor startup time (coste: tamaño imagen +5-10%) |
-| `UV_LINK_MODE=copy` | copy | Necesario con `--mount=type=cache`; evita errores de hard-link cross-filesystem |
+| Variable                | Valor   | Efecto                                                                          |
+| ----------------------- | ------- | ------------------------------------------------------------------------------- |
+| `UV_PYTHON_DOWNLOADS=0` | 0       | Evita que uv descargue Python propio (usa el de la imagen base)                 |
+| `UV_COMPILE_BYTECODE=1` | 1       | Precompila `.pyc` → mejor startup time (coste: tamaño imagen +5-10%)            |
+| `UV_LINK_MODE=copy`     | copy    | Necesario con `--mount=type=cache`; evita errores de hard-link cross-filesystem |
 
 ### Anti-Patterns a Evitar
 
@@ -266,13 +266,13 @@ CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "
 
 ## Don't Hand-Roll
 
-| Problema | No construir | Usar en cambio | Por qué |
-|----------|-------------|----------------|---------|
-| Lockfile cross-platform | Scripts ad-hoc de freeze/pin | `uv lock` | Maneja marcadores de plataforma, hashes, conflictos de resolver |
-| Reproducción de entorno | Scripts bash `pip install` con versiones | `uv sync` | Gestión automática de `.venv`, instalación incremental |
-| Actualización selectiva | Edición manual de `requirements.txt` | `uv lock --upgrade-package X` | Actualiza solo X sin tocar el resto del grafo |
-| Export pip-compatible | Plantillas manuales de requirements.txt | `uv export --format requirements-txt` | Genera con hashes, plataforma, y comments de trazabilidad |
-| uv en Docker | Instalar uv via pip/curl en Dockerfile | `COPY --from=ghcr.io/astral-sh/uv:VERSION` | Imagen oficial distroless sin overhead; versión exacta pinada |
+| Problema                | No construir                             | Usar en cambio                             | Por qué                                                         |
+| ----------------------- | ---------------------------------------- | ------------------------------------------ | --------------------------------------------------------------- |
+| Lockfile cross-platform | Scripts ad-hoc de freeze/pin             | `uv lock`                                  | Maneja marcadores de plataforma, hashes, conflictos de resolver |
+| Reproducción de entorno | Scripts bash `pip install` con versiones | `uv sync`                                  | Gestión automática de `.venv`, instalación incremental          |
+| Actualización selectiva | Edición manual de `requirements.txt`     | `uv lock --upgrade-package X`              | Actualiza solo X sin tocar el resto del grafo                   |
+| Export pip-compatible   | Plantillas manuales de requirements.txt  | `uv export --format requirements-txt`      | Genera con hashes, plataforma, y comments de trazabilidad       |
+| uv en Docker            | Instalar uv via pip/curl en Dockerfile   | `COPY --from=ghcr.io/astral-sh/uv:VERSION` | Imagen oficial distroless sin overhead; versión exacta pinada   |
 
 **Idea clave:** `uv.lock` es el grafo de dependencias resuelto, universal y reproducible. Cualquier alternativa manual recrea parcialmente esta funcionalidad con mayor complejidad y menor fiabilidad.
 
@@ -402,14 +402,15 @@ cp .env.example .env
 
 ## State of the Art
 
-| Enfoque anterior | Enfoque actual | Desde | Impacto |
-|-----------------|----------------|-------|---------|
-| `pip install -r requirements.txt` (pins `>=`) | `uv sync` desde `uv.lock` (versiones exactas) | uv 0.1 (2024) | Reproducibilidad total; 0 "works on my machine" |
-| `pip freeze > requirements.txt` manual | `uv export --format requirements-txt` | uv 0.3+ | Export derivado y trazable; nunca manual |
-| `pip install` en Docker builder | `uv sync --frozen --no-dev` con cache mount | uv 0.5+ | Cache de layers más eficiente; builds más rápidas |
-| `pip-tools` / `poetry.lock` | `uv.lock` | 2024-2025 | Un solo archivo universal (no por plataforma); formato TOML legible |
+| Enfoque anterior                              | Enfoque actual                                | Desde         | Impacto                                                             |
+| --------------------------------------------- | --------------------------------------------- | ------------- | ------------------------------------------------------------------- |
+| `pip install -r requirements.txt` (pins `>=`) | `uv sync` desde `uv.lock` (versiones exactas) | uv 0.1 (2024) | Reproducibilidad total; 0 "works on my machine"                     |
+| `pip freeze > requirements.txt` manual        | `uv export --format requirements-txt`         | uv 0.3+       | Export derivado y trazable; nunca manual                            |
+| `pip install` en Docker builder               | `uv sync --frozen --no-dev` con cache mount   | uv 0.5+       | Cache de layers más eficiente; builds más rápidas                   |
+| `pip-tools` / `poetry.lock`                   | `uv.lock`                                     | 2024-2025     | Un solo archivo universal (no por plataforma); formato TOML legible |
 
 **Obsoleto/Deprecado:**
+
 - `pip freeze > requirements.txt` como lockfile: produce versiones planas sin árbol de dependencias, no es cross-platform, no soporta extras. Sustituido por `uv.lock`.
 - `pip-compile` (pip-tools): reemplazado por `uv lock` con mejor velocidad y soporte de extras.
 
@@ -417,11 +418,11 @@ cp .env.example .env
 
 ## Assumptions Log
 
-| # | Claim | Sección | Riesgo si está equivocado |
-|---|-------|---------|--------------------------|
-| A1 | `uv` 0.11.4 (instalado) es compatible con el `pyproject.toml` del proyecto sin modificaciones | Standard Stack | BAJO — verificado con `uv lock --dry-run` que resuelve 59 paquetes correctamente |
-| A2 | La imagen Docker `python:3.11-slim` es compatible con los wheels de los 59 paquetes resueltos | Common Pitfalls | MEDIO — packages con extensiones C (cffi, zopfli) requieren compilación si no hay wheels para linux/3.11; en la práctica estos paquetes publican wheels para manylinux |
-| A3 | El `requirements.txt` generado por `uv export` con `-e .` es aceptable como fallback para usuarios con pip | Code Examples | BAJO — la única limitación es que requieren el código fuente presente para el editable install, que es el caso en desarrollo local |
+| #   | Claim                                                                                                      | Sección         | Riesgo si está equivocado                                                                                                                                              |
+| --- | ---------------------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | `uv` 0.11.4 (instalado) es compatible con el `pyproject.toml` del proyecto sin modificaciones              | Standard Stack  | BAJO — verificado con `uv lock --dry-run` que resuelve 59 paquetes correctamente                                                                                       |
+| A2  | La imagen Docker `python:3.11-slim` es compatible con los wheels de los 59 paquetes resueltos              | Common Pitfalls | MEDIO — packages con extensiones C (cffi, zopfli) requieren compilación si no hay wheels para linux/3.11; en la práctica estos paquetes publican wheels para manylinux |
+| A3  | El `requirements.txt` generado por `uv export` con `-e .` es aceptable como fallback para usuarios con pip | Code Examples   | BAJO — la única limitación es que requieren el código fuente presente para el editable install, que es el caso en desarrollo local                                     |
 
 **Si la tabla está vacía de verdad:** todos los claims fueron verificados. Los 3 asumidos tienen riesgo bajo a medio y están justificados.
 
@@ -443,12 +444,12 @@ cp .env.example .env
 
 ## Environment Availability
 
-| Dependencia | Requerida por | Disponible | Versión | Fallback |
-|-------------|---------------|-----------|---------|----------|
-| `uv` | LOCK-01, LOCK-02, LOCK-03, LOCK-05 | ✓ | 0.11.4 (local); 0.11.17 (PyPI latest) | — (no hay fallback para LOCK-01..03; LOCK-05 usa imagen Docker oficial) |
-| Docker | LOCK-05 | ✓ | Asumido — el proyecto ya tiene Dockerfile y docker-compose.yml funcionales | — |
-| Python 3.11+ | Todo el proyecto | ✓ | 3.14.3 (local) | — |
-| `ghcr.io/astral-sh/uv:0.11.17` (Docker image) | LOCK-05 | ✓ (requiere pull en primera build) | 0.11.17 | Usar `uv:latest` con riesgo de no-reproducibilidad |
+| Dependencia                                   | Requerida por                      | Disponible                         | Versión                                                                    | Fallback                                                                |
+| --------------------------------------------- | ---------------------------------- | ---------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `uv`                                          | LOCK-01, LOCK-02, LOCK-03, LOCK-05 | ✓                                  | 0.11.4 (local); 0.11.17 (PyPI latest)                                      | — (no hay fallback para LOCK-01..03; LOCK-05 usa imagen Docker oficial) |
+| Docker                                        | LOCK-05                            | ✓                                  | Asumido — el proyecto ya tiene Dockerfile y docker-compose.yml funcionales | —                                                                       |
+| Python 3.11+                                  | Todo el proyecto                   | ✓                                  | 3.14.3 (local)                                                             | —                                                                       |
+| `ghcr.io/astral-sh/uv:0.11.17` (Docker image) | LOCK-05                            | ✓ (requiere pull en primera build) | 0.11.17                                                                    | Usar `uv:latest` con riesgo de no-reproducibilidad                      |
 
 **Dependencias faltantes sin fallback:** ninguna — todas están disponibles.
 
@@ -460,22 +461,22 @@ cp .env.example .env
 
 ### Test Framework
 
-| Propiedad | Valor |
-|-----------|-------|
-| Framework | pytest (ya en `[project.optional-dependencies] test`) |
-| Archivo de config | `pyproject.toml` → `[tool.pytest.ini_options]` |
-| Comando rápido | `uv sync --extra test && pytest tests/ -q` |
-| Suite completa | `pytest tests/ -v` |
+| Propiedad         | Valor                                                 |
+| ----------------- | ----------------------------------------------------- |
+| Framework         | pytest (ya en `[project.optional-dependencies] test`) |
+| Archivo de config | `pyproject.toml` → `[tool.pytest.ini_options]`        |
+| Comando rápido    | `uv sync --extra test && pytest tests/ -q`            |
+| Suite completa    | `pytest tests/ -v`                                    |
 
 ### Phase Requirements → Test Map
 
-| Req ID | Comportamiento | Tipo de test | Comando automatizado | Archivo existe |
-|--------|---------------|-------------|---------------------|---------------|
-| LOCK-01 | `uv.lock` existe y está commiteado en git | smoke | `test -f uv.lock && git ls-files uv.lock` | ❌ Wave 0 (no es test pytest, es verificación shell) |
-| LOCK-02 | `uv sync` desde lockfile crea `.venv` funcional | integration | `uv sync && python -c "import fastapi; import openai; import deepl"` | ❌ Wave 0 |
-| LOCK-03 | `uv add` / `uv lock --upgrade-package` actualizan lockfile | manual | — (requiere red + tiempo real) | manual-only |
-| LOCK-04 | README contiene bloques de instalación con uv y pip | smoke | `grep -q "uv sync" README.md && grep -q "pip install" README.md` | ❌ Wave 0 |
-| LOCK-05 | Docker build produce imagen funcional con `uv sync --frozen` | integration | `docker build -t md-translate-test . && docker run --rm md-translate-test python -c "import fastapi"` | ❌ Wave 0 |
+| Req ID   | Comportamiento                                               | Tipo de test  | Comando automatizado                                                                                  | Archivo existe                                      |
+| -------- | ------------------------------------------------------------ | ------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| LOCK-01  | `uv.lock` existe y está commiteado en git                    | smoke         | `test -f uv.lock && git ls-files uv.lock`                                                             | ❌ Wave 0 (no es test pytest, es verificación shell) |
+| LOCK-02  | `uv sync` desde lockfile crea `.venv` funcional              | integration   | `uv sync && python -c "import fastapi; import openai; import deepl"`                                  | ❌ Wave 0                                            |
+| LOCK-03  | `uv add` / `uv lock --upgrade-package` actualizan lockfile   | manual        | — (requiere red + tiempo real)                                                                        | manual-only                                         |
+| LOCK-04  | README contiene bloques de instalación con uv y pip          | smoke         | `grep -q "uv sync" README.md && grep -q "pip install" README.md`                                      | ❌ Wave 0                                            |
+| LOCK-05  | Docker build produce imagen funcional con `uv sync --frozen` | integration   | `docker build -t md-translate-test . && docker run --rm md-translate-test python -c "import fastapi"` | ❌ Wave 0                                            |
 
 > LOCK-03 es **manual-only** porque valida el flujo de workflow del desarrollador (requiere acceso a PyPI y modificar dependencias reales).
 
@@ -500,21 +501,21 @@ cp .env.example .env
 
 ### Applicable ASVS Categories
 
-| ASVS Category | Aplica | Control estándar |
-|---------------|--------|-----------------|
-| V2 Authentication | no | — |
-| V3 Session Management | no | — |
-| V4 Access Control | no | — |
-| V5 Input Validation | no | Esta fase no procesa input externo |
-| V6 Cryptography | parcial | `uv.lock` incluye hashes SHA-256 de cada paquete — verificación de integridad automática |
-| Supply Chain (OWASP) | sí | `uv.lock` con hashes previene sustitución de paquetes; pinning de imagen Docker (`ghcr.io/astral-sh/uv:0.11.17`) previene cambios silenciosos |
+| ASVS Category         | Aplica   | Control estándar                                                                                                                              |
+| --------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| V2 Authentication     | no       | —                                                                                                                                             |
+| V3 Session Management | no       | —                                                                                                                                             |
+| V4 Access Control     | no       | —                                                                                                                                             |
+| V5 Input Validation   | no       | Esta fase no procesa input externo                                                                                                            |
+| V6 Cryptography       | parcial  | `uv.lock` incluye hashes SHA-256 de cada paquete — verificación de integridad automática                                                      |
+| Supply Chain (OWASP)  | sí       | `uv.lock` con hashes previene sustitución de paquetes; pinning de imagen Docker (`ghcr.io/astral-sh/uv:0.11.17`) previene cambios silenciosos |
 
 ### Known Threat Patterns para esta fase
 
-| Patrón | STRIDE | Mitigación estándar |
-|--------|--------|---------------------|
-| Dependency confusion / supply chain attack | Tampering | `uv.lock` con hashes SHA-256; slopcheck antes de `uv add` |
-| Imagen Docker con tag mutable (`uv:latest`) | Tampering | Pin a versión específica `uv:0.11.17` en Dockerfile |
+| Patrón                                                       | STRIDE    | Mitigación estándar                                                                        |
+| ------------------------------------------------------------ | --------- | ------------------------------------------------------------------------------------------ |
+| Dependency confusion / supply chain attack                   | Tampering | `uv.lock` con hashes SHA-256; slopcheck antes de `uv add`                                  |
+| Imagen Docker con tag mutable (`uv:latest`)                  | Tampering | Pin a versión específica `uv:0.11.17` en Dockerfile                                        |
 | `requirements.txt` editado manualmente (deriva del lockfile) | Tampering | Documentar que `requirements.txt` es artefacto derivado; regenerar siempre con `uv export` |
 
 ---
@@ -523,14 +524,14 @@ cp .env.example .env
 
 Directivas extraídas del `CLAUDE.md` del proyecto relevantes para esta fase:
 
-| Directiva | Impacto en la fase |
-|-----------|-------------------|
+| Directiva                                                                                   | Impacto en la fase                                                                                                                 |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `Tech stack: Mantener Python 3.11+, FastAPI, parser actual; extender sin reescritura total` | No cambiar build-backend (setuptools), no reescribir `pyproject.toml` más allá de añadir `[tool.uv]` si fuera necesario (no lo es) |
-| `Seguridad: Nunca commitear .env` | `uv.lock` SÍ debe commitearse; `.env` sigue en `.gitignore` — sin cambios |
-| `Formato: Salida siempre Markdown válido; código y URLs intactos` | No aplica directamente a esta fase |
-| `Privacidad: output/ puede contener docs privados — gitignore` | Sin cambios en `.gitignore` para `output/` |
-| Convención naming: `snake_case`, helpers con `_`, módulos en `src/` | Sin impacto — esta fase no añade código Python |
-| Error handling: usar `HTTPException` en `src/main.py` | Sin impacto |
+| `Seguridad: Nunca commitear .env`                                                           | `uv.lock` SÍ debe commitearse; `.env` sigue en `.gitignore` — sin cambios                                                          |
+| `Formato: Salida siempre Markdown válido; código y URLs intactos`                           | No aplica directamente a esta fase                                                                                                 |
+| `Privacidad: output/ puede contener docs privados — gitignore`                              | Sin cambios en `.gitignore` para `output/`                                                                                         |
+| Convención naming: `snake_case`, helpers con `_`, módulos en `src/`                         | Sin impacto — esta fase no añade código Python                                                                                     |
+| Error handling: usar `HTTPException` en `src/main.py`                                       | Sin impacto                                                                                                                        |
 
 ---
 
@@ -562,6 +563,7 @@ Directivas extraídas del `CLAUDE.md` del proyecto relevantes para esta fase:
 ## Metadata
 
 **Confidence breakdown:**
+
 - Standard Stack: HIGH — verificado con ejecución local de `uv lock --dry-run` y `uv export`
 - Architecture: HIGH — basado en documentación oficial + pruebas locales
 - Pitfalls: HIGH — los 5 pitfalls documentados están respaldados por docs oficiales o verificación directa del comportamiento

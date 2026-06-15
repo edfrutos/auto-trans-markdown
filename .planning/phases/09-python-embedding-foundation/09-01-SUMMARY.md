@@ -4,8 +4,10 @@ plan: 01
 status: completed
 completed: "2026-06-07"
 requirements_delivered:
+
   - BUNDLE-01
   - BUNDLE-02
+
 ---
 
 # Plan 09-01 Summary — Python Bundle Build Script
@@ -14,6 +16,7 @@ requirements_delivered:
 
 ### `scripts/build-python-bundle.sh` (nuevo)
 Script bash ejecutable que:
+
 1. Descarga CPython 3.11.15 standalone (python-build-standalone, release 20260510, `aarch64-apple-darwin`, `install_only_stripped`) desde GitHub Releases
 2. Verifica la estructura del tarball antes de extraer (primer entry debe ser `python/`) — mitiga Pitfall 1
 3. Extrae en `python-bundle/` con `--strip-components=1`
@@ -25,6 +28,7 @@ Script bash ejecutable que:
 
 ### `.gitignore` (modificado)
 Añadida sección `# --- macOS app bundle (generado por build-python-bundle.sh) ---` con:
+
 - `python-bundle/`
 - `macos/MDTranslator/MDTranslator.xcodeproj/xcuserdata/`
 - `macos/MDTranslator/MDTranslator.xcodeproj/project.xcworkspace/xcuserdata/`
@@ -32,6 +36,7 @@ Añadida sección `# --- macOS app bundle (generado por build-python-bundle.sh) 
 
 ### `README.md` (modificado)
 Añadida sección `## App nativa macOS — Prerequisito` antes de `## Uso` con:
+
 - Instrucción de instalar `uv` (con comando curl)
 - Instrucción de ejecutar `./scripts/build-python-bundle.sh`
 - Mención de que `python-bundle/` está en `.gitignore` y no se versiona
@@ -40,6 +45,7 @@ Añadida sección `## App nativa macOS — Prerequisito` antes de `## Uso` con:
 ## Verification
 
 Todos los acceptance criteria del plan superados:
+
 - ✅ `scripts/build-python-bundle.sh` existe y es ejecutable (`test -x`)
 - ✅ Contiene `install_only_stripped` (flavor correcto)
 - ✅ Contiene `20260510` (release correcto)

@@ -18,12 +18,14 @@ Equipos **despliegan y traducen a varios idiomas de forma segura y reproducible*
 ## Implementation Decisions
 
 ### Multi-destino en UI (MULTI-01)
+
 - **D-01:** **Todos los modos** soportan multi-destino: editor, archivo único y lote.
 - **D-02 (Claude):** Selector destino = **chips/tags removibles** debajo del control principal (más claro que `<select multiple>` para 2–5 idiomas). Mantener compatibilidad con un solo idioma seleccionado.
 - **D-03 (Claude):** Estimate multi-idioma = **línea agregada** «~N segmentos · ~M chars · ~$X total (K idiomas)»; si supera umbral, un aviso; desglose por idioma solo en tooltip o texto secundario opcional (no modal).
 - **D-04 (Claude):** Progreso SSE en lote = **lista por archivo con sub-entradas por idioma** (pendiente/activo/OK/error), alineado con orden backend archivo→idiomas.
 
 ### Multi-destino en backend (MULTI-02)
+
 - **D-05:** Orden de procesamiento: **por archivo, luego todos los idiomas destino** (`file_then_lang`).
 - **D-06:** Contrato API: **aceptar ambos** — `target_lang` (string, un idioma) y `target_langs` (lista); un solo `target_lang` equivale a lista de uno. Aplicar en translate, batch, jobs, estimate.
 - **D-07 (Claude):** ZIP multi-idioma = **plano en raíz** con nombres `stem.{lang}.md` (literal MULTI-02); `validation.json` por archivo×idioma como `{stem}.validation.json` o `{stem}.{lang}.validation.json` — planner elige convención consistente con Phase 2.
@@ -32,6 +34,7 @@ Equipos **despliegan y traducen a varios idiomas de forma segura y reproducible*
 - **D-10:** Memoria de traducción **compartida entre idiomas** del mismo origen (NOTEBOOK §9) — lookup/store por par (source, target) sin duplicar lógica.
 
 ### Docker y despliegue (DOCKER-01, DOCKER-02)
+
 - **D-11:** Objetivo de despliegue: **equipo interno (LAN) y VPS/prod** — compose documentado para ambos; perfil dev opcional vs prod sin reload.
 - **D-12 (Claude):** Lockfile = **`requirements.txt`** en imagen (brownfield); no introducir `uv.lock` en Fase 4 salvo que research demuestre bajo coste — DOCKER-01 se cumple con multi-stage + non-root + deps pinneadas en build.
 - **D-13 (Claude):** `docker-compose.yml` = servicio app + volúmenes **`data/`** y **`output/`** + `.env`; **healthcheck** `GET /api/languages` (NOTEBOOK §11).
@@ -39,17 +42,20 @@ Equipos **despliegan y traducen a varios idiomas de forma segura y reproducible*
 - **D-15:** Imagen **non-root**; base slim; objetivo **< 200 MB** si es viable (NOTEBOOK §11).
 
 ### Hardening de despliegue (SEC-01, SEC-02)
+
 - **D-16:** CORS = **`CORS_ORIGINS`** comma-separated; si vacío en prod, default restrictivo (`http://127.0.0.1:5400`, `http://localhost:5400`); `*` solo documentado para dev local explícito.
 - **D-17:** Upload limits = **ambos**: `MAX_UPLOAD_MB` por archivo **y** `MAX_BATCH_UPLOAD_MB` tope total por request lote/jobs.
 - **D-18:** Limpieza `output/` = **barrido al arrancar** + **tarea periódica**; TTL vía `OUTPUT_TTL_HOURS` (default razonable, ej. 24).
 - **D-19 (Claude):** **Sin auth obligatorio** en Fase 4. Opcional: si `API_TOKEN` está definido en `.env`, exigir header `Authorization: Bearer …` en rutas `/api/*` — default sin token (coherente con REQUIREMENTS «SaaS sin auth v1»).
 
 ### CLI multi-idioma (paridad MULTI-01/02)
+
 - **D-20:** **Paridad web** — `md-translate file|dir|batch` soporta multi-destino.
 - **D-21:** Sintaxis **`-t es,en,fr`** (coma separada) además de `-t es` único.
 - **D-22:** Salida CLI = **`stem.{lang}.md`** (misma convención que web/ZIP).
 
 ### Claude's Discretion
+
 - Convención exacta de `validation.json` multi-idioma en ZIP.
 - Perfiles compose `dev`/`prod` (nombres y flags).
 - Implementación de chips UI (vanilla JS, sin bundler).
@@ -64,17 +70,20 @@ Equipos **despliegan y traducen a varios idiomas de forma segura y reproducible*
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Requisitos y roadmap
+
 - `.planning/REQUIREMENTS.md` — MULTI-01…02, DOCKER-01…02, SEC-01…02
 - `.planning/ROADMAP.md` — Phase 4 goal y success criteria
 - `.planning/STATE.md` — sin auth v1; hardening parcial Fase 4
 - `.planning/phases/03-batch-ux-cost-control/03-CONTEXT.md` — jobs SSE, batch_zip, estimate; multi-destino explícitamente Fase 4
 
 ### NOTEBOOK y research
+
 - `NOTEBOOK.md` §9 — multi-destino, UI multi-select, `target_langs`, concurrencia
 - `NOTEBOOK.md` §11 — Docker, compose, healthcheck, imagen slim, volúmenes
 - `.planning/research/SUMMARY.md` — Phase D deliverables
 
 ### Código base
+
 - `src/main.py` — CORS `allow_origins=["*"]`, batch/jobs/estimate endpoints
 - `src/jobs.py` — worker SSE, cancel, partial ZIP
 - `src/batch_zip.py` — builder ZIP compartido
@@ -90,6 +99,7 @@ Equipos **despliegan y traducen a varios idiomas de forma segura y reproducible*
 ## Existing Code Insights
 
 ### Reusable Assets
+
 - `build_batch_zip` / jobs worker — extender para múltiples `out_name` por idioma
 - `estimate_files` / `estimate_markdown` — agregar loop `target_langs`
 - `_unique_zip_name` — generalizar a `stem.{lang}.md`
@@ -97,12 +107,14 @@ Equipos **despliegan y traducen a varios idiomas de forma segura y reproducible*
 - CORS middleware ya montado — sustituir origins por env
 
 ### Established Patterns
+
 - FastAPI Form `target_lang` + JSON body — añadir `target_langs` sin romper clientes
 - Vanilla JS `state` + `els` — chips encajan en panel compartido source/target
 - Tests con mocks en `conftest.py` — extender API tests multi-lang
 - Sin lockfile hoy — Docker usa `pip install -r requirements.txt`
 
 ### Integration Points
+
 - UI: reemplazar/ampliar `#target-lang` → lista chips + hidden/API payload `target_langs[]`
 - API: todos los endpoints de traducción y estimate
 - CLI: parser `-t` comma-split

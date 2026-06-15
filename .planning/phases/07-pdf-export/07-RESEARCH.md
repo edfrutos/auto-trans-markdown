@@ -5,12 +5,12 @@
 
 ## Existing patterns
 
-| Patrón | Ubicación | Reutilizar |
-|--------|-----------|------------|
-| MD → HTML | `src/html_export.py` `markdown_to_html()` | Entrada directa a WeasyPrint |
-| CLI export | `src/cli.py` `export_cmd` | Añadir `--format` |
-| UI export HTML | `static/js/app.js` `exportHtml()` | Paralelo `exportPdf()` vía API |
-| Optional dep | `watchdog` en CLI con `_exit_config` | `is_pdf_available()` + mensaje |
+| Patrón         | Ubicación                                 | Reutilizar                     |
+| -------------- | ----------------------------------------- | ------------------------------ |
+| MD → HTML      | `src/html_export.py` `markdown_to_html()` | Entrada directa a WeasyPrint   |
+| CLI export     | `src/cli.py` `export_cmd`                 | Añadir `--format`              |
+| UI export HTML | `static/js/app.js` `exportHtml()`         | Paralelo `exportPdf()` vía API |
+| Optional dep   | `watchdog` en CLI con `_exit_config`      | `is_pdf_available()` + mensaje |
 
 ## WeasyPrint pipeline
 
@@ -48,18 +48,18 @@ Validar extensión `.pdf` / `.html` coherente con `--format` (warning o error am
 
 ## Test strategy
 
-| Test | Approach |
-|------|----------|
-| `markdown_to_pdf` unit | Mock `weasyprint.HTML.write_pdf` retorna `b"%PDF-"` |
-| `is_pdf_available` | True si import ok |
-| CLI `--format pdf` | tmp_path + mock pdf_export |
-| API `/api/export/pdf` | TestClient + mock |
-| Integración real | `@pytest.mark.skipif(not is_pdf_available())` opcional |
+| Test                   | Approach                                               |
+| ---------------------- | ------------------------------------------------------ |
+| `markdown_to_pdf` unit | Mock `weasyprint.HTML.write_pdf` retorna `b"%PDF-"`    |
+| `is_pdf_available`     | True si import ok                                      |
+| CLI `--format pdf`     | tmp_path + mock pdf_export                             |
+| API `/api/export/pdf`  | TestClient + mock                                      |
+| Integración real       | `@pytest.mark.skipif(not is_pdf_available())` opcional |
 
 ## Risks
 
-| Risk | Mitigation |
-|------|------------|
-| WeasyPrint falla en macOS sin brew deps | README sección macOS |
-| PDF distinto a preview marked en UI | Aceptado: PDF usa html_export (como CLI HTML), UI preview usa marked |
-| Imagen Docker sin PDF | Documentar `pip install weasyprint` + apt en README; no cambiar CMD default |
+| Risk                                    | Mitigation                                                                  |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| WeasyPrint falla en macOS sin brew deps | README sección macOS                                                        |
+| PDF distinto a preview marked en UI     | Aceptado: PDF usa html_export (como CLI HTML), UI preview usa marked        |
+| Imagen Docker sin PDF                   | Documentar `pip install weasyprint` + apt en README; no cambiar CMD default |

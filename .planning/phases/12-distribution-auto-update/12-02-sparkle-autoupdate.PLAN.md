@@ -6,15 +6,16 @@ Integrar Sparkle 2.x para que la app compruebe actualizaciones automáticamente 
 
 ## Archivos a crear/modificar
 
-| Archivo | Acción |
-|---------|--------|
-| `macos/MDTranslator/MDTranslator/UpdateManager.swift` | Nuevo — wrapper SPUUpdater |
-| `macos/MDTranslator/MDTranslator/Commands.swift` | Añadir "Buscar actualizaciones…" |
-| `macos/MDTranslator/MDTranslator/MDTranslatorApp.swift` | Inicializar UpdateManager en `@main` |
-| `macos/MDTranslator/MDTranslator/Info.plist` | Añadir `SUFeedURL` y `SUPublicEDKey` |
-| `docs/appcast.xml` | Nuevo — plantilla de appcast para publicar releases |
+| Archivo                                                 | Acción                                              |
+| ------------------------------------------------------- | --------------------------------------------------- |
+| `macos/MDTranslator/MDTranslator/UpdateManager.swift`   | Nuevo — wrapper SPUUpdater                          |
+| `macos/MDTranslator/MDTranslator/Commands.swift`        | Añadir "Buscar actualizaciones…"                    |
+| `macos/MDTranslator/MDTranslator/MDTranslatorApp.swift` | Inicializar UpdateManager en `@main`                |
+| `macos/MDTranslator/MDTranslator/Info.plist`            | Añadir `SUFeedURL` y `SUPublicEDKey`                |
+| `docs/appcast.xml`                                      | Nuevo — plantilla de appcast para publicar releases |
 
 ## Pasos manuales en Xcode (una vez)
+
 1. File → Add Package Dependencies → `https://github.com/sparkle-project/Sparkle` → versión `2.9.2`
 2. Target → Frameworks, Libraries → añadir `Sparkle.framework`
 3. Generar claves EdDSA: `./bin/generate_keys` (incluido en Sparkle) → copiar clave pública a `SUPublicEDKey` en Info.plist
@@ -83,6 +84,7 @@ final class UpdateManager {
 ```
 
 ## Notas
+
 - `SUFeedURL` apunta a `docs/appcast.xml` en `main` — necesita ser público en GitHub
 - Sin notarización: los usuarios deben hacer clic derecho → Abrir la primera vez
 - `SPUStandardUpdaterController(startingUpdater: true)` lanza el check en background al arrancar

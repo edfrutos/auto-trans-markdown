@@ -34,13 +34,13 @@ def validate_translation(original: str, translated: str) -> ValidationReport:
 
 ### Check implementations (regex/heuristic, no AST dependency)
 
-| Check ID | Method | Error rule | Warn rule |
-| -------- | ------ | ---------- | --------- |
-| `fences` | Count opening ```/~~~ lines (strip-aware) | `abs(orig - trans) > 0` | — |
-| `links` | `re.findall(r'(?<!!)\[[^\]]*\]\([^)]+\)', text)` | count mismatch | — |
-| `images` | `re.findall(r'!\[[^\]]*\]\([^)]+\)', text)` | count mismatch | — |
-| `inline_code` | Count backtick runs (pairs of `` ` `` spans) | count mismatch | — |
-| `headings` | Per-line `#` depth sequence (ignore `#` in fences via strip code blocks first) | any line index depth differs | — |
+| Check ID      | Method                                                                         | Error rule                   | Warn rule |
+| ------------- | ------------------------------------------------------------------------------ | ---------------------------- | --------- |
+| `fences`      | Count opening fence markers (triple backtick or tilde), strip-aware            | `abs(orig - trans) > 0`      | —         |
+| `links`       | `re.findall(r'(?<!!)\[[^\]]*\]\([^)]+\)', text)`                               | count mismatch               | —         |
+| `images`      | `re.findall(r'!\[[^\]]*\]\([^)]+\)', text)`                                    | count mismatch               | —         |
+| `inline_code` | Count backtick runs (pairs of inline spans)                                    | count mismatch               | —         |
+| `headings`    | Per-line `#` depth sequence (ignore `#` in fences via strip code blocks first) | any line index depth differs | —         |
 
 **Strip fenced blocks before inline/heading checks:** Remove content between fence pairs to avoid false positives on `#` in code.
 
@@ -135,11 +135,13 @@ HTML_COMMENT = re.compile(r"(^[\s]*)(<!--)(.*?)(-->)", re.DOTALL)
 ```
 
 Replace `_is_shell_fence` / `_append_shell_line` with:
+
 - `_fence_lang(info: str) -> str | None`
 - `_is_comment_fence(info, registry) -> bool`
 - `_append_comment_line(segments, line, idx, lang) -> int`
 
 **Edge cases (tests required):**
+
 - Shebang `#!/usr/bin/env python` — entire line PROTECTED
 - `#` inside python string — line without leading `#` after strip stays PROTECTED (only match `^\s*#`)
 - `//` in URL inside comment line — still translatable comment body (acceptable v1)
@@ -158,6 +160,7 @@ FM_PROTECTED_KEYS = frozenset({"date", "slug", "id", "layout", "author"})
 ```
 
 ### Flow in `segment_markdown`
+
 1. Detect frontmatter block (existing).
 2. Try `yaml.safe_load(block_inner)` — on `YAMLError`, PROTECTED whole block (D-17).
 3. Walk dict/list recursively; emit TRANSLATABLE segments for string values whose key path ends in whitelist key.
@@ -192,14 +195,14 @@ Call after successful translate and sample load only (D-09).
 
 ## Test strategy
 
-| Module | File | Coverage |
-| ------ | ---- | -------- |
-| validator | `tests/test_validator.py` | each check pass/warn/error; overall aggregation |
-| parser comments | `tests/test_parser.py` | python `#`, js `//`, html `<!-- -->`; shebang protected |
-| frontmatter | `tests/test_parser.py` | whitelist translated; slug/date protected; invalid YAML protected |
-| pipeline | `tests/test_pipeline.py` | `validation` populated on translate |
-| API | `tests/test_api.py` | response includes validation; batch ZIP contains `.validation.json` |
-| CLI | `tests/test_cli.py` | `--strict` exit 1 on error, writes on pass |
+| Module          | File                      | Coverage                                                            |
+| --------------- | ------------------------- | ------------------------------------------------------------------- |
+| validator       | `tests/test_validator.py` | each check pass/warn/error; overall aggregation                     |
+| parser comments | `tests/test_parser.py`    | python `#`, js `//`, html `<!-- -->`; shebang protected             |
+| frontmatter     | `tests/test_parser.py`    | whitelist translated; slug/date protected; invalid YAML protected   |
+| pipeline        | `tests/test_pipeline.py`  | `validation` populated on translate                                 |
+| API             | `tests/test_api.py`       | response includes validation; batch ZIP contains `.validation.json` |
+| CLI             | `tests/test_cli.py`       | `--strict` exit 1 on error, writes on pass                          |
 
 ---
 
@@ -207,14 +210,14 @@ Call after successful translate and sample load only (D-09).
 
 Nyquist dimension mapping for Phase 2 plans:
 
-| Plan focus | Dimension | Verification |
-| ---------- | --------- | ------------ |
-| validator.py | Unit correctness | `pytest tests/test_validator.py` |
-| parser extensions | Regression | `pytest tests/test_parser.py` |
-| pipeline/API | Integration | `pytest tests/test_pipeline.py tests/test_api.py` |
-| CLI strict | CLI contract | `pytest tests/test_cli.py --strict` |
-| UI preview | XSS safety | Manual + fixture `[x](javascript:alert(1))` inert |
-| UI validation panel | API contract | response.validation rendered |
+| Plan focus          | Dimension        | Verification                                      |
+| ------------------- | ---------------- | ------------------------------------------------- |
+| validator.py        | Unit correctness | `pytest tests/test_validator.py`                  |
+| parser extensions   | Regression       | `pytest tests/test_parser.py`                     |
+| pipeline/API        | Integration      | `pytest tests/test_pipeline.py tests/test_api.py` |
+| CLI strict          | CLI contract     | `pytest tests/test_cli.py --strict`               |
+| UI preview          | XSS safety       | Manual + fixture `[x](javascript:alert(1))` inert |
+| UI validation panel | API contract     | response.validation rendered                      |
 
 Each PLAN.md task with logic changes MUST include `pytest` in acceptance_criteria.
 
@@ -222,13 +225,13 @@ Each PLAN.md task with logic changes MUST include `pytest` in acceptance_criteri
 
 ## Risks (PITFALLS.md)
 
-| Pitfall | Mitigation in Phase 2 |
-| ------- | --------------------- |
-| #1 Plain text translation | Validator confirms structure preserved |
-| #2 Chunk desync | Fence count check catches gross breakage |
-| #4 XSS in preview | DOMPurify mandatory (PITFALL #5) |
-| #21 Frontmatter keys translated | Whitelist + protected keys |
-| YAML reorder on dump | Accept v1; document; test round-trip keys present |
+| Pitfall                         | Mitigation in Phase 2                             |
+| ------------------------------- | ------------------------------------------------- |
+| #1 Plain text translation       | Validator confirms structure preserved            |
+| #2 Chunk desync                 | Fence count check catches gross breakage          |
+| #4 XSS in preview               | DOMPurify mandatory (PITFALL #5)                  |
+| #21 Frontmatter keys translated | Whitelist + protected keys                        |
+| YAML reorder on dump            | Accept v1; document; test round-trip keys present |
 
 ---
 

@@ -19,6 +19,7 @@
 ## Modo revisión (REV-01/02)
 
 **Backend:** Reutilizar `segment_markdown`, `collect_translatable`, `translate_segments`, `reassemble`. Nuevo `src/review.py`:
+
 - `build_draft(content, options) -> DraftResult`
 - `score_doubtful(original, translated, validation) -> bool`
 - `finalize_draft(segments, translations, original_content) -> TranslateResult`
@@ -63,8 +64,8 @@
 
 ## Plan waves
 
-| Wave | Plans | Focus |
-|------|-------|-------|
-| 1 | 05-01, 05-02 | translator fallback + tone |
-| 2 | 05-03, 05-04, 05-05 | review API/UI, diff UI, watch+gitignore CLI |
-| 3 | 05-06 | history + HTML export |
+| Wave   | Plans               | Focus                                       |
+| ------ | ------------------- | ------------------------------------------- |
+| 1      | 05-01, 05-02        | translator fallback + tone                  |
+| 2      | 05-03, 05-04, 05-05 | review API/UI, diff UI, watch+gitignore CLI |
+| 3      | 05-06               | history + HTML export                       |

@@ -15,13 +15,13 @@ v1.0 shipped with four peripheral gaps:
 
 ## Decisions
 
-| ID | Decision | Rationale |
-|----|----------|-----------|
-| D-01 | SSE auth via query param `access_token` on events endpoint | EventSource cannot set custom headers; same token as Bearer |
+| ID   | Decision                                                    | Rationale                                                               |
+| ---- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| D-01 | SSE auth via query param `access_token` on events endpoint  | EventSource cannot set custom headers; same token as Bearer             |
 | D-02 | Token stored in `localStorage` key `md-translate-api-token` | Opt-in, no secrets in repo; user pastes when deploying with `API_TOKEN` |
-| D-03 | Editor lang switcher = horizontal tabs above output | Reuse chip/tab visual language from target-lang chips (phase 4) |
-| D-04 | Retroactive `02-VERIFICATION.md` status `passed` | Phase 2 executed and tested; doc is audit artifact only |
-| D-05 | Regression tests in plan 06-04, not blocking 06-01–03 | Keeps wave 1–2 fast; 06-04 consolidates test coverage |
+| D-03 | Editor lang switcher = horizontal tabs above output         | Reuse chip/tab visual language from target-lang chips (phase 4)         |
+| D-04 | Retroactive `02-VERIFICATION.md` status `passed`            | Phase 2 executed and tested; doc is audit artifact only                 |
+| D-05 | Regression tests in plan 06-04, not blocking 06-01–03       | Keeps wave 1–2 fast; 06-04 consolidates test coverage                   |
 
 ## Out of scope
 

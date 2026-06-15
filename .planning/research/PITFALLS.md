@@ -24,6 +24,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 **Consequences:** La app llega al usuario y no arranca. Diagnóstico imposible desde la UI. Reportes de crash sin información útil.
 
 **Prevention:**
+
 - En el script de build, tras copiar python-build-standalone al bundle, ejecutar:
   ```bash
   xattr -cr MyApp.app
@@ -34,6 +35,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 - Documentar en README del proyecto: el usuario que descarga manualmente puede necesitar ejecutar `xattr -d com.apple.quarantine MyApp.dmg` si el diálogo aparece.
 
 **Detection (warning signs):**
+
 - Crash en arranque sin llegar a `AppDelegate.applicationDidFinishLaunching`.
 - Consola macOS muestra `AMFI: ... is not allowed to run` o `killed: 9`.
 - `xattr -l MyApp.app/Contents/Resources/python/bin/python3.XX` devuelve `com.apple.quarantine`.
@@ -53,6 +55,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 **Consequences:** El subprocess Python nunca arranca. Error críptico en log. App inutilizable.
 
 **Prevention:**
+
 - Usar la variante **"relocatable"** de python-build-standalone (releases marcados `+20XXXXXX` con soporte `PYTHONHOME`).
 - Establecer `PYTHONHOME` y `PYTHONPATH` en el entorno del subprocess apuntando a rutas dentro del bundle:
   ```swift
@@ -64,6 +67,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 - Nunca hardcodear rutas `/Users/developer/...` en `requirements.txt` instalados dentro del bundle.
 
 **Detection:**
+
 - `python3 -c "import encodings"` falla desde la ruta del bundle.
 - Log del subprocess contiene `Fatal Python error: init_sys_streams` o `can't open file 'bootstrap.py'`.
 
@@ -82,6 +86,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 **Consequences:** Puerto permanentemente bloqueado. La app no arranca tras la primera sesión o tras un crash. Proceso Python consumiendo RAM/CPU en segundo plano.
 
 **Prevention:**
+
 - Registrar el subprocess en `AppDelegate` y llamar en `applicationWillTerminate`:
   ```swift
   pythonProcess.terminate()
@@ -96,6 +101,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 - Elegir un puerto aleatorio libre en cada sesión (evita conflictos permanentes).
 
 **Detection:**
+
 - `lsof -i :8000` muestra proceso `python3` sin padre (`PPID=1`).
 - La app tarda >10s en arrancar tras un crash previo.
 - `ps aux | grep python` muestra múltiples instancias.
@@ -115,6 +121,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 **Consequences:** Crash en import de módulos que usan C extensions (`ssl`, `sqlite3`, `hashlib`). FastAPI no arranca por falta de `ssl`. Errores intermitentes dependiendo del primer import.
 
 **Prevention:**
+
 - Firmar **bottom-up**: primero todas las `.dylib` y `.so`, luego los ejecutables, luego el bundle:
   ```bash
   find MyApp.app -name "*.dylib" -o -name "*.so" | \
@@ -127,6 +134,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 - Automatizar en el Makefile/script de build, no hacerlo manualmente.
 
 **Detection:**
+
 - `codesign --verify --deep --strict MyApp.app` reporta archivos sin firma.
 - Log contiene `dlopen` con `code signature invalid`.
 - `spctl -a -vv MyApp.app` devuelve `rejected`.
@@ -146,8 +154,9 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 **Consequences:** Tasa de abandono en instalación. Tickets de soporte. Percepción de app maliciosa.
 
 **Prevention:**
+
 - Incluir instrucciones prominentes en el DMG (archivo `INSTALL.txt` visible al montar):
-  ```
+  ```text
   Si ves "no se puede abrir", haz clic derecho → Abrir, o ve a
   Ajustes del Sistema > Privacidad y Seguridad > Abrir de todos modos.
   ```
@@ -159,6 +168,7 @@ Errores que causan que la app no arranque, se bloquee por Gatekeeper, exponga se
 - Documentar en README el proceso de primera apertura.
 
 **Detection:**
+
 - Test en una VM macOS limpia sin el Developer ID del proyecto instalado como trusted.
 - Verificar que `spctl --status` está en `assessments enabled` en la VM de test.
 
@@ -183,12 +193,14 @@ Problemas que degradan la experiencia de desarrollo o pueden causar bugs en prod
 **Consequences:** Falsos positivos de «backend no disponible». El usuario reintenta, lanza múltiples subprocesses, y aparece el Pitfall C-3 (zombies).
 
 **Prevention:**
+
 - Implementar retry con backoff en el health check: intentar `/api/languages` cada 500ms hasta 15s de timeout total.
 - En la primera ejecución (detectar con `UserDefaults`), mostrar un indicador de progreso «Iniciando…» en lugar de un error inmediato.
 - Loggear el tiempo de arranque para calibrar timeouts en CI.
 - Separar el health check de «¿está vivo?» (TCP connect) del de «¿está listo?» (HTTP 200): el primero es más rápido.
 
 **Detection:**
+
 - Arranque en máquina con FileVault + HDD (o VM con throttling de I/O).
 - Log de Swift muestra «backend failed to start» pero el proceso Python sigue en `ps`.
 
@@ -207,6 +219,7 @@ Problemas que degradan la experiencia de desarrollo o pueden causar bugs en prod
 **Consequences:** DMG de >500 MB. Tiempo de instalación de 3-5 minutos. Rechazo por parte de usuarios en redes lentas. Sparkle updates lentos.
 
 **Prevention:**
+
 - Excluir WeasyPrint del bundle de la app macOS (PDF export puede ser opcional, igual que en la versión web).
 - Usar `pip install --no-compile` + limpiar `__pycache__` y `*.pyc` antes de firmar.
 - Eliminar archivos innecesarios de python-build-standalone:
@@ -219,6 +232,7 @@ Problemas que degradan la experiencia de desarrollo o pueden causar bugs en prod
 - Evaluar `uv` para instalar dependencias con resolución más agresiva de duplicados.
 
 **Detection:**
+
 - `du -sh MyApp.app/Contents/Resources/python/` en el script de build.
 - Alerta si supera 300 MB antes de comprimir el DMG.
 
@@ -237,6 +251,7 @@ Problemas que degradan la experiencia de desarrollo o pueden causar bugs en prod
 **Consequences:** Pérdida de la clave = imposibilidad de distribuir actualizaciones automáticas a usuarios existentes. Si se usa una clave diferente en un update, Sparkle rechaza la actualización silenciosamente.
 
 **Prevention:**
+
 - Generar el par de claves EdDSA con `generate_keys` de Sparkle **una sola vez** y guardar la clave privada en:
   1. macOS Keychain del desarrollador (no en el repo).
   2. Backup cifrado offline (1Password, Bitwarden).
@@ -245,6 +260,7 @@ Problemas que degradan la experiencia de desarrollo o pueden causar bugs en prod
 - Sparkle no requiere sandbox, pero sí requiere HTTPS para el appcast XML (`SUFeedURL`).
 
 **Detection:**
+
 - El instalador de Sparkle muestra «Update cannot be verified» si la firma no coincide.
 - `sparkle_tool verify-update` en CI.
 
@@ -265,12 +281,14 @@ Además, sin sandbox no hay `kSecAttrAccessGroup` automático: si en el futuro s
 **Consequences:** API keys expuestas a otras apps. Rotura de Keychain en migración a sandbox. Posibles violaciones de ToS de OpenAI/DeepL si las claves se filtran.
 
 **Prevention:**
+
 - Usar `kSecAttrAccessible = kSecAttrAccessibleWhenUnlockedThisDeviceOnly` (más restrictivo).
 - Configurar ACL explícita con `SecAccessCreate` para limitar qué apps pueden leer el ítem.
 - Usar un `kSecAttrService` único y consistente (`com.autoTransMarkdown.apikeys`) para facilitar migración futura.
 - Documentar en ARCHITECTURE.md que el Keychain access no está sandboxed y los riesgos asociados.
 
 **Detection:**
+
 - Auditar con `security find-generic-password -s "com.autoTransMarkdown.apikeys"` — si devuelve la clave sin autenticación adicional, el atributo `Accessible` es demasiado permisivo.
 
 **Phase:** Phase 10 (Keychain integration). Definir atributos de acceso desde el primer ítem almacenado.
@@ -288,6 +306,7 @@ Además, sin sandbox no hay `kSecAttrAccessGroup` automático: si en el futuro s
 **Consequences:** `load_dotenv()` falla si busca `.env` relativo a `HOME`. Rutas a `output/` no resuelven. Imports que dependen de binarios en `/usr/local/bin` (ej. Pandoc) fallan.
 
 **Prevention:**
+
 - Pasar un entorno explícito y completo al subprocess desde Swift:
   ```swift
   process.environment = [
@@ -305,6 +324,7 @@ Además, sin sandbox no hay `kSecAttrAccessGroup` automático: si en el futuro s
 - Usar rutas absolutas dentro del bundle para todos los recursos Python.
 
 **Detection:**
+
 - El subprocess Python falla con `FileNotFoundError` para rutas relativas.
 - `load_dotenv()` no encuentra el archivo y el proveedor cae en RuntimeError 503.
 
@@ -323,11 +343,13 @@ Además, sin sandbox no hay `kSecAttrAccessGroup` automático: si en el futuro s
 **Consequences:** Segunda instancia sin backend funcional. Confusión del usuario. Puerto bloqueado si la primera instancia termina antes que la segunda.
 
 **Prevention:**
+
 - Añadir `LSMultipleInstancesProhibited = YES` en `Info.plist` para forzar instancia única.
 - Si se permite múltiples instancias por diseño: asignar puertos dinámicos y comunicarlos a la UI.
 - Implementar un mecanismo de IPC para traer al frente la instancia existente (`NSRunningApplication.activate()`).
 
 **Detection:**
+
 - Abrir la app dos veces desde Finder y verificar comportamiento.
 - `lsof -i :8000` muestra dos procesos python escuchando.
 
@@ -346,6 +368,7 @@ Además, sin sandbox no hay `kSecAttrAccessGroup` automático: si en el futuro s
 **Consequences:** Imposible diagnosticar crashes del backend sin re-ejecutar en terminal. Errores de traducción (502) sin contexto. Pérdida de mensajes de `logger.exception()`.
 
 **Prevention:**
+
 - Configurar `Pipe` para stdout y stderr del subprocess desde el primer día:
   ```swift
   let stdoutPipe = Pipe()
@@ -359,6 +382,7 @@ Además, sin sandbox no hay `kSecAttrAccessGroup` automático: si en el futuro s
 - En desarrollo, redirigir también a `NSLog` para que aparezca en Console.app.
 
 **Detection:**
+
 - Un 502 desde la UI no da información sobre la causa sin logs del subprocess.
 - `Console.app` → filtrar por el nombre del proceso no muestra nada del backend Python.
 
@@ -434,15 +458,15 @@ Problemas de menor impacto que aún merecen atención en las fases correspondien
 
 ## Phase-Specific Warnings
 
-| Phase | Tema | Pitfall más probable | Mitigación prioritaria |
-|-------|------|----------------------|------------------------|
-| **Phase 9** (Python embedding) | Copiar python-build-standalone al bundle | C-2 (paths), C-4 (dylib signing), M-2 (tamaño) | Variante relocatable; firma bottom-up; `rm -rf test/` |
-| **Phase 10** (subprocess Swift) | Lanzar FastAPI como Process | C-1 (quarantine), C-3 (zombies), M-1 (health timeout), M-5 (entorno) | xattr clear; cleanup en applicationWillTerminate; retry health check 15s; env explícito |
-| **Phase 10** (Keychain) | Almacenar API keys | M-4 (acceso Keychain) | `AccessibleWhenUnlockedThisDeviceOnly`; ACL explícita |
-| **Phase 11** (SwiftUI UI) | Ventanas y lifecycle | M-6 (múltiples instancias) | `LSMultipleInstancesProhibited`; IPC para instancia única |
-| **Phase 11** (logging) | Debug del backend | M-7 (logs perdidos) | Pipe stdout/stderr; log en Application Support |
-| **Phase 12** (DMG/firma) | Distribución ad-hoc | C-1, C-4, C-5 | xattr -cr; firma bottom-up; instrucciones INSTALL.txt |
-| **Phase 12** (Sparkle) | Auto-update sin Developer ID | M-3 (clave EdDSA) | Backup clave privada; script de release automatizado |
+| Phase                           | Tema                                     | Pitfall más probable                                                 | Mitigación prioritaria                                                                  |
+| ------------------------------- | ---------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Phase 9** (Python embedding)  | Copiar python-build-standalone al bundle | C-2 (paths), C-4 (dylib signing), M-2 (tamaño)                       | Variante relocatable; firma bottom-up; `rm -rf test/`                                   |
+| **Phase 10** (subprocess Swift) | Lanzar FastAPI como Process              | C-1 (quarantine), C-3 (zombies), M-1 (health timeout), M-5 (entorno) | xattr clear; cleanup en applicationWillTerminate; retry health check 15s; env explícito |
+| **Phase 10** (Keychain)         | Almacenar API keys                       | M-4 (acceso Keychain)                                                | `AccessibleWhenUnlockedThisDeviceOnly`; ACL explícita                                   |
+| **Phase 11** (SwiftUI UI)       | Ventanas y lifecycle                     | M-6 (múltiples instancias)                                           | `LSMultipleInstancesProhibited`; IPC para instancia única                               |
+| **Phase 11** (logging)          | Debug del backend                        | M-7 (logs perdidos)                                                  | Pipe stdout/stderr; log en Application Support                                          |
+| **Phase 12** (DMG/firma)        | Distribución ad-hoc                      | C-1, C-4, C-5                                                        | xattr -cr; firma bottom-up; instrucciones INSTALL.txt                                   |
+| **Phase 12** (Sparkle)          | Auto-update sin Developer ID             | M-3 (clave EdDSA)                                                    | Backup clave privada; script de release automatizado                                    |
 
 ---
 
@@ -450,42 +474,42 @@ Problemas de menor impacto que aún merecen atención en las fases correspondien
 
 Pitfalls específicos del punto de contacto entre los dos mundos del stack.
 
-| Pitfall | Descripción | Severidad | Mitigación |
-|---------|-------------|-----------|------------|
-| **Puerto dinámico sin retry** | Swift hace GET a `:8000` antes de que Python haya hecho `bind()` | CRÍTICO | Loop de retry con backoff hasta `/api/languages` devuelve 200 |
-| **Encoding de paths con espacios** | `Bundle.main.bundlePath` puede contener espacios si el usuario renombra la app; `Process.arguments` los maneja, pero concatenación de strings en shell no | MEDIO | Siempre usar arrays de argumentos, nunca `sh -c "python \(path)"` |
-| **Inyección de API key en arguments** | Pasar API keys como argumentos CLI (visibles en `ps aux`) | CRÍTICO | Solo vía variables de entorno, nunca como `--api-key=sk-...` |
-| **Versión de protocolo HTTP** | uvicorn por defecto acepta HTTP/1.1; la app debería usar URLSession con HTTP/1.1 explícito para evitar upgrades a HTTP/2 que añaden complejidad | BAJO | `URLSessionConfiguration.httpAdditionalHeaders["Connection"] = "keep-alive"` |
-| **CORS en localhost** | Si la UI web corre en un WebView con origin `file://`, las peticiones fetch a `127.0.0.1:8000` pueden fallar por CORS | MEDIO | Añadir `allow_origins=["*"]` o `file://` en el middleware CORS cuando se detecte contexto bundle |
-| **stdin bloqueante** | Si Python lee stdin (ej. debugger, `input()`), el subprocess se cuelga esperando input que nunca llega | BAJO | Redirigir stdin a `/dev/null` en el Process de Swift |
+| Pitfall                               | Descripción                                                                                                                                               | Severidad   | Mitigación                                                                                       |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| **Puerto dinámico sin retry**         | Swift hace GET a `:8000` antes de que Python haya hecho `bind()`                                                                                          | CRÍTICO     | Loop de retry con backoff hasta `/api/languages` devuelve 200                                    |
+| **Encoding de paths con espacios**    | `Bundle.main.bundlePath` puede contener espacios si el usuario renombra la app; `Process.arguments` los maneja, pero concatenación de strings en shell no | MEDIO       | Siempre usar arrays de argumentos, nunca `sh -c "python \(path)"`                                |
+| **Inyección de API key en arguments** | Pasar API keys como argumentos CLI (visibles en `ps aux`)                                                                                                 | CRÍTICO     | Solo vía variables de entorno, nunca como `--api-key=sk-...`                                     |
+| **Versión de protocolo HTTP**         | uvicorn por defecto acepta HTTP/1.1; la app debería usar URLSession con HTTP/1.1 explícito para evitar upgrades a HTTP/2 que añaden complejidad           | BAJO        | `URLSessionConfiguration.httpAdditionalHeaders["Connection"] = "keep-alive"`                     |
+| **CORS en localhost**                 | Si la UI web corre en un WebView con origin `file://`, las peticiones fetch a `127.0.0.1:8000` pueden fallar por CORS                                     | MEDIO       | Añadir `allow_origins=["*"]` o `file://` en el middleware CORS cuando se detecte contexto bundle |
+| **stdin bloqueante**                  | Si Python lee stdin (ej. debugger, `input()`), el subprocess se cuelga esperando input que nunca llega                                                    | BAJO        | Redirigir stdin a `/dev/null` en el Process de Swift                                             |
 
 ---
 
 ## Anti-Patterns Explícitos
 
-| Anti-pattern | Por qué falla | En lugar de |
-|--------------|---------------|-------------|
-| Firmar solo el ejecutable principal | Gatekeeper verifica cada Mach-O individualmente | Firma bottom-up de todas las `.dylib` y `.so` |
-| Usar `codesign --deep` como único paso de firma | `--deep` tiene bugs en subdirectorios no estándar | Script explícito que firma cada binario individualmente |
-| Confiar en que el usuario tiene Python en el sistema | La versión del sistema puede ser incompatible o no existir en macOS 15+ | Siempre usar python-build-standalone relocatable dentro del bundle |
-| Puerto fijo sin fallback | Conflicto garantizado con otras apps o instancias | Puerto dinámico o check + kill previo al bind |
-| API keys en `UserDefaults` o en el bundle | `UserDefaults` es texto plano en `~/Library/Preferences/` | Siempre Keychain con `AccessibleWhenUnlockedThisDeviceOnly` |
-| Iniciar FastAPI con `reload=True` en producción | File watcher en bundle read-only causa errores; consume recursos | `reload=False` fuera de modo desarrollo explícito |
-| Mostrar errores del subprocess con mensaje técnico | «RuntimeError: No module named fastapi» no es accionable para el usuario | Traducir errores del subprocess a mensajes de usuario + acción |
+| Anti-pattern                                         | Por qué falla                                                            | En lugar de                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Firmar solo el ejecutable principal                  | Gatekeeper verifica cada Mach-O individualmente                          | Firma bottom-up de todas las `.dylib` y `.so`                      |
+| Usar `codesign --deep` como único paso de firma      | `--deep` tiene bugs en subdirectorios no estándar                        | Script explícito que firma cada binario individualmente            |
+| Confiar en que el usuario tiene Python en el sistema | La versión del sistema puede ser incompatible o no existir en macOS 15+  | Siempre usar python-build-standalone relocatable dentro del bundle |
+| Puerto fijo sin fallback                             | Conflicto garantizado con otras apps o instancias                        | Puerto dinámico o check + kill previo al bind                      |
+| API keys en `UserDefaults` o en el bundle            | `UserDefaults` es texto plano en `~/Library/Preferences/`                | Siempre Keychain con `AccessibleWhenUnlockedThisDeviceOnly`        |
+| Iniciar FastAPI con `reload=True` en producción      | File watcher en bundle read-only causa errores; consume recursos         | `reload=False` fuera de modo desarrollo explícito                  |
+| Mostrar errores del subprocess con mensaje técnico   | «RuntimeError: No module named fastapi» no es accionable para el usuario | Traducir errores del subprocess a mensajes de usuario + acción     |
 
 ---
 
 ## Sources
 
-| Source | Topic | Confidence |
-|--------|-------|------------|
+| Source                                                              | Topic                                              | Confidence                               |
+| ------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
 | python-build-standalone releases (indygreg/python-build-standalone) | Variante relocatable, PYTHONHOME, paths compilados | HIGH (conocimiento de spec del proyecto) |
-| Apple Developer Documentation — Code Signing Guide | Firma bottom-up, quarantine xattr, Gatekeeper | HIGH |
-| Sparkle 2.x Documentation — `generate_keys`, EdDSA signing | Firma de updates sin Developer ID | HIGH |
-| macOS Security Overview — Keychain Services | `SecItemAdd`, atributos de acceso, ACL | HIGH |
-| NSTask / Process Apple documentation | `terminate()`, `waitUntilExit()`, Pipe, entorno | HIGH |
-| Gatekeeper behavior macOS 14/15 | Quarantine en bundles descargados, `xattr` | HIGH |
-| `.planning/PROJECT.md` v3.0 constraints | Stack, distribución ad-hoc, Keychain, Sparkle | HIGH (repo) |
+| Apple Developer Documentation — Code Signing Guide                  | Firma bottom-up, quarantine xattr, Gatekeeper      | HIGH                                     |
+| Sparkle 2.x Documentation — `generate_keys`, EdDSA signing          | Firma de updates sin Developer ID                  | HIGH                                     |
+| macOS Security Overview — Keychain Services                         | `SecItemAdd`, atributos de acceso, ACL             | HIGH                                     |
+| NSTask / Process Apple documentation                                | `terminate()`, `waitUntilExit()`, Pipe, entorno    | HIGH                                     |
+| Gatekeeper behavior macOS 14/15                                     | Quarantine en bundles descargados, `xattr`         | HIGH                                     |
+| `.planning/PROJECT.md` v3.0 constraints                             | Stack, distribución ad-hoc, Keychain, Sparkle      | HIGH (repo)                              |
 
 *Nota: WebSearch y WebFetch no disponibles en este contexto. Pitfalls basados en especificación técnica del dominio y documentación conocida del ecosistema macOS/Python (corte agosto 2025). Verificar comportamiento específico de macOS 15 Sequoia en CI antes de release.*
 

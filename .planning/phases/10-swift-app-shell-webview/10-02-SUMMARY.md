@@ -8,9 +8,9 @@
 
 ## Archivos creados / modificados
 
-| Archivo | Estado |
-|---------|--------|
-| `macos/MDTranslator/MDTranslator/Commands.swift` | NUEVO |
+| Archivo                                                 | Estado     |
+| ------------------------------------------------------- | ---------- |
+| `macos/MDTranslator/MDTranslator/Commands.swift`        | NUEVO      |
 | `macos/MDTranslator/MDTranslator/MDTranslatorApp.swift` | MODIFICADO |
 
 ---
@@ -18,6 +18,7 @@
 ## Funcionalidades implementadas
 
 ### Commands.swift (`AppCommands: Commands`)
+
 - **⌘O** — "Abrir archivo Markdown…": `NSOpenPanel` filtrado a `.md`; lee el archivo UTF-8 y publica `WebView.openMarkdownNotification` con el contenido.
 - **⌘R** — "Recargar interfaz": publica `WebView.reloadNotification`; `WebView.Coordinator` llama `webView.reload()`.
 - **⌘,** — "Configuración…": publica `Notification.Name.openSettings`; `MDTranslatorApp` activa el sheet de `SettingsView`.
@@ -31,6 +32,7 @@ Notification.Name.settingsSaved  // → señal de primera ejecución completada
 ```
 
 ### MDTranslatorApp
+
 - `.commands { AppCommands(serverPort: serverManager.serverPort) }` — integra los comandos en la barra de menús macOS.
 - `@State private var showSettings` + `.sheet(isPresented:)` con `SettingsView`.
 - `.onReceive(NotificationCenter.default.publisher(for: .openSettings))` — activa el sheet.

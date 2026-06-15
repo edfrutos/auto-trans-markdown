@@ -9,7 +9,7 @@
 
 ## Diagrama de Componentes
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │  MarkDownTranslator.app (.app bundle)                        │
 │                                                              │
@@ -97,19 +97,19 @@ final class ServerManager: ObservableObject {
 
 **API de `Foundation.Process` verificada:**
 
-| Propiedad/Método | Uso |
-|-----------------|-----|
-| `executableURL: URL?` | Ruta al binario Python en `Contents/Helpers/python/bin/python3.11` |
-| `arguments: [String]?` | `["-m", "uvicorn", "src.main:app", "--host", "127.0.0.1", "--port", "\(port)"]` |
-| `environment: [String: String]?` | Entorno mínimo construido explícitamente — no heredar el del sistema |
-| `currentDirectoryURL: URL?` | Directorio `Resources/backend/` dentro del bundle |
-| `standardError: Any?` | `Pipe()` para capturar logs de uvicorn |
-| `terminationHandler: ((Process) -> Void)?` | Detectar crashes inesperados y actualizar `state` |
-| `isRunning: Bool` | Check antes de `terminate()` |
-| `terminationStatus: Int32` | Código de salida tras terminar |
-| `try p.run()` | Lanza el proceso sin bloquear |
-| `p.terminate()` | Envía SIGTERM |
-| `p.waitUntilExit()` | Bloquea hasta que el proceso muera — usar en background thread |
+| Propiedad/Método                           | Uso                                                                             |
+| ------------------------------------------ | ------------------------------------------------------------------------------- |
+| `executableURL: URL?`                      | Ruta al binario Python en `Contents/Helpers/python/bin/python3.11`              |
+| `arguments: [String]?`                     | `["-m", "uvicorn", "src.main:app", "--host", "127.0.0.1", "--port", "\(port)"]` |
+| `environment: [String: String]?`           | Entorno mínimo construido explícitamente — no heredar el del sistema            |
+| `currentDirectoryURL: URL?`                | Directorio `Resources/backend/` dentro del bundle                               |
+| `standardError: Any?`                      | `Pipe()` para capturar logs de uvicorn                                          |
+| `terminationHandler: ((Process) -> Void)?` | Detectar crashes inesperados y actualizar `state`                               |
+| `isRunning: Bool`                          | Check antes de `terminate()`                                                    |
+| `terminationStatus: Int32`                 | Código de salida tras terminar                                                  |
+| `try p.run()`                              | Lanza el proceso sin bloquear                                                   |
+| `p.terminate()`                            | Envía SIGTERM                                                                   |
+| `p.waitUntilExit()`                        | Bloquea hasta que el proceso muera — usar en background thread                  |
 
 ### `buildProcess(port:)` — configuración completa
 
@@ -236,6 +236,7 @@ func allocateFreePort() throws -> UInt16 {
 ```
 
 **Por qué puerto dinámico en lugar de fijo:**
+
 - Un puerto fijo (8000) colisiona con la instancia web/CLI del mismo proyecto si el usuario la tiene corriendo.
 - Múltiples instancias de la app (reinicios rápidos) no colisionan.
 - La race condition teórica entre `close()` y el `bind()` de uvicorn es negligible en loopback local.
@@ -246,7 +247,7 @@ func allocateFreePort() throws -> UInt16 {
 
 ### Layout del .app
 
-```
+```text
 MarkDownTranslator.app/
 └── Contents/
     ├── MacOS/
@@ -279,7 +280,7 @@ MarkDownTranslator.app/
 **Datos mutables → Application Support (nunca en Resources)**
 
 `Resources/` es read-only en un bundle firmado. Todo lo que cambia en runtime va a:
-```
+```text
 ~/Library/Application Support/MarkDownTranslator/
 ├── output/          # archivos .md traducidos temporales
 ├── translation_memory.db  # SQLite TM
@@ -313,10 +314,12 @@ fi
 ```
 
 **Build Phase 2 — Copy Files: `python-dist/` → `Contents/Helpers/python/`**
+
 - Destination: `Wrapper/Contents/Helpers/python/`
 - Arrastrar directorio `python-dist/` en Xcode
 
 **Build Phase 3 — Copy Files: `src/` → `Contents/Resources/backend/src/`**
+
 - Destination: `Resources/backend/`
 - Arrastrar carpeta `src/`
 - Desmarcar "Copy only when installing" para que siempre se copie
@@ -360,6 +363,7 @@ private func waitUntilReady(port: UInt16, timeout: TimeInterval) async throws {
 ```
 
 **Por qué `GET /api/languages` como health check:**
+
 - Ya existe en la API FastAPI actual — cero cambios en el backend.
 - Responde 200 solo cuando la app está completamente inicializada (imports, dotenv, clientes providers).
 - Alternativa a largo plazo: añadir `GET /health → {"status":"ok"}` en `src/main.py` (trivial con FastAPI, cero lógica extra).
@@ -550,7 +554,7 @@ App Transport Security bloquea HTTP incluso a localhost por defecto en macOS:
 
 ## 6. Estructura del Repositorio — dónde va el código Swift
 
-```
+```text
 auto-trans-markdown/               # raíz del repo existente
 ├── src/                           # Python backend (existente — sin cambios)
 ├── static/                        # Web UI (existente)
@@ -585,6 +589,7 @@ auto-trans-markdown/               # raíz del repo existente
 ```
 
 **Rationale de `macos/` como directorio separado:**
+
 - `pytest` y herramientas Python no incluyen accidentalmente `.swift` o `xcodeproj`.
 - El proyecto Xcode puede referenciar `../src/` con rutas relativas para Copy Files Build Phase.
 - CI puede separar el build Swift del lint Python con paths distintos.
@@ -595,7 +600,7 @@ auto-trans-markdown/               # raíz del repo existente
 
 ### Señales de terminación
 
-```
+```text
 Swift llama server.stop()
     └─ process.terminate()      → SIGTERM a Python
            └─ uvicorn recibe SIGTERM
@@ -686,7 +691,7 @@ La forma más limpia es que `AppDelegate` cree y posea su propia referencia a `S
 
 ### Modo Editor
 
-```
+```text
 TextEditor (SwiftUI) — usuario escribe Markdown
     ↓ toca botón "Traducir"
 APIClient.translateText(content:targetLang:)
@@ -698,13 +703,14 @@ EditorView: muestra resultado en panel derecho (TextEditor read-only)
 ```
 
 **Consideraciones Swift:**
+
 - `TextEditor` nativo para entrada y salida.
 - Deshabilitar botón durante la llamada (`@State var isTranslating = false`).
 - Debounce no necesario — el usuario decide cuándo traducir (botón explícito).
 
 ### Modo Archivo
 
-```
+```text
 Botón "Abrir archivo" o zona drop
     ↓ fileImporter(allowedContentTypes: [.init(filenameExtension: "md")!])
     ↓  o  dropDestination(for: URL.self)
@@ -719,13 +725,14 @@ NSSavePanel → guardar .md traducido en destino elegido por el usuario
 ```
 
 **Consideraciones Swift:**
+
 - `fileImporter` modifier en SwiftUI — `allowsMultipleSelection: false` para este modo.
 - Security-scoped resource: obligatorio cuando sandbox está activo. Sin él, la lectura del archivo devuelve "permission denied".
 - El archivo de salida se guarda con `NSSavePanel` para respetar sandbox y las preferencias de ubicación del usuario.
 
 ### Modo Batch
 
-```
+```text
 fileImporter(allowsMultipleSelection: true)
     ↓ [URL] de archivos .md seleccionados
 Por cada file: startAccessingSecurityScopedResource()
@@ -739,6 +746,7 @@ UNUserNotificationCenter: notificación local "Lote completado (N archivos)"
 ```
 
 **Consideraciones Swift:**
+
 - `fileImporter(allowsMultipleSelection: true)` — `[URL]` en el closure `.success`.
 - Progreso: la API backend soporta SSE (job endpoint). En v3.0 usar `ProgressView` indeterminado. Para v3.1: `URLSession.bytes(for:)` para consumir SSE.
 - Notificación local requiere `requestAuthorization` en el primer arranque.
@@ -799,6 +807,7 @@ codesign --force --deep --sign - MarkDownTranslator.app
 ```
 
 Con firma ad-hoc:
+
 - `Foundation.Process` puede lanzar cualquier ejecutable sin restricciones.
 - No hay entitlements requeridos para el subprocess.
 - Acceso libre al filesystem (sin scoping).
@@ -952,39 +961,39 @@ El backend Python ya tiene la arquitectura correcta. La app macOS es un frontend
 
 ## 15. Build Order Recomendado
 
-| Fase | Entregable | Dependencias | Verifica que |
-|------|-----------|--------------|-------------|
-| **1** | `scripts/build-python-bundle.sh` + python-build-standalone | Ninguna | Python arranca dentro del bundle |
-| **2** | `ServerManager` + `allocateFreePort()` | (1) | `server.start()` llega a `.ready` en tests manuales |
-| **3** | `waitUntilReady` + `SplashView` | (2) | La UI espera correctamente |
-| **4** | `APIClient.fetchLanguages()` + `APIClient.translateText()` | (3) | Editor traduce texto desde la app |
-| **5** | `KeychainHelper` + pantalla de settings | (4) | Claves persisten entre reinicios |
-| **6** | `FileView` + `fileImporter` + `APIClient.translateFile()` | (4) | Traducción de archivo end-to-end |
-| **7** | `BatchView` + `APIClient.translateBatch()` + notificaciones | (4), (6) | Batch con ZIP descargable |
-| **8** | `MenuBarExtra` + `QuickMenuView` | (3) | Icono menubar funcional |
-| **9** | `AppDelegate.applicationWillTerminate` + stop con timeout | (2) | Cierre limpio en Cmd+Q |
-| **10** | DMG + firma ad-hoc | Todo | App ejecutable sin Xcode |
+| Fase   | Entregable                                                  | Dependencias   | Verifica que                                        |
+| ------ | ----------------------------------------------------------- | -------------- | --------------------------------------------------- |
+| **1**  | `scripts/build-python-bundle.sh` + python-build-standalone  | Ninguna        | Python arranca dentro del bundle                    |
+| **2**  | `ServerManager` + `allocateFreePort()`                      | (1)            | `server.start()` llega a `.ready` en tests manuales |
+| **3**  | `waitUntilReady` + `SplashView`                             | (2)            | La UI espera correctamente                          |
+| **4**  | `APIClient.fetchLanguages()` + `APIClient.translateText()`  | (3)            | Editor traduce texto desde la app                   |
+| **5**  | `KeychainHelper` + pantalla de settings                     | (4)            | Claves persisten entre reinicios                    |
+| **6**  | `FileView` + `fileImporter` + `APIClient.translateFile()`   | (4)            | Traducción de archivo end-to-end                    |
+| **7**  | `BatchView` + `APIClient.translateBatch()` + notificaciones | (4), (6)       | Batch con ZIP descargable                           |
+| **8**  | `MenuBarExtra` + `QuickMenuView`                            | (3)            | Icono menubar funcional                             |
+| **9**  | `AppDelegate.applicationWillTerminate` + stop con timeout   | (2)            | Cierre limpio en Cmd+Q                              |
+| **10** | DMG + firma ad-hoc                                          | Todo           | App ejecutable sin Xcode                            |
 
 ---
 
 ## Sources
 
-| Fuente | Confianza | Notas |
-|--------|-----------|-------|
-| Swift Foundation Process/Subprocess proposal: `github.com/swiftlang/swift-foundation/blob/main/Proposals/0007-swift-subprocess.md` | HIGH | Fuente directa swiftlang |
-| Apple Developer — Foundation Process class (docs oficiales) | HIGH | API estable desde macOS 10.0 |
-| SwiftUI ScenePhase — Context7 `/websites/developer_apple_swiftui` | HIGH | Verificado con ejemplos de código |
-| SwiftUI MenuBarExtra — Context7 | HIGH | macOS 13+ confirmado |
-| SwiftUI fileImporter — Context7 | HIGH | Ejemplo multiselect verificado |
-| SwiftUI dropDestination — Context7 | HIGH | Protocolo DropDelegate verificado |
-| URLSession async/await — docs oficiales | HIGH | Swift 5.5+, `data(from:)` y `data(for:)` |
-| NSAppTransportSecurity localhost — docs oficiales | HIGH | Config XML verificada |
-| Keychain Services SecItemAdd/Copy — docs oficiales | HIGH | Patrón estándar |
-| UNUserNotificationCenter — docs oficiales | HIGH | Patrón standard macOS |
-| Sparkle SPM integration — Context7 `/websites/sparkle-project` | HIGH | Ejemplo SPUStandardUpdaterController verificado |
-| python-build-standalone releases — `github.com/indygreg/python-build-standalone` | MEDIUM | Docs running.html no accesibles; releases públicos verificados |
-| Xcode helper tool embedding — docs Apple parciales | MEDIUM | Contenido parcialmente recuperado; patrón `Contents/Helpers/` verificado en múltiples fuentes |
-| BSD sockets `bind(port:0)` para puerto libre | HIGH | Patrón estándar POSIX, independiente del docs Apple |
+| Fuente                                                                                                                             | Confianza   | Notas                                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| Swift Foundation Process/Subprocess proposal: `github.com/swiftlang/swift-foundation/blob/main/Proposals/0007-swift-subprocess.md` | HIGH        | Fuente directa swiftlang                                                                      |
+| Apple Developer — Foundation Process class (docs oficiales)                                                                        | HIGH        | API estable desde macOS 10.0                                                                  |
+| SwiftUI ScenePhase — Context7 `/websites/developer_apple_swiftui`                                                                  | HIGH        | Verificado con ejemplos de código                                                             |
+| SwiftUI MenuBarExtra — Context7                                                                                                    | HIGH        | macOS 13+ confirmado                                                                          |
+| SwiftUI fileImporter — Context7                                                                                                    | HIGH        | Ejemplo multiselect verificado                                                                |
+| SwiftUI dropDestination — Context7                                                                                                 | HIGH        | Protocolo DropDelegate verificado                                                             |
+| URLSession async/await — docs oficiales                                                                                            | HIGH        | Swift 5.5+, `data(from:)` y `data(for:)`                                                      |
+| NSAppTransportSecurity localhost — docs oficiales                                                                                  | HIGH        | Config XML verificada                                                                         |
+| Keychain Services SecItemAdd/Copy — docs oficiales                                                                                 | HIGH        | Patrón estándar                                                                               |
+| UNUserNotificationCenter — docs oficiales                                                                                          | HIGH        | Patrón standard macOS                                                                         |
+| Sparkle SPM integration — Context7 `/websites/sparkle-project`                                                                     | HIGH        | Ejemplo SPUStandardUpdaterController verificado                                               |
+| python-build-standalone releases — `github.com/indygreg/python-build-standalone`                                                   | MEDIUM      | Docs running.html no accesibles; releases públicos verificados                                |
+| Xcode helper tool embedding — docs Apple parciales                                                                                 | MEDIUM      | Contenido parcialmente recuperado; patrón `Contents/Helpers/` verificado en múltiples fuentes |
+| BSD sockets `bind(port:0)` para puerto libre                                                                                       | HIGH        | Patrón estándar POSIX, independiente del docs Apple                                           |
 
 ---
 

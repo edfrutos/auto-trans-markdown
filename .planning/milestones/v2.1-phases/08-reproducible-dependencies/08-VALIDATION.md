@@ -15,13 +15,13 @@ created: 2026-05-31
 
 ## Test Infrastructure
 
-| Property | Value |
-|----------|-------|
-| **Framework** | pytest (en `[project.optional-dependencies] test`) |
-| **Config file** | `pyproject.toml` → `[tool.pytest.ini_options]` |
-| **Quick run command** | `uv sync --extra test && pytest tests/ -q` |
-| **Full suite command** | `pytest tests/ -v` |
-| **Estimated runtime** | ~30 seconds |
+| Property               | Value                                              |
+| ---------------------- | -------------------------------------------------- |
+| **Framework**          | pytest (en `[project.optional-dependencies] test`) |
+| **Config file**        | `pyproject.toml` → `[tool.pytest.ini_options]`     |
+| **Quick run command**  | `uv sync --extra test && pytest tests/ -q`         |
+| **Full suite command** | `pytest tests/ -v`                                 |
+| **Estimated runtime**  | ~30 seconds                                        |
 
 ---
 
@@ -35,13 +35,13 @@ created: 2026-05-31
 
 ## Requirements → Test Map
 
-| Req ID | Behavior | Test Type | Automated Command |
-|--------|----------|-----------|-------------------|
-| LOCK-01 | `uv.lock` existe y está commiteado | smoke | `test -f uv.lock && git ls-files uv.lock` |
-| LOCK-02 | `uv sync` crea `.venv` funcional | integration | `uv sync && python -c "import fastapi; import openai"` |
-| LOCK-03 | `uv add` / `uv lock --upgrade-package` actualizan lockfile | manual | — (requiere red y modificar deps reales) |
-| LOCK-04 | README contiene bloques uv y pip | smoke | `grep -q "uv sync" README.md && grep -q "pip install" README.md` |
-| LOCK-05 | Docker build funcional con `uv sync --frozen` | integration | `docker build -t md-translate-test . && docker run --rm md-translate-test python -c "import fastapi"` |
+| Req ID   | Behavior                                                   | Test Type   | Automated Command                                                                                     |
+| -------- | ---------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| LOCK-01  | `uv.lock` existe y está commiteado                         | smoke       | `test -f uv.lock && git ls-files uv.lock`                                                             |
+| LOCK-02  | `uv sync` crea `.venv` funcional                           | integration | `uv sync && python -c "import fastapi; import openai"`                                                |
+| LOCK-03  | `uv add` / `uv lock --upgrade-package` actualizan lockfile | manual      | — (requiere red y modificar deps reales)                                                              |
+| LOCK-04  | README contiene bloques uv y pip                           | smoke       | `grep -q "uv sync" README.md && grep -q "pip install" README.md`                                      |
+| LOCK-05  | Docker build funcional con `uv sync --frozen`              | integration | `docker build -t md-translate-test . && docker run --rm md-translate-test python -c "import fastapi"` |
 
 ---
 

@@ -81,7 +81,10 @@ The application is a single-process FastAPI service with a three-stage translati
 
 1. Line-by-line scan with `splitlines(keepends=True)`.
 2. **Protected blocks:** YAML frontmatter (`---`), fenced code (```` ``` ```` / `~~~`), HTML `<pre>`/`<code>`, indented code blocks (4 spaces or tab, excluding list items).
-3. **Special case:** Shell fences (`bash`, `sh`, `shell`, `zsh`, `fish`) — `#` comment lines split into protected `# ` prefix + translatable comment body via `_append_shell_line()`.
+3. **Special case:** Shell fences (`bash`, `sh`, `shell`, `zsh`, `fish`) — `#` comment lines split
+
+into protected `#` prefix + translatable comment body via `_append_shell_line()`.
+
 4. **Inline code:** `_split_inline_code()` on backtick runs within normal lines.
 5. Everything else is `TRANSLATABLE` at line or sub-line granularity.
 
@@ -95,26 +98,31 @@ The application is a single-process FastAPI service with a three-stage translati
 ## Key Abstractions
 
 **Segment pipeline:**
+
 - Purpose: Decouple Markdown structure preservation from translation API details
 - Examples: `src/parser.py` (`Segment`, `segment_markdown`, `reassemble`), `src/translator.py` (`translate_segments`)
 - Pattern: Index-keyed map — translations keyed by segment `index`, not positional list order in reassembly
 
 **SegmentKind enum:**
+
 - Purpose: Binary classification of markdown fragments
 - Examples: `src/parser.py` — `PROTECTED`, `TRANSLATABLE`
 - Pattern: Enum with `str` mixin for serializable values
 
 **Provider strategy:**
+
 - Purpose: Swap OpenAI vs DeepL without changing callers
 - Examples: `src/translator.py` — `get_provider()`, `_translate_openai_batch()`, `_translate_deepl_batch()`
 - Pattern: Env-driven branch inside `translate_segments()`; separate batch sizes (`BATCH_SIZE=15` OpenAI, `DEEPL_BATCH_SIZE=40` DeepL) and language maps (`DEEPL_TARGET_MAP`, `DEEPL_SOURCE_MAP`)
 
 **Chunking with split-on-failure:**
+
 - Purpose: Respect API limits and recover from malformed batch responses
 - Examples: `src/translator.py` — `_chunk_items()`, recursive halving in `_translate_openai_batch()` / `_translate_deepl_batch()` on parse/API errors
 - Pattern: Greedy chunk by item count + `MAX_BATCH_CHARS` (4000); bisect batch on failure when len > 1
 
 **Pydantic API contracts:**
+
 - Purpose: Request/response validation and OpenAPI schema generation
 - Examples: `src/main.py` — `TranslateTextRequest`, `TranslateResponse`, `LanguageItem`, `ProgressEvent`
 - Pattern: FastAPI `response_model=` on routes; note `ProgressEvent` is defined but not yet exposed on any endpoint
@@ -122,21 +130,25 @@ The application is a single-process FastAPI service with a three-stage translati
 ## Entry Points
 
 **Primary server entry:**
+
 - Location: `src/main.py` — `run()` and `if __name__ == "__main__"`
 - Triggers: `python -m src.main`, or CLI script `md-translate` (declared in `pyproject.toml` → `src.main:run`)
 - Responsibilities: Configure logging, read `HOST`/`PORT` from env, start uvicorn with `"src.main:app"` and `reload=True`
 
 **ASGI application:**
+
 - Location: `src/main.py` — `app = FastAPI(...)`
 - Triggers: uvicorn, any ASGI host
 - Responsibilities: Mount `/static`, serve `/` as `static/index.html`, register `/api/*` routes
 
 **Package execution:**
+
 - Location: `pyproject.toml` — `[project.scripts] md-translate = "src.main:run"`
 - Triggers: `pip install -e .` then `md-translate`
 - Responsibilities: Same as `run()`
 
 **Test entry:**
+
 - Location: `tests/test_parser.py`
 - Triggers: `pytest tests/ -q` (config in `pyproject.toml` `[tool.pytest.ini_options]`, `pythonpath = ["."]`)
 - Responsibilities: Unit tests for parser only; no HTTP or translator integration tests
@@ -146,6 +158,7 @@ The application is a single-process FastAPI service with a three-stage translati
 **Strategy:** Fail fast on validation; map provider/runtime errors to HTTP exceptions; log unexpected errors with `logger.exception`.
 
 **Patterns:**
+
 - **400 Bad Request:** Empty content, unsupported language, invalid file extension, binary upload, batch limits (`src/main.py` handlers)
 - **502 Bad Gateway:** Generic translation failure after logging (`HTTPException(502, ...)`)
 - **503 Service Unavailable:** Missing API key or misconfiguration surfaced as `RuntimeError` from `src/translator.py` (`create_openai_client()`, `create_deepl_client()`, unknown provider)

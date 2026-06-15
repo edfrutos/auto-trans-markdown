@@ -18,6 +18,7 @@ El usuario **controla lotes grandes** con progreso real, cancelación cooperativ
 ## Implementation Decisions
 
 ### Progreso en UI durante lote (JOB-01, JOB-02)
+
 - **D-01:** Layout: **barra de progreso global** + **lista de archivos** con icono/estado por entrada (pendiente, en curso, OK, error).
 - **D-02:** Eventos SSE alineados con NOTEBOOK §5: `file_start`, `file_done`, `segment_progress`, `error`, `complete` — actualizan barra global y lista.
 - **D-03:** Progreso SSE **real solo en pestaña Lote**; editor y archivo único mantienen spinner/indicador simple existente (sin SSE).
@@ -25,29 +26,34 @@ El usuario **controla lotes grandes** con progreso real, cancelación cooperativ
 - **D-05:** Sustituir simulación al 30% en `setLoading()` cuando el modo activo es lote con job SSE; barra refleja progreso real del job.
 
 ### Lotes con fallos parciales (JOB-04)
+
 - **D-06:** Estrategia **continuar y entregar parcial**: archivos exitosos van al ZIP aunque otros fallen.
 - **D-07:** `errors.json` en raíz del ZIP: array de objetos con **`filename`** + **`message`** (sin stack traces ni segmentos por defecto).
 - **D-08:** Archivos exitosos incluyen su **`validation.json`** en el ZIP (mismo patrón Phase 2).
 - **D-09:** UI al completar: estados por archivo en la lista + resumen final tipo **«8/10 OK — 2 errores»** con botón descargar ZIP parcial.
 
 ### Cancelación de job (JOB-03)
+
 - **D-10:** Botón Cancelar requiere **`confirm()`** antes de enviar cancelación al backend.
 - **D-11:** Tras cancelar, **ofrecer descarga** de ZIP parcial con archivos ya completados; `errors.json` puede indicar cancelación para archivos no procesados.
 - **D-12:** Cancelación **cooperativa**: completar el **archivo en curso** y luego parar (no interrumpir a mitad de archivo salvo imposibilidad técnica).
 - **D-13:** Tras cancelar: **reset UI** al estado inicial con **resumen de cancelación** (archivos completados vs pendientes).
 
 ### Estimación de coste (COST-01, COST-02)
+
 - **D-14:** Estimate visible en **pestaña Lote y subida de archivo único**; editor traduce directo (texto ya visible, sin paso estimate).
 - **D-15:** Formato de resumen NOTEBOOK §10: **«~N segmentos · ~M chars · ~$X (modelo)»** — incluye proveedor/modelo activo.
 - **D-16:** Umbral de aviso configurable vía **`.env`** (`ESTIMATE_WARN_USD`, default sugerido ~1.00); banner de advertencia si supera umbral.
 - **D-17:** Estimate **inline** junto al botón Traducir — **sin modal de confirmación extra**; el usuario ve números y pulsa Traducir.
 
 ### Infraestructura jobs (pre-decidido + research)
+
 - **D-18:** Job registry **in-memory, proceso único** (sin Redis) — coherente con STATE.md y V2-04 deferred.
 - **D-19:** Mantener `POST /api/translate/batch` síncrono existente para compatibilidad; jobs SSE como **superficie paralela** (research ARCHITECTURE.md §7).
 - **D-20:** Reutilizar `on_progress` en `TranslateOptions` → `translate_segments` para eventos `segment_progress`.
 
 ### Claude's Discretion
+
 - Rutas exactas de endpoints jobs (`POST …/jobs`, `GET …/events`, `DELETE …/jobs/{id}`, `GET …/download`).
 - Esquema JSON de payloads SSE y forma de `errors.json` (campos opcionales: `code`, `timestamp`).
 - Tabla de precios por proveedor/modelo (archivo config vs constantes en código).
@@ -63,12 +69,14 @@ El usuario **controla lotes grandes** con progreso real, cancelación cooperativ
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Requisitos y roadmap
+
 - `.planning/REQUIREMENTS.md` — JOB-01…04, COST-01…02
 - `.planning/ROADMAP.md` — Phase 3 goal y success criteria
 - `.planning/phases/02-trust-qa/02-CONTEXT.md` — validation.json en ZIP, fuera de alcance SSE en Fase 2
 - `.planning/phases/01-production-table-stakes/01-CONTEXT.md` — pipeline, `on_progress`, TranslateOptions
 
 ### NOTEBOOK y research
+
 - `NOTEBOOK.md` §5 — progreso SSE, eventos, cancelación, descarga ZIP
 - `NOTEBOOK.md` §10 — estimación segmentos/chars/coste
 - `.planning/research/ARCHITECTURE.md` §7 — diseño jobs SSE, endpoints propuestos, registry in-memory
@@ -76,6 +84,7 @@ El usuario **controla lotes grandes** con progreso real, cancelación cooperativ
 - `.planning/STATE.md` — SSE in-memory single-process
 
 ### Código base
+
 - `src/pipeline.py` — `TranslateOptions.on_progress`, fachada única
 - `src/translator.py` — `ProgressCallback`, `translate_segments` chunk progress
 - `src/main.py` — batch ZIP actual, integración jobs/estimate
@@ -88,6 +97,7 @@ El usuario **controla lotes grandes** con progreso real, cancelación cooperativ
 ## Existing Code Insights
 
 ### Reusable Assets
+
 - `translate_markdown()` / `TranslateOptions.on_progress` — cablear progreso real sin cambiar contrato del pipeline
 - `translate_segments()` — ya invoca `on_progress(len(result), total)` por chunk
 - `POST /api/translate/batch` — ZIP con `validation.json` por archivo (Phase 2)
@@ -95,12 +105,14 @@ El usuario **controla lotes grandes** con progreso real, cancelación cooperativ
 - `setLoading()` en `app.js` — reemplazar simulación 30% en flujo lote
 
 ### Established Patterns
+
 - FastAPI async + `run_in_executor` para traducción bloqueante por archivo
 - SSE no existe aún; vanilla JS `EventSource` vía CDN coherente con stack
 - Errores HTTP en español; mensajes UI en inglés para demo content
 - Sin Redis/ORM; SQLite solo para TM (Phase 1)
 
 ### Integration Points
+
 - Nuevo módulo `src/jobs.py` (o equivalente) entre `main.py` y `pipeline`
 - `POST /api/translate/estimate` — segmentación + conteo sin llamar proveedor
 - UI lote: crear job → EventSource → actualizar barra/lista → download al `complete`

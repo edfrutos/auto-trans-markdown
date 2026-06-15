@@ -8,15 +8,15 @@
 
 ## File Classification
 
-| New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
-|-------------------|------|-----------|----------------|---------------|
-| `scripts/build-python-bundle.sh` | utility (build script) | batch / file-I/O | `scripts/md-translate` | role-match (mismo idioma, distinto propósito) |
-| `macos/MDTranslator.xcodeproj/project.pbxproj` | config | — | `pyproject.toml` | partial (metadata de proyecto, diferente formato) |
-| `macos/MDTranslator/MDTranslatorApp.swift` | provider / entry-point | event-driven | `src/main.py` (`run()` + `app`) | cross-lang conceptual |
-| `macos/MDTranslator/ServerManager.swift` | service | request-response + event-driven | `src/main.py` (`run()`, startup, shutdown) | cross-lang conceptual |
-| `macos/MDTranslator/SplashView.swift` | component | event-driven | `static/index.html` (startup feedback) | cross-lang conceptual |
-| `macos/MDTranslator/Info.plist` | config | — | `pyproject.toml` (metadata, entry points) | partial |
-| `.gitignore` | config | — | `.gitignore` (existing) | exact |
+| New/Modified File                              | Role                   | Data Flow                       | Closest Analog                             | Match Quality                                     |
+| ---------------------------------------------- | ---------------------- | ------------------------------- | ------------------------------------------ | ------------------------------------------------- |
+| `scripts/build-python-bundle.sh`               | utility (build script) | batch / file-I/O                | `scripts/md-translate`                     | role-match (mismo idioma, distinto propósito)     |
+| `macos/MDTranslator.xcodeproj/project.pbxproj` | config                 | —                               | `pyproject.toml`                           | partial (metadata de proyecto, diferente formato) |
+| `macos/MDTranslator/MDTranslatorApp.swift`     | provider / entry-point | event-driven                    | `src/main.py` (`run()` + `app`)            | cross-lang conceptual                             |
+| `macos/MDTranslator/ServerManager.swift`       | service                | request-response + event-driven | `src/main.py` (`run()`, startup, shutdown) | cross-lang conceptual                             |
+| `macos/MDTranslator/SplashView.swift`          | component              | event-driven                    | `static/index.html` (startup feedback)     | cross-lang conceptual                             |
+| `macos/MDTranslator/Info.plist`                | config                 | —                               | `pyproject.toml` (metadata, entry points)  | partial                                           |
+| `.gitignore`                                   | config                 | —                               | `.gitignore` (existing)                    | exact                                             |
 
 ---
 
@@ -140,6 +140,7 @@ echo "✓ python-bundle listo en ${BUNDLE_DIR}"
 **Conceptual analog — `src/main.py`** (arranque de la app, registro de lifecycle hooks):
 
 El patrón `src/main.py` que corresponde conceptualmente es:
+
 - `app = FastAPI(...)` → `@main struct MDTranslatorApp: App`
 - `@app.on_event("startup")` → `.task { await serverManager.start() }` en SplashView
 - `run()` con `uvicorn.run(...)` → `WindowGroup { ... }` con `@NSApplicationDelegateAdaptor`
@@ -187,13 +188,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 **Conceptual analog — `src/main.py`** — el ciclo `run()` → startup → health check → shutdown es el espejo Python de `ServerManager`.
 
 Correspondencia directa de responsabilidades:
-| Python (`src/main.py`) | Swift (`ServerManager.swift`) |
-|------------------------|-------------------------------|
-| `run()` lines 857–866 | `start() async` |
-| `os.getenv("HOST", "127.0.0.1")` | `p.environment = ["HOST": "127.0.0.1"]` |
-| `os.getenv("PORT", "5400")` | `findFreePort()` → `p.arguments = ["--port", "\(port)"]` |
-| `@app.on_event("startup") async def startup_sweep_output()` | `p.terminationHandler` |
-| Dockerfile `HEALTHCHECK` (line 32) | `waitForHealthCheck(port:)` |
+| Python (`src/main.py`)                                      | Swift (`ServerManager.swift`)                            |
+| ----------------------------------------------------------- | -------------------------------------------------------- |
+| `run()` lines 857–866                                       | `start() async`                                          |
+| `os.getenv("HOST", "127.0.0.1")`                            | `p.environment = ["HOST": "127.0.0.1"]`                  |
+| `os.getenv("PORT", "5400")`                                 | `findFreePort()` → `p.arguments = ["--port", "\(port)"]` |
+| `@app.on_event("startup") async def startup_sweep_output()` | `p.terminationHandler`                                   |
+| Dockerfile `HEALTHCHECK` (line 32)                          | `waitForHealthCheck(port:)`                              |
 
 **Patrón Foundation.Process** (RESEARCH.md patrón 2, confirmado contra Apple Docs):
 ```swift
@@ -377,12 +378,12 @@ struct SplashView: View {
 **Analog parcial — `pyproject.toml`** (metadata del proyecto: nombre, versión, entry point).
 
 Correspondencia:
-| `pyproject.toml` | `Info.plist` |
-|------------------|--------------|
-| `name = "auto-trans-markdown"` | `CFBundleName = "MD Translator"` |
-| `version = "2.0.0"` | `CFBundleShortVersionString = "3.0.0"` |
-| `requires-python = ">=3.11"` | `LSMinimumSystemVersion = "14.0"` |
-| `md-translate = "src.cli:app"` | `NSPrincipalClass = "NSApplication"` |
+| `pyproject.toml`               | `Info.plist`                           |
+| ------------------------------ | -------------------------------------- |
+| `name = "auto-trans-markdown"` | `CFBundleName = "MD Translator"`       |
+| `version = "2.0.0"`            | `CFBundleShortVersionString = "3.0.0"` |
+| `requires-python = ">=3.11"`   | `LSMinimumSystemVersion = "14.0"`      |
+| `md-translate = "src.cli:app"` | `NSPrincipalClass = "NSApplication"`   |
 
 **Patrón Info.plist** (RESEARCH.md, Code Examples):
 ```xml
@@ -418,6 +419,7 @@ Correspondencia:
 **No hay análogo en el repositorio.** Fichero generado por Xcode al crear el proyecto.
 
 Este fichero no debe escribirse manualmente. Se genera al crear el proyecto en Xcode con:
+
 - Product Name: `MDTranslator`
 - Bundle Identifier: `com.edefrutos.md-translator`
 - Interface: SwiftUI
@@ -473,6 +475,7 @@ El comando canónico del proyecto para arrancar uvicorn es:
 ```bash
 python -m uvicorn src.main:app --host 127.0.0.1 --port PORT
 ```
+
 - `src.main:app` es el módulo de entrada — no cambiar
 - `--host` siempre `127.0.0.1` (loopback) — el Dockerfile usa `0.0.0.0` pero eso es para Docker; en el bundle macOS debe ser loopback
 - `--port` dinámico vía `findFreePort()`
@@ -517,12 +520,12 @@ async def list_languages():
 
 ## No Analog Found
 
-| File | Role | Data Flow | Reason |
-|------|------|-----------|--------|
-| `macos/MDTranslator.xcodeproj/project.pbxproj` | config | — | Fichero generado por Xcode; no existe ningún proyecto Swift en el repo |
-| `macos/MDTranslator/MDTranslatorApp.swift` | provider | event-driven | No hay código Swift en el repo; análogo conceptual en `src/main.py` |
-| `macos/MDTranslator/ServerManager.swift` | service | request-response | No hay código Swift en el repo; análogo conceptual en `src/main.py:run()` |
-| `macos/MDTranslator/SplashView.swift` | component | event-driven | No hay código Swift/SwiftUI en el repo; análogo conceptual en startup feedback de `static/index.html` |
+| File                                           | Role      | Data Flow        | Reason                                                                                                |
+| ---------------------------------------------- | --------- | ---------------- | ----------------------------------------------------------------------------------------------------- |
+| `macos/MDTranslator.xcodeproj/project.pbxproj` | config    | —                | Fichero generado por Xcode; no existe ningún proyecto Swift en el repo                                |
+| `macos/MDTranslator/MDTranslatorApp.swift`     | provider  | event-driven     | No hay código Swift en el repo; análogo conceptual en `src/main.py`                                   |
+| `macos/MDTranslator/ServerManager.swift`       | service   | request-response | No hay código Swift en el repo; análogo conceptual en `src/main.py:run()`                             |
+| `macos/MDTranslator/SplashView.swift`          | component | event-driven     | No hay código Swift/SwiftUI en el repo; análogo conceptual en startup feedback de `static/index.html` |
 
 Para estos ficheros, el planner debe usar los patrones de RESEARCH.md directamente (patrones 2–6 verificados contra Apple Developer Documentation).
 

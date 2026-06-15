@@ -8,17 +8,18 @@
 
 ## Archivos creados / modificados
 
-| Archivo | Estado |
-|---------|--------|
-| `macos/MDTranslator/MDTranslator/WebView.swift` | NUEVO |
-| `macos/MDTranslator/MDTranslator/MDTranslatorApp.swift` | MODIFICADO |
-| `macos/MDTranslator/MDTranslator/ServerManager.swift` | MODIFICADO (`serverPort` private → private(set)) |
+| Archivo                                                 | Estado                                           |
+| ------------------------------------------------------- | ------------------------------------------------ |
+| `macos/MDTranslator/MDTranslator/WebView.swift`         | NUEVO                                            |
+| `macos/MDTranslator/MDTranslator/MDTranslatorApp.swift` | MODIFICADO                                       |
+| `macos/MDTranslator/MDTranslator/ServerManager.swift`   | MODIFICADO (`serverPort` private → private(set)) |
 
 ---
 
 ## Funcionalidades implementadas
 
 ### WebView (`NSViewRepresentable`)
+
 - Carga `http://127.0.0.1:{serverPort}` al aparecer la vista running.
 - `developerExtrasEnabled = true` — inspector web disponible en desarrollo (clic derecho → Inspeccionar).
 - `WKNavigationDelegate` (`Coordinator`):
@@ -29,6 +30,7 @@
 - Limpieza de observers (`deinit` del Coordinator).
 
 ### MDTranslatorApp
+
 - Usa `WebView` cuando `state == .running`; `SplashView` en cualquier otro estado.
 - `WindowGroup(id: "main")` — macOS persiste el frame entre reinicios.
 - Dimensiones: splash 400×220 → WebView 1100×720.
@@ -36,6 +38,7 @@
 - `.commands { AppCommands(...) }` integrado (Plan 10-02).
 
 ### ServerManager
+
 - `serverPort` cambiado de `private` a `private(set)` para ser legible desde `MDTranslatorApp` y `WebView`.
 
 ---

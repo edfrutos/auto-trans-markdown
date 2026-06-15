@@ -6,11 +6,11 @@ Firma ad-hoc (`--sign -`) para que el .app pase la verificación básica de Gate
 
 ## Archivos a crear/modificar
 
-| Archivo | Acción |
-|---------|--------|
-| `scripts/build-app.sh` | Nuevo — build completo: xcodebuild archive → export → codesign → create-dmg |
-| `scripts/exportOptions.plist` | Nuevo — configuración export ad-hoc sin provisioning profile |
-| `BUILDING.md` | Nuevo — instrucciones completas para reproducir el build |
+| Archivo                       | Acción                                                                      |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `scripts/build-app.sh`        | Nuevo — build completo: xcodebuild archive → export → codesign → create-dmg |
+| `scripts/exportOptions.plist` | Nuevo — configuración export ad-hoc sin provisioning profile                |
+| `BUILDING.md`                 | Nuevo — instrucciones completas para reproducir el build                    |
 
 ## Pasos del script `build-app.sh`
 
@@ -36,12 +36,13 @@ Firma ad-hoc (`--sign -`) para que el .app pase la verificación básica de Gate
 ```
 
 ## Prerequisitos (del usuario)
+
 - `create-dmg` instalado: `brew install create-dmg`
 - Xcode command-line tools: `xcode-select --install`
 - App Sandbox desactivado (ya configurado en Phase 9)
 
 ## Gatekeeper — instrucciones para el usuario final
-```
+```text
 Clic derecho en MDTranslator.app → Abrir → Abrir (confirmar)
 ```
 O en terminal: `xattr -dr com.apple.quarantine MDTranslator.app`

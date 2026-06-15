@@ -12,7 +12,7 @@
 
 APP_NAME     := MDTranslator
 VERSION      := 3.1
-BUILD_NUM    := 2
+BUILD_NUM    := 3
 SCHEME       := MDTranslator
 PROJECT      := macos/MDTranslator/MDTranslator.xcodeproj
 ARCHIVE      := build/$(APP_NAME).xcarchive
@@ -20,7 +20,7 @@ APP          := build/$(APP_NAME).app
 ZIP          := build/$(APP_NAME)-$(VERSION).zip
 DMG          := build/$(APP_NAME)-$(VERSION).dmg
 APPCAST      := docs/appcast.xml
-SPARKLE_BIN  := /tmp/sparkle/bin
+SPARKLE_BIN  := $(HOME)/Library/Developer/Xcode/DerivedData/MDTranslator-ccamgaouzixkrpawpgcsfaxkesqr/SourcePackages/artifacts/sparkle/Sparkle/bin
 # ~/Applications/ está en el volumen del sistema (no en un volumen externo),
 # por lo que pbs sí registra sus servicios. /Volumes/ESSAGER/ (externo) es el
 # que pbs ignora, no ~/Applications/.

@@ -6,10 +6,12 @@ tags: [swiftui, macos, batch, sse, progressview, sheet]
 
 # Dependency graph
 requires:
+
   - phase: 18-01
     provides: BatchJobManager singleton con BatchJobState enum y propiedades de progreso SSE
 
 provides:
+
   - BatchSheet.swift — vista SwiftUI de lote con tres estados diferenciados (prepared/running+cancelling/done)
   - Barras de progreso determinadas ProgressView(value:) para archivos y segmentos (SSE-02)
   - Botón Cancelar con feedback cooperativo "Cancelando…" (SSE-03)
@@ -17,12 +19,14 @@ provides:
   - Resumen final con errores individuales y botones Cerrar + Mostrar en Finder (D-03, D-08)
 
 affects:
+
   - 18-03 (MDTranslatorApp.swift monta la sheet con .sheet(isPresented: $showBatchSheet))
 
 # Tech tracking
 tech-stack:
   added: []
   patterns:
+
     - "BatchSheet sigue la estructura VStack + HStack cabecera + Divider + cuerpo de SettingsView.swift"
     - "switch manager.jobState en el body — rama por estado; lógica delegada al manager"
     - "progressBody() @ViewBuilder privado compartido entre .running y .cancelling"
@@ -30,10 +34,12 @@ tech-stack:
 
 key-files:
   created:
+
     - macos/MDTranslator/MDTranslator/BatchSheet.swift
   modified: []
 
 key-decisions:
+
   - "Las ramas .running y .cancelling usan el mismo @ViewBuilder progressBody(isCancelling:) para evitar duplicación"
   - "La barra de segmentos solo se muestra si segmentsTotal > 0 — evita barra vacía al inicio del archivo"
   - "El texto del estado .cancelling se muestra sobre las barras, no como sustitución del nombre del archivo"
@@ -41,10 +47,12 @@ key-decisions:
   - "manager.reset() se llama en Cancelar (prepared) y en Cerrar (done) — mantiene el manager limpio"
 
 patterns-established:
+
   - "BatchSheet como consumidor puro del manager: cero lógica de negocio, solo switch + botones"
   - "progressBody(@ViewBuilder) como helper privado para estados con vista compartida"
 
 requirements-completed:
+
   - SSE-02
   - SSE-03
 

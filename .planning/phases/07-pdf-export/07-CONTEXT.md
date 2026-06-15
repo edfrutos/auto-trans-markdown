@@ -16,14 +16,14 @@ v1.0 entrega export **HTML** (client-side UI + `html_export.py` CLI). v2.0 cierr
 
 ## Decisions
 
-| ID | Decision | Rationale |
-|----|----------|-----------|
-| D-01 | WeasyPrint como motor principal | Reutiliza HTML de `html_export.markdown_to_html`; mismo look que HTML export |
-| D-02 | Extra `[pdf]` en pyproject, no en deps core | Evita romper installs sin Cairo/Pango |
-| D-03 | Extender `export` con `--format html\|pdf` (default `html`) | Compat con `md-translate export … -o out.html` existente |
-| D-04 | UI vía `POST /api/export/pdf` | PDF server-side; HTML UI sigue client-side con marked |
-| D-05 | Tests con mock de WeasyPrint | CI sin libs nativas; `importorskip` para test de integración opcional |
-| D-06 | Sin pandoc en v2.0 | Menos superficie; README menciona pandoc solo como alternativa manual |
+| ID   | Decision                                                       | Rationale                                                                    |
+| ---- | -------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| D-01 | WeasyPrint como motor principal                                | Reutiliza HTML de `html_export.markdown_to_html`; mismo look que HTML export |
+| D-02 | Extra `[pdf]` en pyproject, no en deps core                    | Evita romper installs sin Cairo/Pango                                        |
+| D-03 | Extender `export` con `--format html` o `pdf` (default `html`) | Compat con `md-translate export … -o out.html` existente                     |
+| D-04 | UI vía `POST /api/export/pdf`                                  | PDF server-side; HTML UI sigue client-side con marked                        |
+| D-05 | Tests con mock de WeasyPrint                                   | CI sin libs nativas; `importorskip` para test de integración opcional        |
+| D-06 | Sin pandoc en v2.0                                             | Menos superficie; README menciona pandoc solo como alternativa manual        |
 
 ## Out of scope
 

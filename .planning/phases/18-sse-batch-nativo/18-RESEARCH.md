@@ -42,12 +42,12 @@
 <phase_requirements>
 ## Phase Requirements
 
-| ID | Description | Research Support |
-|----|-------------|------------------|
+| ID     | Description                                                                                                                                                                                       | Research Support                                                                                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | SSE-01 | La app consume `GET /api/translate/batch/jobs/{id}/events` con URLSession (bytes stream) y parsea los eventos SSE existentes (`file_start`, `segment_progress`, `file_done`, `error`, `complete`) | Formato exacto de eventos verificado en `src/jobs.py` y `src/main.py`; patrón URLSession.bytes documentado en WWDC21 |
-| SSE-02 | La vista de lote muestra progreso determinado: barra global (archivos completados/total) + archivo en curso con su progreso de segmentos | Payloads `file_start`/`segment_progress`/`file_done` verificados; `DockProgressManager` API reutilizable |
-| SSE-03 | Botón "Cancelar" llama a `DELETE /api/translate/batch/jobs/{id}` (cancelación cooperativa ya implementada en backend) | Endpoint DELETE verificado en `src/main.py`; semántica cooperativa verificada en `src/jobs.py` |
-| SSE-04 | El progreso del Dock (`DockProgressManager`, Phase 13) se alimenta de los eventos SSE en lugar del estado indeterminado actual | `DockProgressManager.showProgress(current:total:)` verificado; cambio solo en la fuente de datos |
+| SSE-02 | La vista de lote muestra progreso determinado: barra global (archivos completados/total) + archivo en curso con su progreso de segmentos                                                          | Payloads `file_start`/`segment_progress`/`file_done` verificados; `DockProgressManager` API reutilizable             |
+| SSE-03 | Botón "Cancelar" llama a `DELETE /api/translate/batch/jobs/{id}` (cancelación cooperativa ya implementada en backend)                                                                             | Endpoint DELETE verificado en `src/main.py`; semántica cooperativa verificada en `src/jobs.py`                       |
+| SSE-04 | El progreso del Dock (`DockProgressManager`, Phase 13) se alimenta de los eventos SSE en lugar del estado indeterminado actual                                                                    | `DockProgressManager.showProgress(current:total:)` verificado; cambio solo en la fuente de datos                     |
 
 </phase_requirements>
 
@@ -67,20 +67,20 @@ El patrón de estado observable sigue exactamente el de `ServerManager`: `@Obser
 
 ## Architectural Responsibility Map
 
-| Capability | Primary Tier | Secondary Tier | Rationale |
-|------------|-------------|----------------|-----------|
-| Crear job batch (POST multipart) | API / Backend | — | El backend crea el job y devuelve `job_id`; Swift solo envía la request |
-| Stream SSE (consumir eventos) | App macOS (cliente) | — | `URLSession.bytes` en Swift; el backend ya emite; sin intermediarios |
-| Estado del progreso en memoria | App macOS (`BatchJobManager`) | — | Singleton observable; fuente de verdad para sheet y Dock |
-| Vista de progreso (sheet) | App macOS (SwiftUI) | — | `BatchSheet.swift` — lee estado de `BatchJobManager` |
-| Progreso Dock | App macOS (`DockProgressManager`) | — | Ya existe; se alimenta desde `BatchJobManager` en lugar de bucle de índice |
-| Cancelación (DELETE) | App macOS → API / Backend | — | Swift envía DELETE; backend pone `cancel_requested = True`; el worker termina cooperativamente |
-| Descarga ZIP | App macOS → API / Backend | — | GET .../download; solo disponible post-`complete`/`cancelled` |
-| Extracción ZIP → .md | App macOS (Process + /usr/bin/unzip) | — | Extracción local en la máquina; `/usr/bin/unzip` verificado en macOS |
-| Guardado de .md | App macOS (`OutputManager.saveFileSilently`) | — | Ya existe con security-scoped bookmark y fallback Descargas |
-| Notificación fin de lote | App macOS (`NotificationManager`) | — | Ya existe; se reutiliza sin cambios |
-| Confirmación salida (⌘Q) | App macOS (`AppDelegate`) | — | `applicationShouldTerminate` + `NSAlert` modal; patrón ya establecido |
-| Entrada File → "Traducir lote…" | App macOS (`Commands.swift`) | — | `NSOpenPanel` multi-selección; añadir `CommandGroup` |
+| Capability                       | Primary Tier                                 | Secondary Tier   | Rationale                                                                                      |
+| -------------------------------- | -------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------- |
+| Crear job batch (POST multipart) | API / Backend                                | —                | El backend crea el job y devuelve `job_id`; Swift solo envía la request                        |
+| Stream SSE (consumir eventos)    | App macOS (cliente)                          | —                | `URLSession.bytes` en Swift; el backend ya emite; sin intermediarios                           |
+| Estado del progreso en memoria   | App macOS (`BatchJobManager`)                | —                | Singleton observable; fuente de verdad para sheet y Dock                                       |
+| Vista de progreso (sheet)        | App macOS (SwiftUI)                          | —                | `BatchSheet.swift` — lee estado de `BatchJobManager`                                           |
+| Progreso Dock                    | App macOS (`DockProgressManager`)            | —                | Ya existe; se alimenta desde `BatchJobManager` en lugar de bucle de índice                     |
+| Cancelación (DELETE)             | App macOS → API / Backend                    | —                | Swift envía DELETE; backend pone `cancel_requested = True`; el worker termina cooperativamente |
+| Descarga ZIP                     | App macOS → API / Backend                    | —                | GET .../download; solo disponible post-`complete`/`cancelled`                                  |
+| Extracción ZIP → .md             | App macOS (Process + /usr/bin/unzip)         | —                | Extracción local en la máquina; `/usr/bin/unzip` verificado en macOS                           |
+| Guardado de .md                  | App macOS (`OutputManager.saveFileSilently`) | —                | Ya existe con security-scoped bookmark y fallback Descargas                                    |
+| Notificación fin de lote         | App macOS (`NotificationManager`)            | —                | Ya existe; se reutiliza sin cambios                                                            |
+| Confirmación salida (⌘Q)         | App macOS (`AppDelegate`)                    | —                | `applicationShouldTerminate` + `NSAlert` modal; patrón ya establecido                          |
+| Entrada File → "Traducir lote…"  | App macOS (`Commands.swift`)                 | —                | `NSOpenPanel` multi-selección; añadir `CommandGroup`                                           |
 
 ---
 
@@ -88,30 +88,30 @@ El patrón de estado observable sigue exactamente el de `ServerManager`: `@Obser
 
 ### Core (sin dependencias nuevas)
 
-| Componente | Versión / API | Propósito | Por qué es estándar |
-|------------|---------------|-----------|---------------------|
-| `URLSession.shared.bytes(for:)` | Foundation / macOS 12+ | Stream SSE línea a línea | API nativa; evita dependencias; compatible macOS 14+ del proyecto |
-| `AsyncBytes.lines` | Foundation / macOS 12+ | Iterar el stream SSE línea por línea | Estándar WWDC21; `for try await line in bytes.lines` |
-| `@Observable` macro | Swift 5.9+ / macOS 14+ | Estado reactivo de `BatchJobManager` | Ya en uso en `ServerManager`; patrón establecido del proyecto |
-| `NotificationCenter` | Foundation | Puente `AppDelegate → sheet SwiftUI` | Ya en uso para `.openSettings`; sin acoplamiento directo |
-| `Process` + `/usr/bin/unzip` | Foundation / macOS built-in | Extracción ZIP | App no sandboxed; `/usr/bin/unzip` verificado en macOS |
-| `OutputManager.saveFileSilently` | Proyecto (existente) | Guardar `.md` sin diálogos | Bookmark + fallback Descargas; D-07 sobrescribir |
-| `DockProgressManager.showProgress` | Proyecto (existente) | Barra Dock determinada | Ya dibuja barra; solo cambia la fuente de datos |
-| `NotificationManager.sendTranslationDone` | Proyecto (existente) | Notificación fin de lote | Ya existe; reutilizable sin cambios |
+| Componente                                | Versión / API               | Propósito                            | Por qué es estándar                                               |
+| ----------------------------------------- | --------------------------- | ------------------------------------ | ----------------------------------------------------------------- |
+| `URLSession.shared.bytes(for:)`           | Foundation / macOS 12+      | Stream SSE línea a línea             | API nativa; evita dependencias; compatible macOS 14+ del proyecto |
+| `AsyncBytes.lines`                        | Foundation / macOS 12+      | Iterar el stream SSE línea por línea | Estándar WWDC21; `for try await line in bytes.lines`              |
+| `@Observable` macro                       | Swift 5.9+ / macOS 14+      | Estado reactivo de `BatchJobManager` | Ya en uso en `ServerManager`; patrón establecido del proyecto     |
+| `NotificationCenter`                      | Foundation                  | Puente `AppDelegate → sheet SwiftUI` | Ya en uso para `.openSettings`; sin acoplamiento directo          |
+| `Process` + `/usr/bin/unzip`              | Foundation / macOS built-in | Extracción ZIP                       | App no sandboxed; `/usr/bin/unzip` verificado en macOS            |
+| `OutputManager.saveFileSilently`          | Proyecto (existente)        | Guardar `.md` sin diálogos           | Bookmark + fallback Descargas; D-07 sobrescribir                  |
+| `DockProgressManager.showProgress`        | Proyecto (existente)        | Barra Dock determinada               | Ya dibuja barra; solo cambia la fuente de datos                   |
+| `NotificationManager.sendTranslationDone` | Proyecto (existente)        | Notificación fin de lote             | Ya existe; reutilizable sin cambios                               |
 
 ### Nuevos archivos Swift a crear
 
-| Archivo | Rol |
-|---------|-----|
+| Archivo                 | Rol                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
 | `BatchJobManager.swift` | Singleton `@Observable @MainActor`; cliente SSE, estado del job, descarga y extracción ZIP |
-| `BatchSheet.swift` | Vista SwiftUI con tres estados: preparado, en progreso, resumen |
+| `BatchSheet.swift`      | Vista SwiftUI con tres estados: preparado, en progreso, resumen                            |
 
 ### Dependencias descartadas
 
-| En lugar de | Descartar | Motivo |
-|-------------|-----------|--------|
-| Librería SSE de terceros (`mattt/EventSource`, `Recouse/EventSource`) | No usar | El backend emite formato `data: {json}\n\n` sin campo `event:` — parsing trivial con `.lines`; añadir dependencia externa no aporta valor |
-| `ZipFoundation` u otra librería ZIP en Swift | No usar | `/usr/bin/unzip` verificado disponible; `Process` es suficiente para D-06 (filtrar por extensión .md) |
+| En lugar de                                                           | Descartar   | Motivo                                                                                                                                    |
+| --------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Librería SSE de terceros (`mattt/EventSource`, `Recouse/EventSource`) | No usar     | El backend emite formato `data: {json}\n\n` sin campo `event:` — parsing trivial con `.lines`; añadir dependencia externa no aporta valor |
+| `ZipFoundation` u otra librería ZIP en Swift                          | No usar     | `/usr/bin/unzip` verificado disponible; `Process` es suficiente para D-06 (filtrar por extensión .md)                                     |
 
 ---
 
@@ -132,7 +132,7 @@ El patrón de estado observable sigue exactamente el de `ServerManager`: `@Obser
 
 El backend usa `StreamingResponse` con `media_type="text/event-stream"`. Cada evento se emite como:
 
-```
+```http
 data: {json_payload}\n\n
 ```
 
@@ -140,15 +140,16 @@ No hay campo `event:` ni `id:` — solo `data:`. El cliente debe filtrar las lí
 
 ### Tabla de eventos
 
-| `type` | Campos garantizados | Cuándo se emite |
-|--------|---------------------|-----------------|
-| `file_start` | `filename`, `file_index`, `total_files`, `target_lang`, `lang_index`, `total_langs` | Antes de traducir cada (archivo, idioma) |
-| `segment_progress` | `filename`, `target_lang`, `done`, `total` | Cada vez que el pipeline reporta progreso de segmentos (vía `on_progress` callback) |
-| `file_done` | `filename`, `target_lang`, `out_name` | Al completar con éxito un (archivo, idioma) |
-| `error` | `filename`, `target_lang`, `message` | Si la traducción de un (archivo, idioma) lanza excepción |
-| `complete` | `ok_count`, `error_count`, `total_files`, `total_langs`, `cancelled` | Siempre al final (éxito o cancelación); señal de fin del stream |
+| `type`             | Campos garantizados                                                                 | Cuándo se emite                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `file_start`       | `filename`, `file_index`, `total_files`, `target_lang`, `lang_index`, `total_langs` | Antes de traducir cada (archivo, idioma)                                            |
+| `segment_progress` | `filename`, `target_lang`, `done`, `total`                                          | Cada vez que el pipeline reporta progreso de segmentos (vía `on_progress` callback) |
+| `file_done`        | `filename`, `target_lang`, `out_name`                                               | Al completar con éxito un (archivo, idioma)                                         |
+| `error`            | `filename`, `target_lang`, `message`                                                | Si la traducción de un (archivo, idioma) lanza excepción                            |
+| `complete`         | `ok_count`, `error_count`, `total_files`, `total_langs`, `cancelled`                | Siempre al final (éxito o cancelación); señal de fin del stream                     |
 
 **Notas críticas:**
+
 - `complete.cancelled` es `true` si el job se canceló, `false` si completó normalmente.
 - El stream se cierra tras `complete` — el generador hace `break` al recibirlo.
 - `segment_progress` puede llegar 0 veces por archivo (si el archivo tiene 1 segmento, puede que el callback nunca se llame con valores intermedios).
@@ -156,7 +157,7 @@ No hay campo `event:` ni `id:` — solo `data:`. El cliente debe filtrar las lí
 
 ### Ejemplo de secuencia para 2 archivos
 
-```
+```http
 data: {"type":"file_start","filename":"doc.md","file_index":0,"total_files":2,"target_lang":"es","lang_index":0,"total_langs":1}
 
 data: {"type":"segment_progress","filename":"doc.md","target_lang":"es","done":1,"total":5}
@@ -183,13 +184,13 @@ data: {"type":"complete","ok_count":2,"error_count":0,"total_files":2,"total_lan
 
 **Tipo de cuerpo:** `multipart/form-data`
 
-| Campo | Tipo | Obligatorio | Notas |
-|-------|------|-------------|-------|
-| `files` | UploadFile (múltiple) | Sí | Un campo `files` por archivo; nombre = `filename` del UploadFile |
-| `target_lang` | Form string | Condicional | Alternativo a `target_langs`; D-12 usa uno solo |
-| `target_langs` | Form string (múltiple) | Condicional | Lista CSV o campos repetidos |
-| `source_lang` | Form string | No | Por defecto `"auto"` |
-| `tone` | Form string | No | Por defecto `"auto"` |
+| Campo          | Tipo                   | Obligatorio   | Notas                                                            |
+| -------------- | ---------------------- | ------------- | ---------------------------------------------------------------- |
+| `files`        | UploadFile (múltiple)  | Sí            | Un campo `files` por archivo; nombre = `filename` del UploadFile |
+| `target_lang`  | Form string            | Condicional   | Alternativo a `target_langs`; D-12 usa uno solo                  |
+| `target_langs` | Form string (múltiple) | Condicional   | Lista CSV o campos repetidos                                     |
+| `source_lang`  | Form string            | No            | Por defecto `"auto"`                                             |
+| `tone`         | Form string            | No            | Por defecto `"auto"`                                             |
 
 **Respuesta 200:** `{"job_id": "<hex32>"}`
 
@@ -221,7 +222,7 @@ data: {"type":"complete","ok_count":2,"error_count":0,"total_files":2,"total_lan
 
 ### Diagrama de flujo principal
 
-```
+```text
 AppDelegate.application(_:open:) [≥2 archivos .md]
     │
     └─► NotificationCenter.post(.openBatchSheet, object: urls)
@@ -264,7 +265,7 @@ BatchSheet (estado: .prepared)
 
 ### Estructura de archivos nuevos
 
-```
+```text
 macos/MDTranslator/MDTranslator/
 ├── BatchJobManager.swift    ← nuevo: singleton @Observable @MainActor
 └── BatchSheet.swift         ← nuevo: SwiftUI sheet con 3 estados
@@ -272,7 +273,7 @@ macos/MDTranslator/MDTranslator/
 
 ### Archivos modificados
 
-```
+```text
 macos/MDTranslator/MDTranslator/
 ├── AppDelegate.swift        ← sustituir confirmAndBatch/batchTranslate por post(.openBatchSheet)
 ├── Commands.swift           ← añadir "Traducir lote…" en File CommandGroup
@@ -516,13 +517,13 @@ final class BatchJobManager {
 
 ## Don't Hand-Roll
 
-| Problema | No construir | Usar en cambio | Por qué |
-|----------|-------------|----------------|---------|
-| Parsing SSE (líneas `event:`, `data:`, `id:`, reconnect) | Parser completo de spec RFC 8895 | Solo filtrar `hasPrefix("data: ")` + JSON | El backend emite SOLO `data: {json}\n\n`; no usa `event:`, `id:` ni `retry:` — parser completo es over-engineering |
-| ZIP parsing en Swift puro | ZipSwift, Zip, ZipFoundation | `Process` + `/usr/bin/unzip` | La app no está sandboxed; unzip nativo maneja correctamente encoding de nombres de archivo, paths anidados y archivos grandes |
-| State machine del job | Enum complejo con substates | `enum BatchJobState` + `@Observable` | 5 estados bien delimitados; no necesita framework de state machine |
-| Multipart builder | Librería externa | Struct `MultipartBody` (~30 líneas) | El formulario tiene 2 tipos de campos simples (texto + archivo); sin headers especiales |
-| Cliente SSE con reconexión | Librería completa EventSource | `Task` + `URLSession.bytes` | El job SSE tiene vida finita (termina con `complete`); no hay semántica de reconexión — si el stream se corta, el job sigue en el backend y hay que decidir la UX (mostrar error), no reconectar silenciosamente |
+| Problema                                                 | No construir                     | Usar en cambio                            | Por qué                                                                                                                                                                                                          |
+| -------------------------------------------------------- | -------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parsing SSE (líneas `event:`, `data:`, `id:`, reconnect) | Parser completo de spec RFC 8895 | Solo filtrar `hasPrefix("data: ")` + JSON | El backend emite SOLO `data: {json}\n\n`; no usa `event:`, `id:` ni `retry:` — parser completo es over-engineering                                                                                               |
+| ZIP parsing en Swift puro                                | ZipSwift, Zip, ZipFoundation     | `Process` + `/usr/bin/unzip`              | La app no está sandboxed; unzip nativo maneja correctamente encoding de nombres de archivo, paths anidados y archivos grandes                                                                                    |
+| State machine del job                                    | Enum complejo con substates      | `enum BatchJobState` + `@Observable`      | 5 estados bien delimitados; no necesita framework de state machine                                                                                                                                               |
+| Multipart builder                                        | Librería externa                 | Struct `MultipartBody` (~30 líneas)       | El formulario tiene 2 tipos de campos simples (texto + archivo); sin headers especiales                                                                                                                          |
+| Cliente SSE con reconexión                               | Librería completa EventSource    | `Task` + `URLSession.bytes`               | El job SSE tiene vida finita (termina con `complete`); no hay semántica de reconexión — si el stream se corta, el job sigue en el backend y hay que decidir la UX (mostrar error), no reconectar silenciosamente |
 
 ---
 
@@ -694,14 +695,15 @@ func createJob(urls: [URL], targetLang: String, port: Int) async throws -> Strin
 
 ## State of the Art
 
-| Patrón antiguo | Patrón actual (esta fase) | Cuándo cambió | Impacto |
-|----------------|--------------------------|---------------|---------|
-| `batchTranslate` — bucle síncrono con `POST /api/translate` por archivo | `BatchJobManager` — un solo job SSE con stream de eventos | Phase 18 | Progreso real, cancelación cooperativa, menos round-trips |
-| `DockProgressManager` alimentado por índice de bucle | `DockProgressManager` alimentado por eventos `file_done` del stream SSE | Phase 18 | Progreso Dock coherente con el estado real del backend |
-| `NSAlert` para confirmar antes de batch (Phase 13) | Sheet SwiftUI con estado "preparado" → "en progreso" → "resumen" (D-13) | Phase 18 | Un único componente; sin saltos entre Alert y UI web |
-| Sin posibilidad de cancelar un lote en curso | Botón Cancelar + DELETE cooperativo (D-09) | Phase 18 | El coste API ya pagado no se pierde (D-08) |
+| Patrón antiguo                                                          | Patrón actual (esta fase)                                               | Cuándo cambió   | Impacto                                                   |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------- | --------------------------------------------------------- |
+| `batchTranslate` — bucle síncrono con `POST /api/translate` por archivo | `BatchJobManager` — un solo job SSE con stream de eventos               | Phase 18        | Progreso real, cancelación cooperativa, menos round-trips |
+| `DockProgressManager` alimentado por índice de bucle                    | `DockProgressManager` alimentado por eventos `file_done` del stream SSE | Phase 18        | Progreso Dock coherente con el estado real del backend    |
+| `NSAlert` para confirmar antes de batch (Phase 13)                      | Sheet SwiftUI con estado "preparado" → "en progreso" → "resumen" (D-13) | Phase 18        | Un único componente; sin saltos entre Alert y UI web      |
+| Sin posibilidad de cancelar un lote en curso                            | Botón Cancelar + DELETE cooperativo (D-09)                              | Phase 18        | El coste API ya pagado no se pierde (D-08)                |
 
 **Deprecated en esta fase:**
+
 - `confirmAndBatch(_:)` en `AppDelegate.swift` — se sustituye por `openBatchSheet(_:)`.
 - `batchTranslate(urls:port:targetLang:)` en `AppDelegate.swift` — se elimina; la lógica pasa a `BatchJobManager`.
 - `callTranslateAPI(text:targetLang:port:)` en `AppDelegate.swift` — se elimina (verificado 2026-06-12: su único llamador es `batchTranslate`, que también se elimina).
@@ -729,13 +731,13 @@ func createJob(urls: [URL], targetLang: String, port: Int) async throws -> Strin
 
 ## Environment Availability
 
-| Dependencia | Requerida por | Disponible | Versión | Fallback |
-|-------------|--------------|------------|---------|----------|
-| Xcode 26.5 / Swift 6.3.2 | Compilación app macOS | Verificado | Xcode 26.5 / Swift 6.3.2 | — |
-| `/usr/bin/unzip` | Extracción ZIP (D-05/D-06) | Verificado | macOS built-in | — |
-| URLSession.bytes | Cliente SSE | Verificado | macOS 12+ (req. mínimo: macOS 14) | — |
-| Backend FastAPI local | Todos los endpoints de jobs | Verificado (Phase 16 completada) | v2.0, 148 tests passing | — |
-| `@Observable` macro | `BatchJobManager`, patrón establecido | Verificado | Swift 5.9+ / macOS 14+ | — |
+| Dependencia              | Requerida por                         | Disponible                       | Versión                           | Fallback   |
+| ------------------------ | ------------------------------------- | -------------------------------- | --------------------------------- | ---------- |
+| Xcode 26.5 / Swift 6.3.2 | Compilación app macOS                 | Verificado                       | Xcode 26.5 / Swift 6.3.2          | —          |
+| `/usr/bin/unzip`         | Extracción ZIP (D-05/D-06)            | Verificado                       | macOS built-in                    | —          |
+| URLSession.bytes         | Cliente SSE                           | Verificado                       | macOS 12+ (req. mínimo: macOS 14) | —          |
+| Backend FastAPI local    | Todos los endpoints de jobs           | Verificado (Phase 16 completada) | v2.0, 148 tests passing           | —          |
+| `@Observable` macro      | `BatchJobManager`, patrón establecido | Verificado                       | Swift 5.9+ / macOS 14+            | —          |
 
 **Missing dependencies con no fallback:** ninguna.
 
@@ -747,23 +749,23 @@ func createJob(urls: [URL], targetLang: String, port: Int) async throws -> Strin
 
 ### Test Framework
 
-| Propiedad | Valor |
-|-----------|-------|
-| Framework | pytest 8.x (backend Python) |
-| Config file | `pyproject.toml` → `[tool.pytest.ini_options]` |
-| Comando rápido | `pytest tests/test_jobs.py -q` |
-| Suite completa | `pytest tests/ -q` |
+| Propiedad      | Valor                                          |
+| -------------- | ---------------------------------------------- |
+| Framework      | pytest 8.x (backend Python)                    |
+| Config file    | `pyproject.toml` → `[tool.pytest.ini_options]` |
+| Comando rápido | `pytest tests/test_jobs.py -q`                 |
+| Suite completa | `pytest tests/ -q`                             |
 
 **Nota:** Los tests de la app Swift (Xcode Unit Tests) no existen en el proyecto actualmente. Esta fase añade únicamente Swift nuevo; los tests de backend ya cubren `src/jobs.py`. Los criterios de aceptación de SSE-01..04 son tests manuales en la app.
 
 ### Phase Requirements → Test Map
 
-| Req ID | Comportamiento | Tipo de test | Comando automatizado | Archivo existe |
-|--------|---------------|-------------|---------------------|----------------|
-| SSE-01 | Backend emite eventos SSE correctamente | unit Python | `pytest tests/test_jobs.py -q` | Existe |
-| SSE-02 | Progreso determinado en sheet (archivo en curso + barra global) | manual UI | — | N/A (Swift UI) |
-| SSE-03 | DELETE cancela cooperativamente y ZIP parcial contiene éxitos | unit Python | `pytest tests/test_jobs.py -q -k cancel` | Existe |
-| SSE-04 | Dock muestra progreso real (mismo valor que sheet) | manual UI | — | N/A (Swift UI) |
+| Req ID   | Comportamiento                                                  | Tipo de test  | Comando automatizado                     | Archivo existe   |
+| -------- | --------------------------------------------------------------- | ------------- | ---------------------------------------- | ---------------- |
+| SSE-01   | Backend emite eventos SSE correctamente                         | unit Python   | `pytest tests/test_jobs.py -q`           | Existe           |
+| SSE-02   | Progreso determinado en sheet (archivo en curso + barra global) | manual UI     | —                                        | N/A (Swift UI)   |
+| SSE-03   | DELETE cancela cooperativamente y ZIP parcial contiene éxitos   | unit Python   | `pytest tests/test_jobs.py -q -k cancel` | Existe           |
+| SSE-04   | Dock muestra progreso real (mismo valor que sheet)              | manual UI     | —                                        | N/A (Swift UI)   |
 
 ### Sampling Rate
 
@@ -783,53 +785,54 @@ func createJob(urls: [URL], targetLang: String, port: Int) async throws -> Strin
 
 ### Applicable ASVS Categories
 
-| Categoría ASVS | Aplica | Control estándar |
-|----------------|--------|-----------------|
-| V2 Authentication | Sí (Bearer token si `API_TOKEN` activo) | `_require_api_token` ya implementado en backend; cliente Swift añade header |
-| V3 Session Management | No | Sin sesiones; cada request es independiente |
-| V4 Access Control | No | Solo endpoints locales en 127.0.0.1 |
-| V5 Input Validation | Sí | Backend valida idioma, tamaño, UTF-8; cliente Swift valida extensión `.md` antes de subir |
-| V6 Cryptography | No | Sin criptografía nueva en esta fase |
+| Categoría ASVS        | Aplica                                  | Control estándar                                                                          |
+| --------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| V2 Authentication     | Sí (Bearer token si `API_TOKEN` activo) | `_require_api_token` ya implementado en backend; cliente Swift añade header               |
+| V3 Session Management | No                                      | Sin sesiones; cada request es independiente                                               |
+| V4 Access Control     | No                                      | Solo endpoints locales en 127.0.0.1                                                       |
+| V5 Input Validation   | Sí                                      | Backend valida idioma, tamaño, UTF-8; cliente Swift valida extensión `.md` antes de subir |
+| V6 Cryptography       | No                                      | Sin criptografía nueva en esta fase                                                       |
 
 ### Known Threat Patterns
 
-| Patrón | STRIDE | Mitigación estándar |
-|--------|--------|---------------------|
-| Upload de archivo no-Markdown | Tampering | Backend ya valida: binarios rechazados (byte nulo), límite `MAX_BATCH_UPLOAD_MB`; cliente filtra `.md` antes de subir |
-| SSRF hacia endpoints distintos de localhost | Elevation of Privilege | URL hardcodeada a `127.0.0.1:{serverPort}` — `serverPort` viene de `ServerManager` (bind dinámico local) |
-| ZIP bomb en la respuesta de download | DoS | Archivos `.md` de documentación son pequeños; no hay extracción recursiva; mitigación adicional out of scope |
+| Patrón                                      | STRIDE                 | Mitigación estándar                                                                                                   |
+| ------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Upload de archivo no-Markdown               | Tampering              | Backend ya valida: binarios rechazados (byte nulo), límite `MAX_BATCH_UPLOAD_MB`; cliente filtra `.md` antes de subir |
+| SSRF hacia endpoints distintos de localhost | Elevation of Privilege | URL hardcodeada a `127.0.0.1:{serverPort}` — `serverPort` viene de `ServerManager` (bind dinámico local)              |
+| ZIP bomb en la respuesta de download        | DoS                    | Archivos `.md` de documentación son pequeños; no hay extracción recursiva; mitigación adicional out of scope          |
 
 ---
 
 ## Project Constraints (from CLAUDE.md)
 
-| Directiva | Fuente | Impacto en esta fase |
-|-----------|--------|----------------------|
-| Nunca commitear `.env`; API keys en Keychain | CLAUDE.md §Constraints | `API_TOKEN` leído de env (inyectado por `ServerManager`); nunca hardcodeado |
-| Salida siempre Markdown válido; código y URLs intactos | CLAUDE.md §Constraints | El backend ya garantiza esto; la extracción ZIP no transforma el contenido |
-| `@Observable` macro, NO `ObservableObject` | CLAUDE.md §macOS Pitfalls (Pitfall 4) | `BatchJobManager` usa `@Observable @MainActor` |
-| `p.run()` (no `p.launch()`), `p.executableURL` (no `p.launchPath`) | CLAUDE.md §macOS Pitfalls (Pitfall 3) | Aplicar al `Process` de unzip |
-| Heredad entorno padre en `Process.environment` | CLAUDE.md §macOS Pitfalls (Pitfall 1) | Si `BatchJobManager` lanza `Process`, heredar `ProcessInfo.processInfo.environment` |
-| App Sandbox eliminado (incompatible con subprocess) | CLAUDE.md §macOS Pitfalls (Pitfall 2) | Confirma que `Process` + `/usr/bin/unzip` funciona sin restricciones |
-| Mensajes de UI nativa en español | CLAUDE.md §Conventions | Todos los textos de la sheet, alertas y botones en español |
-| Código en `snake_case` (Python), Swift usa convenciones estándar Swift | CLAUDE.md §Naming | Swift: `BatchJobManager`, `batchJobState`, etc. en camelCase |
-| Pre-commit hook `git secrets --pre_commit_hook` | CLAUDE.md §Code Style | No commitear API keys reales en código Swift |
+| Directiva                                                              | Fuente                                | Impacto en esta fase                                                                |
+| ---------------------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------- |
+| Nunca commitear `.env`; API keys en Keychain                           | CLAUDE.md §Constraints                | `API_TOKEN` leído de env (inyectado por `ServerManager`); nunca hardcodeado         |
+| Salida siempre Markdown válido; código y URLs intactos                 | CLAUDE.md §Constraints                | El backend ya garantiza esto; la extracción ZIP no transforma el contenido          |
+| `@Observable` macro, NO `ObservableObject`                             | CLAUDE.md §macOS Pitfalls (Pitfall 4) | `BatchJobManager` usa `@Observable @MainActor`                                      |
+| `p.run()` (no `p.launch()`), `p.executableURL` (no `p.launchPath`)     | CLAUDE.md §macOS Pitfalls (Pitfall 3) | Aplicar al `Process` de unzip                                                       |
+| Heredad entorno padre en `Process.environment`                         | CLAUDE.md §macOS Pitfalls (Pitfall 1) | Si `BatchJobManager` lanza `Process`, heredar `ProcessInfo.processInfo.environment` |
+| App Sandbox eliminado (incompatible con subprocess)                    | CLAUDE.md §macOS Pitfalls (Pitfall 2) | Confirma que `Process` + `/usr/bin/unzip` funciona sin restricciones                |
+| Mensajes de UI nativa en español                                       | CLAUDE.md §Conventions                | Todos los textos de la sheet, alertas y botones en español                          |
+| Código en `snake_case` (Python), Swift usa convenciones estándar Swift | CLAUDE.md §Naming                     | Swift: `BatchJobManager`, `batchJobState`, etc. en camelCase                        |
+| Pre-commit hook `git secrets --pre_commit_hook`                        | CLAUDE.md §Code Style                 | No commitear API keys reales en código Swift                                        |
 
 ---
 
 ## Assumptions Log
 
-| # | Afirmación | Sección | Riesgo si es incorrecta |
-|---|-----------|---------|------------------------|
-| A1 | `API_TOKEN` estará vacío en el entorno local de desarrollo de la app nativa (sin auth real activa) | API del Backend | Si el usuario tiene `API_TOKEN` configurado en `.env`, las llamadas del cliente Swift fallarán con 401 hasta añadir el header Bearer |
-| A2 | `/usr/bin/unzip` acepta el patrón glob `"*.md"` para filtrar archivos del ZIP | Extracción ZIP | Si la versión de unzip de macOS no soporta glob en ese argumento, hay que extraer todo y borrar los no-md después |
-| A3 | `FileManager.default.urls(for: .downloadsDirectory)` devuelve una URL escribible sin permisos adicionales en macOS 14+ no sandboxed | OutputManager fallback | Si TCC o permisos cambian, el fallback Descargas podría fallar silenciosamente |
+| #   | Afirmación                                                                                                                          | Sección                | Riesgo si es incorrecta                                                                                                              |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| A1  | `API_TOKEN` estará vacío en el entorno local de desarrollo de la app nativa (sin auth real activa)                                  | API del Backend        | Si el usuario tiene `API_TOKEN` configurado en `.env`, las llamadas del cliente Swift fallarán con 401 hasta añadir el header Bearer |
+| A2  | `/usr/bin/unzip` acepta el patrón glob `"*.md"` para filtrar archivos del ZIP                                                       | Extracción ZIP         | Si la versión de unzip de macOS no soporta glob en ese argumento, hay que extraer todo y borrar los no-md después                    |
+| A3  | `FileManager.default.urls(for: .downloadsDirectory)` devuelve una URL escribible sin permisos adicionales en macOS 14+ no sandboxed | OutputManager fallback | Si TCC o permisos cambian, el fallback Descargas podría fallar silenciosamente                                                       |
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
+
 - `src/jobs.py` (codebase verificado) — formato exacto de eventos SSE, semántica de cancelación cooperativa, momento de `zip_bytes`
 - `src/main.py` (codebase verificado) — endpoints HTTP, modelos Pydantic, auth token, SSE StreamingResponse
 - `src/batch_zip.py` (codebase verificado) — contenido del ZIP (`.md` + `*.validation.json` + `errors.json`)
@@ -842,10 +845,12 @@ func createJob(urls: [URL], targetLang: String, port: Int) async throws -> Strin
 - `/usr/bin/unzip` disponibilidad verificada en shell macOS 25.5.0
 
 ### Secondary (MEDIUM confidence)
+
 - [theswiftdev.com/easy-multipart-file-upload-for-swift/](https://theswiftdev.com/easy-multipart-file-upload-for-swift/) — patrón multipart/form-data sin librerías
 - Apple Developer Documentation `URLSession.AsyncBytes` — firma y uso de `.lines`
 
 ### Tertiary (LOW confidence)
+
 - Ninguna — todos los hallazgos críticos están verificados en el codebase o en documentación oficial.
 
 ---
@@ -853,6 +858,7 @@ func createJob(urls: [URL], targetLang: String, port: Int) async throws -> Strin
 ## Metadata
 
 **Confidence breakdown:**
+
 - Formato exacto SSE: HIGH — leído directamente de `src/jobs.py` y `src/main.py`
 - API endpoints: HIGH — leído directamente de `src/main.py`
 - Patrones Swift (URLSession.bytes, @Observable): HIGH — WWDC21 oficial + código existente en el proyecto

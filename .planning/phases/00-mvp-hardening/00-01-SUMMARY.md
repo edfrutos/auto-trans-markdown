@@ -5,8 +5,10 @@ subsystem: api
 tags: [translation, error-handling, openai, deepl]
 requires: []
 provides:
+
   - IncompleteTranslationError con validación post-lote
   - HTTP 502 estructurado en endpoints translate_*
+
 affects: [phase-1-pipeline]
 tech-stack:
   added: []
@@ -24,6 +26,7 @@ completed: 2026-05-28
 **Traducciones incompletas fallan con IncompleteTranslationError y HTTP 502 explícito — sin salida parcial silenciosa.**
 
 ## Accomplishments
+
 - `IncompleteTranslationError` y `_validate_translation_completeness` en traductor
 - Validación de longitud en respuestas DeepL
 - Mapeo a HTTP 502 con `detail.message`, `expected`, `received`, `missing_indices`

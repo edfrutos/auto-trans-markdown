@@ -15,13 +15,13 @@ created: 2026-05-29
 
 ## Test Infrastructure
 
-| Property | Value |
-|----------|-------|
-| **Framework** | pytest (pyproject.toml testpaths = tests) |
-| **Config file** | pyproject.toml `[tool.pytest.ini_options]` |
-| **Quick run command** | `pytest tests/test_cli.py tests/test_deployment.py tests/test_api.py -q` |
-| **Full suite command** | `pytest tests/ -q` |
-| **Estimated runtime** | ~25 seconds |
+| Property               | Value                                                                    |
+| ---------------------- | ------------------------------------------------------------------------ |
+| **Framework**          | pytest (pyproject.toml testpaths = tests)                                |
+| **Config file**        | pyproject.toml `[tool.pytest.ini_options]`                               |
+| **Quick run command**  | `pytest tests/test_cli.py tests/test_deployment.py tests/test_api.py -q` |
+| **Full suite command** | `pytest tests/ -q`                                                       |
+| **Estimated runtime**  | ~25 seconds                                                              |
 
 ---
 
@@ -36,25 +36,25 @@ created: 2026-05-29
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Test Type | Automated Command | Status |
-|---------|------|------|-------------|-----------|-------------------|--------|
-| 06-01-01 | 01 | 1 | DEBT-01 | unit | `pytest tests/test_cli.py -q -k batch_zip_tone` | ⬜ pending |
-| 06-02-01 | 02 | 1 | DEBT-02 | unit | `pytest tests/test_deployment.py tests/test_api.py -q -k api_token` | ⬜ pending |
-| 06-02-02 | 02 | 1 | DEBT-02 | integration | `pytest tests/test_api.py -q -k batch_job_events` | ⬜ pending |
-| 06-03-01 | 03 | 2 | DEBT-03 | static | `grep -q 'translationResults\|activeResultLang' static/js/app.js` | ⬜ pending |
-| 06-03-02 | 03 | 2 | DEBT-03 | manual | Editor 2 langs → switch tab → download each | ⬜ pending |
-| 06-04-01 | 04 | 3 | DEBT-04 | doc | `test -f .planning/phases/02-trust-qa/02-VERIFICATION.md` | ⬜ pending |
-| 06-04-02 | 04 | 3 | DEBT-01–03 | unit | `pytest tests/ -q` | ⬜ pending |
+| Task ID   | Plan   | Wave   | Requirement   | Test Type   | Automated Command                                                                          | Status    |
+| --------- | ------ | ------ | ------------- | ----------- | ------------------------------------------------------------------------------------------ | --------- |
+| 06-01-01  | 01     | 1      | DEBT-01       | unit        | `pytest tests/test_cli.py -q -k batch_zip_tone`                                            | ⬜ pending |
+| 06-02-01  | 02     | 1      | DEBT-02       | unit        | `pytest tests/test_deployment.py tests/test_api.py -q -k api_token`                        | ⬜ pending |
+| 06-02-02  | 02     | 1      | DEBT-02       | integration | `pytest tests/test_api.py -q -k batch_job_events`                                          | ⬜ pending |
+| 06-03-01  | 03     | 2      | DEBT-03       | static      | `grep -q translationResults static/js/app.js && grep -q activeResultLang static/js/app.js` | ⬜ pending |
+| 06-03-02  | 03     | 2      | DEBT-03       | manual      | Editor 2 langs → switch tab → download each                                                | ⬜ pending |
+| 06-04-01  | 04     | 3      | DEBT-04       | doc         | `test -f .planning/phases/02-trust-qa/02-VERIFICATION.md`                                  | ⬜ pending |
+| 06-04-02  | 04     | 3      | DEBT-01–03    | unit        | `pytest tests/ -q`                                                                         | ⬜ pending |
 
 ---
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Test Instructions |
-|----------|-------------|-------------------|
-| UI token settings | DEBT-02 | Set `API_TOKEN` in `.env`; paste token in UI; translate editor succeeds |
-| SSE with token | DEBT-02 | Batch job with token — progress events stream (no 401) |
-| Multi-lang tabs | DEBT-03 | Select es+en; translate; switch tabs; preview/validation update per lang |
+| Behavior          | Requirement   | Test Instructions                                                        |
+| ----------------- | ------------- | ------------------------------------------------------------------------ |
+| UI token settings | DEBT-02       | Set `API_TOKEN` in `.env`; paste token in UI; translate editor succeeds  |
+| SSE with token    | DEBT-02       | Batch job with token — progress events stream (no 401)                   |
+| Multi-lang tabs   | DEBT-03       | Select es+en; translate; switch tabs; preview/validation update per lang |
 
 ---
 

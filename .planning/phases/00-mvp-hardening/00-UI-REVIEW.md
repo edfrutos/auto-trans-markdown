@@ -9,14 +9,14 @@
 
 ## Pillar Scores
 
-| Pillar | Score | Key Finding |
-|--------|-------|-------------|
-| 1. Copywriting | 4/4 | Estados de carga/error en español claro y accionable |
-| 2. Visuals | 3/4 | Placeholder textual en select; sin indicador visual de carga |
-| 3. Color | 4/4 | Sin colores nuevos; tokens CSS/Tailwind coherentes |
-| 4. Typography | 4/4 | Sin regresiones; escala existente consistente |
-| 5. Spacing | 4/4 | Sin cambios de espaciado en Phase 0 |
-| 6. Experience Design | 2/4 | Falta bloqueo de acción hasta idiomas listos; sin reintento |
+| Pillar               | Score   | Key Finding                                                  |
+| -------------------- | ------- | ------------------------------------------------------------ |
+| 1. Copywriting       | 4/4     | Estados de carga/error en español claro y accionable         |
+| 2. Visuals           | 3/4     | Placeholder textual en select; sin indicador visual de carga |
+| 3. Color             | 4/4     | Sin colores nuevos; tokens CSS/Tailwind coherentes           |
+| 4. Typography        | 4/4     | Sin regresiones; escala existente consistente                |
+| 5. Spacing           | 4/4     | Sin cambios de espaciado en Phase 0                          |
+| 6. Experience Design | 2/4     | Falta bloqueo de acción hasta idiomas listos; sin reintento  |
 
 **Overall: 21/24**
 
@@ -83,12 +83,12 @@ Grid `sm:grid-cols-2 gap-4 mb-6` en controles de idioma (`index.html:73`) cohere
 
 **Gaps**
 
-| Issue | Location | Impact |
-|-------|----------|--------|
-| Botón Traducir activo durante carga/error de idiomas | `app.js:342` — `loadLanguages()` async sin gate en `#btn-translate` | Usuario puede enviar `target_lang=""` → 400 confuso |
-| Sin reintento tras fallo de idiomas | `app.js:141-149` catch solo muestra error | Requiere reload de página |
-| Tabs sin navegación por teclado (flechas) | `index.html:90-95`, `app.js:152-161` | Pre-existente; a11y menor |
-| Barra de progreso simulada al 30% | `app.js:89-92` | Pre-existente (Phase 3); fuera de alcance Phase 0 pero afecta percepción de UX |
+| Issue                                                | Location                                                            | Impact                                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Botón Traducir activo durante carga/error de idiomas | `app.js:342` — `loadLanguages()` async sin gate en `#btn-translate` | Usuario puede enviar `target_lang=""` → 400 confuso                            |
+| Sin reintento tras fallo de idiomas                  | `app.js:141-149` catch solo muestra error                           | Requiere reload de página                                                      |
+| Tabs sin navegación por teclado (flechas)            | `index.html:90-95`, `app.js:152-161`                                | Pre-existente; a11y menor                                                      |
+| Barra de progreso simulada al 30%                    | `app.js:89-92`                                                      | Pre-existente (Phase 3); fuera de alcance Phase 0 pero afecta percepción de UX |
 
 **Registry audit:** N/A — no shadcn/components.json.
 
@@ -96,10 +96,10 @@ Grid `sm:grid-cols-2 gap-4 mb-6` en controles de idioma (`index.html:73`) cohere
 
 ## Phase 0 Requirement Alignment (HARD-03 UI)
 
-| Criterio | Verdict |
-|----------|---------|
-| UI consume `/api/languages` dinámicamente | ✅ `loadLanguages()` |
-| Sin listas hardcodeadas desalineadas | ✅ `index.html` sin destinos fijos |
+| Criterio                                         | Verdict                                  |
+| ------------------------------------------------ | ---------------------------------------- |
+| UI consume `/api/languages` dinámicamente        | ✅ `loadLanguages()`                      |
+| Sin listas hardcodeadas desalineadas             | ✅ `index.html` sin destinos fijos        |
 | Manejo de error sin fallback estático incorrecto | ✅ Parcial — error visible pero sin retry |
 
 ---

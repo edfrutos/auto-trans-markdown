@@ -20,6 +20,7 @@ The dominant risks are **structural breakage** (fences, links, frontmatter, sile
 Extend the current stack without architectural churn. Bump FastAPI to ≥0.135 for native SSE; add Typer (not Click) for CLI; use stdlib `sqlite3` (WAL) for TM and PyYAML for glossary; keep frontend CDN-only with **marked + DOMPurify mandatory** for preview; add `uv.lock` + multi-stage Docker (python:3.12-slim-bookworm, not Alpine). Blocking I/O continues via `run_in_executor`; SSE uses in-memory `asyncio.Queue` per job — acceptable for single-process local deploy.
 
 **Core technologies:**
+
 - **Python 3.11+ / FastAPI ≥0.135 / Uvicorn:** Keep ASGI monolith; SSE via `EventSourceResponse` without hand-rolled framing
 - **Typer ≥0.21:** `md-translate` CLI with subcommands (`file`, `dir`, `batch`, `serve`); entry point must change from `src.main:run` to `src.cli:app`
 - **sqlite3 (stdlib):** TM at `data/translation_memory.db`; hash key `sha256(normalize(text)+source+target)`; zero extra deps
@@ -35,6 +36,7 @@ Extend the current stack without architectural churn. Bump FastAPI to ≥0.135 f
 MVP already validates segmentation, code/fence preservation, three UI modes, REST API, batch ZIP (max 20), OpenAI + DeepL, retries. Remaining **table-stake gaps** for tech-doc teams: glossary/DNT list, TM consistency across batches, real CLI for CI, post-translation validation, real batch progress.
 
 **Must have (table stakes — close in Phase A–B):**
+
 - **Protected segmentation + reassemble** — already shipped; do not regress
 - **Glossary / fixed terms (§1)** — terminology lock expected by CAT and MD tools
 - **Translation memory (§2)** — repeated strings, cost, consistency across repo
@@ -43,12 +45,14 @@ MVP already validates segmentation, code/fence preservation, three UI modes, RES
 - **Real batch progress (§5)** — long jobs without feedback feel broken
 
 **Should have (differentiators — Phases B–D):**
+
 - **Rendered MD preview + sanitization (§4)** — visual QA for tables/lists
 - **SSE progress + cost estimate (§5, §10)** — trust and budget control on large batches
 - **Multi-target one pass (§9) + Docker (§11)** — team scale and one-command deploy
 - **Provider fallback (§13)** — low effort, high reliability; candidate to pull forward
 
 **Defer (v2+ / Phase E):**
+
 - Review mode (§12), folder watch (§15), visual diff (§14), docs-site tree (§16), HTML/PDF export (§19), multi-tenant API keys (§20 — anti-feature this milestone)
 
 **Anti-features (explicitly avoid):** PDF/DOCX in-place, offline MT as primary engine, IDE plugins, free-form rewriting, translating YAML keys/URLs/code, public deploy with CORS `*` and no auth.
@@ -58,6 +62,7 @@ MVP already validates segmentation, code/fence preservation, three UI modes, RES
 **Do not embed glossary, memory, or validation in `parser.py`.** Parser stays pure (string in → segments out). Introduce **`src/pipeline.py`** as the single orchestration facade that today is duplicated in `_translate_file_content()` and HTTP handlers. API, CLI, and SSE jobs all call `translate_markdown(content, TranslateOptions)`; `translator.translate_segments()` receives optional hooks but knows nothing about HTTP, ZIP, or SSE.
 
 **Major components:**
+
 1. **`pipeline.py`** — Orchestrates parser → memory.partition → glossary pre/post → translator → memory.store → reassemble → optional validator
 2. **`memory.py`** — SQLite lookup/store keyed on **pre-glossary** segment text; WAL mode
 3. **`glossary.py`** — YAML rules; OpenAI prompt injection + DeepL placeholder wrap/restore
@@ -131,24 +136,26 @@ Based on combined research, adopt NOTEBOOK phases A→E with a **Pre-A hardening
 ### Research Flags
 
 Phases likely needing `/gsd-research-phase` during planning:
+
 - **Phase B:** Anchor/slug reconciliation and frontmatter selective parsing — sparse single-pattern docs; may need spike on GitHub-slug rules
 - **Phase C:** SSE job lifecycle (cancel, disconnect cleanup, partial ZIP) — MEDIUM confidence patterns, not yet in repo
 - **Phase D:** Multi-target concurrency + rate limits × N languages — integration research on shared TM keys
 - **Phase E:** Watch debounce + review segment state — filesystem edge cases
 
 Phases with standard patterns (skip deep research):
+
 - **Phase A:** Typer CLI, SQLite TM, YAML glossary — well-documented, stack research HIGH confidence
 - **Phase A (pipeline refactor):** Facade/orchestration — codebase-specific but pattern is established in ARCHITECTURE.md
 - **Phase B (validator v1):** Regex/count checks — stdlib-only, NOTEBOOK §6 scope clear
 
 ## Confidence Assessment
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | HIGH | Official FastAPI SSE, Typer, uv Docker docs; brownfield baseline verified |
-| Features | HIGH (table stakes) / MEDIUM (differentiator ranking) | Codebase + NOTEBOOK + industry blogs; not formal market study |
-| Architecture | HIGH | Code audit of `main.py`, `parser.py`, `translator.py`; pipeline contract proposed with clear boundaries |
-| Pitfalls | HIGH | Repo `CONCERNS.md` + industry sources; phase mapping explicit |
+| Area         | Confidence                                            | Notes                                                                                                   |
+| ------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Stack        | HIGH                                                  | Official FastAPI SSE, Typer, uv Docker docs; brownfield baseline verified                               |
+| Features     | HIGH (table stakes) / MEDIUM (differentiator ranking) | Codebase + NOTEBOOK + industry blogs; not formal market study                                           |
+| Architecture | HIGH                                                  | Code audit of `main.py`, `parser.py`, `translator.py`; pipeline contract proposed with clear boundaries |
+| Pitfalls     | HIGH                                                  | Repo `CONCERNS.md` + industry sources; phase mapping explicit                                           |
 
 **Overall confidence:** HIGH
 
@@ -163,6 +170,7 @@ Phases with standard patterns (skip deep research):
 ## Sources
 
 ### Primary (HIGH confidence)
+
 - `.planning/PROJECT.md`, `NOTEBOOK.md` — scope, phases, requirements
 - `.planning/codebase/CONCERNS.md`, `ARCHITECTURE.md` — brownfield debt and boundaries
 - [FastAPI SSE tutorial](https://fastapi.tiangolo.com/tutorial/server-sent-events/) — EventSourceResponse
@@ -172,15 +180,18 @@ Phases with standard patterns (skip deep research):
 - [Azure AI glossaries](https://github.com/MicrosoftDocs/azure-ai-docs/blob/main/articles/ai-services/translator/document-translation/how-to-guides/create-use-glossaries.md)
 
 ### Secondary (MEDIUM confidence)
+
 - FoundryL10n, TransDuck, rosetta-mark, i18n-translator-sync — local-first TM and MD tool patterns
 - MetalGlot, Lara, OpenL blogs — MD localization table stakes
 - [Azure Feeds MD pipeline hardening](https://azurefeeds.com/2026/04/30/fixing-broken-markdown-in-ai-translation-hardening-a-production-pipeline/) — chunking, atomic fences
 - [GenAIScript continuous translations](https://microsoft.github.io/genaiscript/blog/continuous-translations/) — URL validation
 
 ### Tertiary (LOW confidence)
+
 - glossboss-labs/glossboss — CAT patterns analog, not MD-specific
 
 ### Detailed research files
+
 - `.planning/research/STACK.md`
 - `.planning/research/FEATURES.md`
 - `.planning/research/ARCHITECTURE.md`

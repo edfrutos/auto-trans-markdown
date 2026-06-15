@@ -41,6 +41,7 @@ def make_key(text: str, source_lang: str | None, target_lang: str) -> str:
 ```
 
 **API surface (`memory.py`):**
+
 - `TranslationMemory(db_path: Path)` context manager or lazy init
 - `lookup(items: list[tuple[int, str]], source_lang, target_lang) -> tuple[dict[int, str], list[tuple[int, str]]]` — returns (hits, misses)
 - `store(entries: list[tuple[str, str, str, str, str]])` — batch insert/replace (hash, source_text, source_lang, target_lang, translated_text)
@@ -70,19 +71,21 @@ pairs:
 ```
 
 **Rules:**
+
 - `do_not_translate`: case-sensitive substring match on segment text before provider call; wrap matches to preserve literal (DeepL placeholders; OpenAI instruction).
 - `pairs`: keyed by `{source}-{target}` where source may be `auto` for any detected source.
 - Longest-match-first when applying replacements to avoid partial overlaps.
 - Empty file or missing file → glossary disabled (no error); log info once.
 
 **OpenAI integration:** Append to batch context:
-```
+```text
 GLOSSARY RULES (mandatory):
 - Do NOT translate: API Gateway, MarkDown Auto Translator
 - en→es: "dashboard" → "panel"; "piece of cake" → "pan comido"
 ```
 
 **DeepL integration:**
+
 1. Pre: replace terms with `⟦GLO0⟧`, `⟦GLO1⟧`, …; store mapping.
 2. Translate segment with placeholders.
 3. Post: replace placeholders with fixed translation or original (DNT).
@@ -162,11 +165,11 @@ md-translate serve
 
 ## API Additions (main.py)
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| DELETE | `/api/memory` | Clear TM (TM-03) |
-| GET | `/api/glossary` | Read glossary.yaml (GLOS-02) |
-| PUT | `/api/glossary` | Write glossary.yaml (GLOS-02) |
+| Method   | Path            | Purpose                       |
+| -------- | --------------- | ----------------------------- |
+| DELETE   | `/api/memory`   | Clear TM (TM-03)              |
+| GET      | `/api/glossary` | Read glossary.yaml (GLOS-02)  |
+| PUT      | `/api/glossary` | Write glossary.yaml (GLOS-02) |
 
 Existing translate routes unchanged in contract; internally use pipeline.
 
@@ -174,24 +177,24 @@ Existing translate routes unchanged in contract; internally use pipeline.
 
 ## Security Considerations
 
-| Area | Risk | Mitigation |
-|------|------|------------|
-| glossary.yaml PUT | Path traversal / YAML bombs | Write only to resolved project glossary path; `safe_load`; size limit 256KB |
-| TM DB | Local data leakage | `data/` gitignored; no expose via static mount |
-| CLI dir/batch | Arbitrary file read | Resolve paths; skip symlinks outside root optional |
-| DeepL placeholders | Placeholder leaked in output | Post-process restore in finally block |
+| Area               | Risk                         | Mitigation                                                                  |
+| ------------------ | ---------------------------- | --------------------------------------------------------------------------- |
+| glossary.yaml PUT  | Path traversal / YAML bombs  | Write only to resolved project glossary path; `safe_load`; size limit 256KB |
+| TM DB              | Local data leakage           | `data/` gitignored; no expose via static mount                              |
+| CLI dir/batch      | Arbitrary file read          | Resolve paths; skip symlinks outside root optional                          |
+| DeepL placeholders | Placeholder leaked in output | Post-process restore in finally block                                       |
 
 ---
 
 ## Testing Strategy
 
-| Module | Tests |
-|--------|-------|
+| Module        | Tests                                                           |
+| ------------- | --------------------------------------------------------------- |
 | `pipeline.py` | Unit: dry-run, delegates to parser/translator; mock TM/glossary |
-| `memory.py` | Unit: lookup/store/clear/hash normalization; temp DB |
-| `glossary.py` | Unit: DNT, pair rules, OpenAI prompt block, DeepL wrap/restore |
-| `cli.py` | Typer `CliRunner`: file --dry-run, memory clear, exit codes |
-| Integration | API uses pipeline; glossary applied in POST /api/translate |
+| `memory.py`   | Unit: lookup/store/clear/hash normalization; temp DB            |
+| `glossary.py` | Unit: DNT, pair rules, OpenAI prompt block, DeepL wrap/restore  |
+| `cli.py`      | Typer `CliRunner`: file --dry-run, memory clear, exit codes     |
+| Integration   | API uses pipeline; glossary applied in POST /api/translate      |
 
 Extend `tests/conftest.py` with `tmp_glossary`, `tmp_memory_db` fixtures.
 
@@ -210,15 +213,15 @@ Optional for CLI UX: `rich` (Typer default extra) — use if already pulled tran
 
 ## Architectural Responsibility Map
 
-| Module | Owns |
-|--------|------|
-| `parser.py` | Segmentation only — NO glossary/TM |
-| `translator.py` | Provider batches — optional glossary prompt hook via caller |
-| `pipeline.py` | Orchestration — ONLY place that sequences TM + glossary + translate |
-| `memory.py` | SQLite persistence |
-| `glossary.py` | YAML load/save/apply |
-| `main.py` | HTTP routing, static, decode uploads |
-| `cli.py` | Typer commands, exit codes |
+| Module          | Owns                                                                |
+| --------------- | ------------------------------------------------------------------- |
+| `parser.py`     | Segmentation only — NO glossary/TM                                  |
+| `translator.py` | Provider batches — optional glossary prompt hook via caller         |
+| `pipeline.py`   | Orchestration — ONLY place that sequences TM + glossary + translate |
+| `memory.py`     | SQLite persistence                                                  |
+| `glossary.py`   | YAML load/save/apply                                                |
+| `main.py`       | HTTP routing, static, decode uploads                                |
+| `cli.py`        | Typer commands, exit codes                                          |
 
 ---
 

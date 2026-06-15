@@ -12,31 +12,37 @@
 ### Locked Decisions
 
 **Dev Workflow**
+
 - D-01: `build-python-bundle.sh` se invoca manualmente una vez antes de compilar en Xcode. No hay Xcode build phase automática.
 - D-02: El directorio `python-bundle/` en la raíz del repo va en `.gitignore` — no se versiona. README documenta el prerequisito.
 - D-03: El script usa `uv pip install --target python-bundle/lib/python3.11/site-packages/` instalando desde `uv.lock` — absorbe los requisitos LOCK-01..05 de la fase 8 diferida.
 
 **UI de Arranque**
+
 - D-04: Durante el startup del servidor se muestra una ventana splash SwiftUI minimalista: sin barra de título, `ProgressView` giratorio, texto "Iniciando..." centrado. Desaparece cuando el health check pasa.
 - D-05: Si el health check falla tras los 15 s de timeout, se muestra un `.alert()` SwiftUI con dos botones: "Reintentar" (re-lanza el proceso) y "Salir" (`NSApp.terminate(nil)`).
 - D-06: Diseño visual de la splash a criterio del implementador — coherente con macOS nativo.
 
 **Scaffold Swift (Phase 9 mínimo)**
+
 - D-07: Phase 9 crea solo la estructura mínima: `@main App` struct + `ServerManager` (actor o class) + `SplashView` como `WindowGroup` principal.
 - D-08: Proyecto en `macos/MDTranslator.xcodeproj` — formato `.xcodeproj` tradicional, compatible con Xcode 26.5.
 - D-09: App name: "MD Translator" · Bundle ID: `com.edefrutos.md-translator` · Deployment target: macOS 14.0.
 
 **Estructura del .app Bundle**
+
 - D-10: Intérprete Python en `Contents/Resources/python/` — accesible via `Bundle.main.resourceURL!.appendingPathComponent("python")`.
 - D-11: Código fuente backend en `Contents/Resources/backend/` — Swift arranca uvicorn con `currentDirectoryURL = Resources/backend/`.
 - D-12: Dependencias Python (site-packages) dentro del intérprete: `Resources/python/lib/python3.11/site-packages/`. No se usa carpeta separada ni `PYTHONPATH` extra.
 
 ### Claude's Discretion
+
 - Tamaño exacto y padding de la ventana splash (sugerido: ~400×220 pt, sin barra de título, `NSWindowStyleMask.borderless`).
 - Nombre del actor Swift para gestión del servidor (`ServerManager`, `PythonServerManager`, etc.).
 - Patrón exacto de discover-port (bind socket a 0 → leer puerto → cerrar socket → pasar `--port N` a uvicorn).
 
 ### Deferred Ideas (OUT OF SCOPE)
+
 - `NavigationSplitView` completo con sidebar → Phase 10
 - Gestión de API keys (Keychain, SecureField en Settings) → Phase 10
 - Notificaciones de batch, glosario, TM → Phase 11
@@ -51,13 +57,13 @@
 <phase_requirements>
 ## Phase Requirements
 
-| ID | Description | Research Support |
-|----|-------------|------------------|
-| BUNDLE-01 | Bundle .app incluye CPython 3.11.15 (install_only_stripped, release 20260510) y todas las dependencias instaladas en build time | URL verificada via GitHub API; uv export → uv pip install --target pipeline verificado en local |
-| BUNDLE-02 | Script `build-python-bundle.sh` verifica que `import fastapi` funciona desde la ruta del bundle (smoke test) | Patrón de smoke test documentado; exit code no-cero en fallo |
-| BUNDLE-03 | Servidor uvicorn arranca en puerto libre asignado por kernel (`bind(port:0)`), pasado como `--port` | Patrón BSD socket Darwin documentado; `getsockname()` para leer el puerto |
-| BUNDLE-04 | Health check `GET /api/languages` con retry cada 500 ms y timeout de 15 s antes de mostrar UI principal | `URLSession` async/await con `Task.sleep` en bucle; endpoint verificado en `src/main.py` |
-| BUNDLE-05 | Al cerrar la app, proceso Python recibe SIGTERM; si no termina en 5 s, recibe SIGKILL | `process.interrupt()` = SIGINT (aceptable para uvicorn); `process.terminate()` = SIGKILL; pitfall de Force Quit documentado |
+| ID        | Description                                                                                                                     | Research Support                                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| BUNDLE-01 | Bundle .app incluye CPython 3.11.15 (install_only_stripped, release 20260510) y todas las dependencias instaladas en build time | URL verificada via GitHub API; uv export → uv pip install --target pipeline verificado en local                             |
+| BUNDLE-02 | Script `build-python-bundle.sh` verifica que `import fastapi` funciona desde la ruta del bundle (smoke test)                    | Patrón de smoke test documentado; exit code no-cero en fallo                                                                |
+| BUNDLE-03 | Servidor uvicorn arranca en puerto libre asignado por kernel (`bind(port:0)`), pasado como `--port`                             | Patrón BSD socket Darwin documentado; `getsockname()` para leer el puerto                                                   |
+| BUNDLE-04 | Health check `GET /api/languages` con retry cada 500 ms y timeout de 15 s antes de mostrar UI principal                         | `URLSession` async/await con `Task.sleep` en bucle; endpoint verificado en `src/main.py`                                    |
+| BUNDLE-05 | Al cerrar la app, proceso Python recibe SIGTERM; si no termina en 5 s, recibe SIGKILL                                           | `process.interrupt()` = SIGINT (aceptable para uvicorn); `process.terminate()` = SIGKILL; pitfall de Force Quit documentado |
 
 </phase_requirements>
 
@@ -79,17 +85,17 @@ La capa Swift usa exclusivamente APIs del stdlib de macOS (`Foundation.Process`,
 
 ## Architectural Responsibility Map
 
-| Capability | Primary Tier | Secondary Tier | Rationale |
-|------------|-------------|----------------|-----------|
-| Descarga y extracción de CPython | Build script (shell) | — | Ocurre en build time, no en runtime |
-| Instalación de dependencias Python | Build script (shell) | — | `uv export → uv pip install --target` en build time |
-| Smoke test `import fastapi` | Build script (shell) | — | Verificación de correctitud del bundle antes del build Swift |
-| Descubrimiento de puerto libre | Swift (Darwin BSD sockets) | — | Ocurre en runtime antes de lanzar el subprocess |
-| Ciclo de vida del subprocess Python | Swift `ServerManager` | — | Arranque, health check y shutdown son responsabilidad de la app Swift |
-| Splash screen / estado de arranque | SwiftUI `SplashView` | — | UI que refleja el estado del `ServerManager` |
-| Health check HTTP | Swift `ServerManager` | — | `URLSession` async/await llamado desde el actor de gestión |
-| Shutdown graceful (SIGTERM→SIGKILL) | Swift `ServerManager` | AppKit delegate | `process.interrupt()` + timer + `process.terminate()` |
-| Configuración del servidor (HOST, PORT) | Swift → Python env vars | — | `Process.environment` inyecta `HOST` y `PORT`; no hay `.env` en el bundle |
+| Capability                              | Primary Tier               | Secondary Tier   | Rationale                                                                 |
+| --------------------------------------- | -------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| Descarga y extracción de CPython        | Build script (shell)       | —                | Ocurre en build time, no en runtime                                       |
+| Instalación de dependencias Python      | Build script (shell)       | —                | `uv export → uv pip install --target` en build time                       |
+| Smoke test `import fastapi`             | Build script (shell)       | —                | Verificación de correctitud del bundle antes del build Swift              |
+| Descubrimiento de puerto libre          | Swift (Darwin BSD sockets) | —                | Ocurre en runtime antes de lanzar el subprocess                           |
+| Ciclo de vida del subprocess Python     | Swift `ServerManager`      | —                | Arranque, health check y shutdown son responsabilidad de la app Swift     |
+| Splash screen / estado de arranque      | SwiftUI `SplashView`       | —                | UI que refleja el estado del `ServerManager`                              |
+| Health check HTTP                       | Swift `ServerManager`      | —                | `URLSession` async/await llamado desde el actor de gestión                |
+| Shutdown graceful (SIGTERM→SIGKILL)     | Swift `ServerManager`      | AppKit delegate  | `process.interrupt()` + timer + `process.terminate()`                     |
+| Configuración del servidor (HOST, PORT) | Swift → Python env vars    | —                | `Process.environment` inyecta `HOST` y `PORT`; no hay `.env` en el bundle |
 
 ---
 
@@ -97,15 +103,15 @@ La capa Swift usa exclusivamente APIs del stdlib de macOS (`Foundation.Process`,
 
 ### Core — Phase 9 (sin dependencias Swift de terceros)
 
-| Componente | Versión | Propósito | Por qué estándar |
-|------------|---------|-----------|-----------------|
-| python-build-standalone | release 20260510 | CPython 3.11.15 portable para embedding en .app | Redistribuible, relocatable, mantenido por Astral (autores de uv) |
-| uv | 0.11.4 (local), 0.11.18 (latest) | Exportar lockfile + instalar deps en --target | Herramienta canónica; soporta --target para instalación fuera de venv |
-| Foundation.Process | stdlib macOS | Lanzar/terminar subprocess uvicorn | Sin dependencias; parte del SDK de macOS |
-| URLSession | stdlib macOS | Health check HTTP al endpoint `/api/languages` | API async/await nativa macOS 12+ |
-| SwiftUI | stdlib macOS 14+ | SplashView, ProgressView, .alert() | Deployment target decidido: macOS 14.0 |
-| AppKit (NSApplicationDelegateAdaptor) | stdlib macOS | applicationWillTerminate para shutdown graceful | Necesario para captura fiable de terminación |
-| Darwin BSD sockets | stdlib macOS | Descubrimiento de puerto libre (bind a 0 + getsockname) | Sin dependencias; patrón canónico de puerto dinámico |
+| Componente                            | Versión                          | Propósito                                               | Por qué estándar                                                      |
+| ------------------------------------- | -------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------- |
+| python-build-standalone               | release 20260510                 | CPython 3.11.15 portable para embedding en .app         | Redistribuible, relocatable, mantenido por Astral (autores de uv)     |
+| uv                                    | 0.11.4 (local), 0.11.18 (latest) | Exportar lockfile + instalar deps en --target           | Herramienta canónica; soporta --target para instalación fuera de venv |
+| Foundation.Process                    | stdlib macOS                     | Lanzar/terminar subprocess uvicorn                      | Sin dependencias; parte del SDK de macOS                              |
+| URLSession                            | stdlib macOS                     | Health check HTTP al endpoint `/api/languages`          | API async/await nativa macOS 12+                                      |
+| SwiftUI                               | stdlib macOS 14+                 | SplashView, ProgressView, .alert()                      | Deployment target decidido: macOS 14.0                                |
+| AppKit (NSApplicationDelegateAdaptor) | stdlib macOS                     | applicationWillTerminate para shutdown graceful         | Necesario para captura fiable de terminación                          |
+| Darwin BSD sockets                    | stdlib macOS                     | Descubrimiento de puerto libre (bind a 0 + getsockname) | Sin dependencias; patrón canónico de puerto dinámico                  |
 
 ### Dependencias Python del bundle (de uv.lock existente)
 
@@ -129,12 +135,12 @@ uv pip install \
 
 ### Alternativas Consideradas
 
-| En lugar de | Podría usarse | Tradeoff |
-|-------------|--------------|----------|
-| `uv export → uv pip install --target` | `uv sync --python <path>` en virtualenv | `uv sync` crea un `.venv` completo; --target instala directo en site-packages del intérprete embebido. D-12 especifica site-packages dentro del intérprete. |
-| `Foundation.Process` (SIGINT via `interrupt()`) | `SIGTERM` explícito via `kill(pid, SIGTERM)` | `process.interrupt()` envía SIGINT; uvicorn maneja SIGINT para shutdown graceful. SIGTERM también funciona pero requiere `kill()` con C interop en Swift. |
-| BSD socket `bind(0)` + `getsockname()` | Puerto fijo (ej. 8765) | Puerto fijo puede estar ocupado; el kernel garantiza un puerto libre. |
-| `@MainActor class ServerManager` | `actor ServerManager` | Un actor custom requiere hop de concurrencia para actualizar `@Published`; `@MainActor class` actualiza la UI directamente. |
+| En lugar de                                     | Podría usarse                                | Tradeoff                                                                                                                                                    |
+| ----------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `uv export → uv pip install --target`           | `uv sync --python <path>` en virtualenv      | `uv sync` crea un `.venv` completo; --target instala directo en site-packages del intérprete embebido. D-12 especifica site-packages dentro del intérprete. |
+| `Foundation.Process` (SIGINT via `interrupt()`) | `SIGTERM` explícito via `kill(pid, SIGTERM)` | `process.interrupt()` envía SIGINT; uvicorn maneja SIGINT para shutdown graceful. SIGTERM también funciona pero requiere `kill()` con C interop en Swift.   |
+| BSD socket `bind(0)` + `getsockname()`          | Puerto fijo (ej. 8765)                       | Puerto fijo puede estar ocupado; el kernel garantiza un puerto libre.                                                                                       |
+| `@MainActor class ServerManager`                | `actor ServerManager`                        | Un actor custom requiere hop de concurrencia para actualizar `@Published`; `@MainActor class` actualiza la UI directamente.                                 |
 
 ---
 
@@ -142,10 +148,10 @@ uv pip install \
 
 > Phase 9 no instala paquetes Swift externos. Los paquetes Python ya están en el `uv.lock` existente (auditados en Phase 8). Las únicas herramientas de build son `uv` y la descarga directa de GitHub Releases.
 
-| Herramienta | Registro/Fuente | Antigüedad | Descargas | Repo fuente | slopcheck | Disposición |
-|------------|----------------|-----------|-----------|-------------|-----------|-------------|
-| `uv` (system tool) | PyPI | ~2 años | 15M+/sem | github.com/astral-sh/uv | [OK] | Aprobado |
-| python-build-standalone (tarball) | GitHub Releases astral-sh | ~5 años (fork de indygreg) | N/A (tarball) | github.com/astral-sh/python-build-standalone | N/A | Aprobado — descarga directa verificada via GitHub API |
+| Herramienta                       | Registro/Fuente           | Antigüedad                 | Descargas     | Repo fuente                                  | slopcheck   | Disposición                                           |
+| --------------------------------- | ------------------------- | -------------------------- | ------------- | -------------------------------------------- | ----------- | ----------------------------------------------------- |
+| `uv` (system tool)                | PyPI                      | ~2 años                    | 15M+/sem      | github.com/astral-sh/uv                      | [OK]        | Aprobado                                              |
+| python-build-standalone (tarball) | GitHub Releases astral-sh | ~5 años (fork de indygreg) | N/A (tarball) | github.com/astral-sh/python-build-standalone | N/A         | Aprobado — descarga directa verificada via GitHub API |
 
 **Paquetes eliminados por slopcheck [SLOP]:** ninguno
 **Paquetes marcados como sospechosos [SUS]:** ninguno
@@ -158,7 +164,7 @@ uv pip install \
 
 ### System Architecture Diagram
 
-```
+```text
 BUILD TIME (manual, una vez):
 ┌─────────────────────────────────────────────────────────────────┐
 │ build-python-bundle.sh                                          │
@@ -226,7 +232,7 @@ RUNTIME (app arranca):
 
 ### Recommended Project Structure
 
-```
+```text
 auto-trans-markdown/            ← repo root
 ├── scripts/
 │   └── build-python-bundle.sh  ← NUEVO (Phase 9)
@@ -542,12 +548,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 ## Don't Hand-Roll
 
-| Problema | No construir | Usar en su lugar | Por qué |
-|----------|-------------|-----------------|---------|
-| Python standalone redistribuible | Script propio de compilación de CPython | python-build-standalone release 20260510 | La compilación de CPython con todas las dependencias nativas y patches de relocation tarda horas y requiere toolchain específico |
-| Instalación de dependencias en target dir | Script pip manual con hardcode de versiones | `uv export → uv pip install --target` | uv garantiza reproducibilidad exacta desde el lockfile; pip manual puede resolver versiones distintas |
-| Descubrimiento de puerto libre | Iterar puertos (8765, 8766...) hasta encontrar uno libre | BSD socket `bind(0) + getsockname()` | El incremento manual tiene race conditions y puede agotarse; el kernel garantiza un puerto libre |
-| Señal de terminación a subprocess | `kill(pid, 15)` vía C interop | `process.interrupt()` seguido de `process.terminate()` | `Foundation.Process` encapsula el interop C; `interrupt()` = SIGINT, `terminate()` = SIGKILL |
+| Problema                                  | No construir                                             | Usar en su lugar                                       | Por qué                                                                                                                          |
+| ----------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Python standalone redistribuible          | Script propio de compilación de CPython                  | python-build-standalone release 20260510               | La compilación de CPython con todas las dependencias nativas y patches de relocation tarda horas y requiere toolchain específico |
+| Instalación de dependencias en target dir | Script pip manual con hardcode de versiones              | `uv export → uv pip install --target`                  | uv garantiza reproducibilidad exacta desde el lockfile; pip manual puede resolver versiones distintas                            |
+| Descubrimiento de puerto libre            | Iterar puertos (8765, 8766...) hasta encontrar uno libre | BSD socket `bind(0) + getsockname()`                   | El incremento manual tiene race conditions y puede agotarse; el kernel garantiza un puerto libre                                 |
+| Señal de terminación a subprocess         | `kill(pid, 15)` vía C interop                            | `process.interrupt()` seguido de `process.terminate()` | `Foundation.Process` encapsula el interop C; `interrupt()` = SIGINT, `terminate()` = SIGKILL                                     |
 
 **Key insight:** El valor de python-build-standalone no es solo "Python portátil" sino que ya tiene patcheados los paths de relocation en los binarios ELF/Mach-O. Intentar hacer esto manualmente con `install_name_tool` en un Python de Homebrew es frágil y no reproducible.
 
@@ -601,6 +607,7 @@ tar xzf cpython-3.11.15+...tar.gz -C python-bundle/ --strip-components=1
 **Por qué ocurre:** SIGKILL no puede ser capturado ni manejado por ningún proceso. `applicationWillTerminate` solo se llama en terminaciones graciosas (Cmd+Q, `NSApp.terminate(nil)`).
 
 **Cómo evitar:** Estrategia en dos niveles:
+
 1. Al arrancar la app, escribir el PID del proceso Python en un archivo temporal (`/tmp/md-translator-python.pid`).
 2. Al arrancar la app (en `ServerManager.init`), leer ese archivo y enviar SIGKILL al PID anterior si el proceso aún existe.
 
@@ -716,15 +723,16 @@ WindowGroup {
 
 ## State of the Art
 
-| Enfoque antiguo | Enfoque actual | Cuándo cambió | Impacto |
-|-----------------|----------------|---------------|---------|
-| PyInstaller para empaquetar apps Python | python-build-standalone + subprocess Swift | ~2022-2023 | PyInstaller congela bytecode; python-build-standalone mantiene el intérprete completo como servidor real |
-| Puerto fijo hardcodeado | `bind(0)` + kernel port | — | Evita conflictos con otros servidores locales (port 8000, dev tools) |
-| `ObservableObject` + `@Published` | `@Observable` macro | macOS 14.0 / Swift 5.9 | `@Observable` es más ergonómico y tiene mejor rendimiento; pero `@ObservableObject` + `@Published` sigue siendo válido y compatible con macOS 13. Como deployment target es 14.0, ambos son posibles. |
-| ScenePhase para lifecycle macOS | NSApplicationDelegateAdaptor | — | ScenePhase.background es infiable en macOS para cleanup crítico |
-| `Process.terminationHandler` sin `@Sendable` | `terminationHandler` con `@Sendable` + `Task { @MainActor in }` | Swift 6 | Requerido en Xcode 26.5 con Swift 6 strict concurrency |
+| Enfoque antiguo                              | Enfoque actual                                                  | Cuándo cambió          | Impacto                                                                                                                                                                                               |
+| -------------------------------------------- | --------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PyInstaller para empaquetar apps Python      | python-build-standalone + subprocess Swift                      | ~2022-2023             | PyInstaller congela bytecode; python-build-standalone mantiene el intérprete completo como servidor real                                                                                              |
+| Puerto fijo hardcodeado                      | `bind(0)` + kernel port                                         | —                      | Evita conflictos con otros servidores locales (port 8000, dev tools)                                                                                                                                  |
+| `ObservableObject` + `@Published`            | `@Observable` macro                                             | macOS 14.0 / Swift 5.9 | `@Observable` es más ergonómico y tiene mejor rendimiento; pero `@ObservableObject` + `@Published` sigue siendo válido y compatible con macOS 13. Como deployment target es 14.0, ambos son posibles. |
+| ScenePhase para lifecycle macOS              | NSApplicationDelegateAdaptor                                    | —                      | ScenePhase.background es infiable en macOS para cleanup crítico                                                                                                                                       |
+| `Process.terminationHandler` sin `@Sendable` | `terminationHandler` con `@Sendable` + `Task { @MainActor in }` | Swift 6                | Requerido en Xcode 26.5 con Swift 6 strict concurrency                                                                                                                                                |
 
 **Deprecated/outdated:**
+
 - `NSTask`: Renombrado a `Process` en macOS 10.10. No usar `NSTask`.
 - `process.launchPath`: Deprecado en macOS 10.13+. Usar `process.executableURL` (tipo `URL`).
 - `process.launch()`: Deprecado en macOS 10.13+. Usar `process.run()` que lanza `CocoaError` en caso de fallo.
@@ -749,15 +757,15 @@ WindowGroup {
 
 ## Environment Availability
 
-| Dependencia | Requerida por | Disponible | Versión | Fallback |
-|-------------|--------------|-----------|---------|---------|
-| Xcode | Build del proyecto Swift | ✓ | 26.5 (Build 17F42) | — |
-| Swift | Compilación Swift | ✓ | 6.3.2 | — |
-| uv | Build script (uv export) | ✓ | 0.11.4 | Actualizar: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| curl | Build script (descarga tarball) | ✓ | stdlib macOS | — |
-| Python 3.11+ (sistema) | NO requerido en runtime | N/A | Sistema: 3.14.3 | N/A — el bundle es autocontenido |
-| macOS 14.0+ (desarrollo) | SwiftUI `.defaultSize`, deployment target | ✓ | 26.5.1 (superset) | — |
-| Internet (GitHub Releases) | Descarga tarball CPython | ✓ | — | Cachear tarball localmente: `export PBS_CACHE=~/Downloads/cpython-standalone.tar.gz` |
+| Dependencia                | Requerida por                             | Disponible  | Versión            | Fallback                                                                             |
+| -------------------------- | ----------------------------------------- | ----------- | ------------------ | ------------------------------------------------------------------------------------ |
+| Xcode                      | Build del proyecto Swift                  | ✓           | 26.5 (Build 17F42) | —                                                                                    |
+| Swift                      | Compilación Swift                         | ✓           | 6.3.2              | —                                                                                    |
+| uv                         | Build script (uv export)                  | ✓           | 0.11.4             | Actualizar con el instalador oficial de Astral (`curl -LsSf …`, luego `sh`)          |
+| curl                       | Build script (descarga tarball)           | ✓           | stdlib macOS       | —                                                                                    |
+| Python 3.11+ (sistema)     | NO requerido en runtime                   | N/A         | Sistema: 3.14.3    | N/A — el bundle es autocontenido                                                     |
+| macOS 14.0+ (desarrollo)   | SwiftUI `.defaultSize`, deployment target | ✓           | 26.5.1 (superset)  | —                                                                                    |
+| Internet (GitHub Releases) | Descarga tarball CPython                  | ✓           | —                  | Cachear tarball localmente: `export PBS_CACHE=~/Downloads/cpython-standalone.tar.gz` |
 
 **Missing dependencies with no fallback:** ninguna — todas las dependencias están disponibles.
 
@@ -771,24 +779,24 @@ WindowGroup {
 
 ### Test Framework
 
-| Propiedad | Valor |
-|-----------|-------|
-| Framework | pytest 8.0+ (existente en `pyproject.toml [test]`) |
-| Archivo de config | `pyproject.toml [tool.pytest.ini_options]` |
-| Comando rápido | `pytest tests/ -q -x` |
-| Suite completa | `pytest tests/ -v` |
+| Propiedad         | Valor                                              |
+| ----------------- | -------------------------------------------------- |
+| Framework         | pytest 8.0+ (existente en `pyproject.toml [test]`) |
+| Archivo de config | `pyproject.toml [tool.pytest.ini_options]`         |
+| Comando rápido    | `pytest tests/ -q -x`                              |
+| Suite completa    | `pytest tests/ -v`                                 |
 
 **Nota:** Phase 9 es principalmente código Swift y un script bash — no código Python nuevo. Los tests Python existentes (148 tests) deben seguir pasando sin cambios. Los tests de la capa Swift son manuales en Phase 9 (verificación de smoke test, arranque del servidor, health check).
 
 ### Phase Requirements → Test Map
 
-| Req ID | Comportamiento | Tipo de test | Comando automatizable | Archivo existe? |
-|--------|---------------|-------------|----------------------|-----------------|
-| BUNDLE-01 | CPython 3.11.15 extraído en python-bundle/ | Script bash (build-python-bundle.sh) | `./scripts/build-python-bundle.sh && test -f python-bundle/bin/python3` | ❌ Wave 0 |
-| BUNDLE-02 | `import fastapi` funciona desde el bundle | Smoke test integrado en build script | `python-bundle/bin/python3 -c "import fastapi"` | ❌ Wave 0 (incluido en build script) |
-| BUNDLE-03 | Puerto libre asignado por kernel | Manual (Activity Monitor) | N/A — verificación visual en macOS | N/A |
-| BUNDLE-04 | Health check `GET /api/languages` responde en < 15s | Manual (app Xcode) | N/A — verificación visual | N/A |
-| BUNDLE-05 | Proceso Python desaparece en < 5s tras cerrar app | Manual (Activity Monitor) | N/A — verificación visual | N/A |
+| Req ID    | Comportamiento                                      | Tipo de test                         | Comando automatizable                                                   | Archivo existe?                     |
+| --------- | --------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------- | ----------------------------------- |
+| BUNDLE-01 | CPython 3.11.15 extraído en python-bundle/          | Script bash (build-python-bundle.sh) | `./scripts/build-python-bundle.sh && test -f python-bundle/bin/python3` | ❌ Wave 0                            |
+| BUNDLE-02 | `import fastapi` funciona desde el bundle           | Smoke test integrado en build script | `python-bundle/bin/python3 -c "import fastapi"`                         | ❌ Wave 0 (incluido en build script) |
+| BUNDLE-03 | Puerto libre asignado por kernel                    | Manual (Activity Monitor)            | N/A — verificación visual en macOS                                      | N/A                                 |
+| BUNDLE-04 | Health check `GET /api/languages` responde en < 15s | Manual (app Xcode)                   | N/A — verificación visual                                               | N/A                                 |
+| BUNDLE-05 | Proceso Python desaparece en < 5s tras cerrar app   | Manual (Activity Monitor)            | N/A — verificación visual                                               | N/A                                 |
 
 ### Sampling Rate
 
@@ -812,22 +820,22 @@ WindowGroup {
 
 ### Applicable ASVS Categories
 
-| Categoría ASVS | Aplica | Control estándar |
-|----------------|--------|-----------------|
-| V2 Authentication | No (Phase 9 no tiene auth; solo health check local) | — |
-| V3 Session Management | No | — |
-| V4 Access Control | Parcial | Servidor bound a 127.0.0.1 exclusivamente — no expuesto a red |
-| V5 Input Validation | No (no hay entrada de usuario en Phase 9) | — |
-| V6 Cryptography | No | — |
+| Categoría ASVS        | Aplica                                              | Control estándar                                              |
+| --------------------- | --------------------------------------------------- | ------------------------------------------------------------- |
+| V2 Authentication     | No (Phase 9 no tiene auth; solo health check local) | —                                                             |
+| V3 Session Management | No                                                  | —                                                             |
+| V4 Access Control     | Parcial                                             | Servidor bound a 127.0.0.1 exclusivamente — no expuesto a red |
+| V5 Input Validation   | No (no hay entrada de usuario en Phase 9)           | —                                                             |
+| V6 Cryptography       | No                                                  | —                                                             |
 
 ### Known Threat Patterns
 
-| Patrón | STRIDE | Mitigación estándar |
-|--------|--------|-------------------|
-| Python subprocess escapa a la red | Elevation of Privilege | `--host 127.0.0.1` hardcodeado en args CLI — no depende de la variable de entorno `HOST` |
-| API keys en env vars visibles con `ps aux` | Information Disclosure | Phase 9 no inyecta API keys (no hay llaves en esta fase); diferido a Phase 10 con Keychain |
-| Proceso Python huérfano tras Force Quit | Denial of Service (puerto ocupado) | PID file pattern para limpiar al siguiente arranque |
-| Tarball de CPython comprometido | Tampering | Verificar checksum SHA256 del tarball (disponible en releases.json de python-build-standalone) |
+| Patrón                                     | STRIDE                             | Mitigación estándar                                                                            |
+| ------------------------------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Python subprocess escapa a la red          | Elevation of Privilege             | `--host 127.0.0.1` hardcodeado en args CLI — no depende de la variable de entorno `HOST`       |
+| API keys en env vars visibles con `ps aux` | Information Disclosure             | Phase 9 no inyecta API keys (no hay llaves en esta fase); diferido a Phase 10 con Keychain     |
+| Proceso Python huérfano tras Force Quit    | Denial of Service (puerto ocupado) | PID file pattern para limpiar al siguiente arranque                                            |
+| Tarball de CPython comprometido            | Tampering                          | Verificar checksum SHA256 del tarball (disponible en releases.json de python-build-standalone) |
 
 **Nota de seguridad sobre el tarball:** El build script actual no verifica el checksum SHA256 del tarball descargado. Para un uso personal/desarrollo (Phase 9) esto es aceptable. Para distribución (Phase 12), el `make dmg` debe verificar el checksum. [ASSUMED — la política de verificación no está especificada en las decisiones]
 
@@ -835,19 +843,20 @@ WindowGroup {
 
 ## Assumptions Log
 
-| # | Claim | Sección | Riesgo si es incorrecto |
-|---|-------|---------|------------------------|
-| A1 | El tarball `install_only_stripped` extrae en un subdirectorio `python/` que se elimina con `--strip-components=1` | Patrón 1 (build script) | El build script extrae en la ruta incorrecta; `bin/python3` no estaría en `$BUNDLE_DIR/bin/` |
-| A2 | uvicorn 0.48.0 (versión en uv.lock) responde a SIGINT con graceful shutdown en < 5s | Patrón 2 (ServerManager.stop) | El proceso Python no termina en 5 s → SIGKILL necesario de todas formas |
-| A3 | La race condition entre findFreePort() y bind de uvicorn es suficientemente improbable en loopback para ignorarse en Phase 9 | Patrón 3 (free port) | uvicorn falla al arrancar por puerto ya tomado; el terminationHandler lo detecta y el usuario puede reintentar |
-| A4 | El checksum SHA256 del tarball no necesita verificarse en el build script de Phase 9 (uso personal/desarrollo) | Security Domain | Tarball comprometido en tránsito/caché; riesgo bajo en desarrollo |
-| A5 | `PYTHONDONTWRITEBYTECODE=1` no incrementa el tiempo de arranque por encima del threshold de 15s en Apple Silicon | Pitfall 2 | El health check timeout se dispara antes de que el servidor esté listo |
+| #   | Claim                                                                                                                        | Sección                       | Riesgo si es incorrecto                                                                                        |
+| --- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| A1  | El tarball `install_only_stripped` extrae en un subdirectorio `python/` que se elimina con `--strip-components=1`            | Patrón 1 (build script)       | El build script extrae en la ruta incorrecta; `bin/python3` no estaría en `$BUNDLE_DIR/bin/`                   |
+| A2  | uvicorn 0.48.0 (versión en uv.lock) responde a SIGINT con graceful shutdown en < 5s                                          | Patrón 2 (ServerManager.stop) | El proceso Python no termina en 5 s → SIGKILL necesario de todas formas                                        |
+| A3  | La race condition entre findFreePort() y bind de uvicorn es suficientemente improbable en loopback para ignorarse en Phase 9 | Patrón 3 (free port)          | uvicorn falla al arrancar por puerto ya tomado; el terminationHandler lo detecta y el usuario puede reintentar |
+| A4  | El checksum SHA256 del tarball no necesita verificarse en el build script de Phase 9 (uso personal/desarrollo)               | Security Domain               | Tarball comprometido en tránsito/caché; riesgo bajo en desarrollo                                              |
+| A5  | `PYTHONDONTWRITEBYTECODE=1` no incrementa el tiempo de arranque por encima del threshold de 15s en Apple Silicon             | Pitfall 2                     | El health check timeout se dispara antes de que el servidor esté listo                                         |
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
+
 - GitHub API `astral-sh/python-build-standalone/releases/tags/20260510` — URL del asset, tamaño (25 MB), nombre exacto del artefacto
 - `developer.apple.com/documentation/foundation/process` — APIs de Foundation.Process (executableURL, arguments, environment, run, interrupt, terminate, terminationHandler)
 - `uv pip install --help` (ejecutado en local) — sintaxis exacta de `--target`, `-r`, `--python`
@@ -856,12 +865,14 @@ WindowGroup {
 - `src/main.py` — confirmación de puerto por defecto (5400), `run()` con `HOST`/`PORT`, `load_dotenv()` al importar
 
 ### Secondary (MEDIUM confidence)
+
 - `swiftlang/swift-corelibs-foundation/Sources/Foundation/Process.swift` — `terminationHandler` es `(@Sendable (Process) -> Void)?`; clase es `@unchecked Sendable`
 - `developer.apple.com/forums/thread/722574` (DTS Engineer) — recomendación explícita de BSD sockets sobre NWListener para free port
 - `github.com/jessesquires/jessesquires.com` (Jesse Squires) — ScenePhase es infiable en macOS; usar NSApplicationDelegateAdaptor
 - uvicorn GitHub discussions — SIGTERM/SIGINT handlers registrados para graceful shutdown
 
 ### Tertiary (LOW confidence)
+
 - Asunción sobre estructura del tarball (subdirectorio `python/`) basada en convención; no verificado descargando el archivo
 
 ---
@@ -869,6 +880,7 @@ WindowGroup {
 ## Metadata
 
 **Confidence breakdown:**
+
 - Standard stack: HIGH — python-build-standalone verificado via GitHub API; uv pipeline ejecutado en local; Foundation.Process documentado en Apple Docs
 - Architecture: HIGH — patrones derivados de documentación oficial + código existente del proyecto
 - Pitfalls: HIGH — Force Quit / applicationWillTerminate es comportamiento documentado de macOS; struct tarball es LOW (ver A1)

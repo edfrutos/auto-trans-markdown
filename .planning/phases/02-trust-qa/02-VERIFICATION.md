@@ -3,6 +3,7 @@ status: passed
 phase: 02-trust-qa
 verified: 2026-05-29
 requirements:
+
   - VAL-01
   - VAL-02
   - VAL-03
@@ -12,6 +13,7 @@ requirements:
   - FM-02
   - PREV-01
   - PREV-02
+
 ---
 
 # Phase 2 Verification
@@ -20,15 +22,15 @@ requirements:
 
 ## Must-haves
 
-| Criterio | Estado | Evidencia |
-|----------|--------|-----------|
-| Validador post-traducción (fences, links, images, inline, headings) | PASS | `src/validator.py`, `tests/test_validator.py` |
-| Informe validación en API JSON y ZIP lote | PASS | `TranslateResult.validation`, `{name}.validation.json` |
-| CLI `--strict` bloquea export en error | PASS | `tests/test_cli.py -k strict` |
-| Comentarios traducibles Python/JS/HTML | PASS | `src/parser.py`, `tests/test_parser.py` |
-| Frontmatter YAML protegido | PASS | `tests/test_parser.py -k frontmatter` |
-| Preview marked + DOMPurify | PASS | `static/js/app.js` `renderPreview`, CDN en `index.html` |
-| Panel Validación colapsable en UI | PASS | `#validation-section`, plan 02-05 |
+| Criterio                                                            | Estado   | Evidencia                                               |
+| ------------------------------------------------------------------- | -------- | ------------------------------------------------------- |
+| Validador post-traducción (fences, links, images, inline, headings) | PASS     | `src/validator.py`, `tests/test_validator.py`           |
+| Informe validación en API JSON y ZIP lote                           | PASS     | `TranslateResult.validation`, `{name}.validation.json`  |
+| CLI `--strict` bloquea export en error                              | PASS     | `tests/test_cli.py -k strict`                           |
+| Comentarios traducibles Python/JS/HTML                              | PASS     | `src/parser.py`, `tests/test_parser.py`                 |
+| Frontmatter YAML protegido                                          | PASS     | `tests/test_parser.py -k frontmatter`                   |
+| Preview marked + DOMPurify                                          | PASS     | `static/js/app.js` `renderPreview`, CDN en `index.html` |
+| Panel Validación colapsable en UI                                   | PASS     | `#validation-section`, plan 02-05                       |
 
 ## Automated checks
 
