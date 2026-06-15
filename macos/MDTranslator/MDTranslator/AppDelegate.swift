@@ -55,7 +55,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                 guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
                       event.charactersIgnoringModifiers == "q" else { return event }
-                // consumeEvent: Bool cruza contexto como Sendable; NSEvent no se pasa al actor.
+                // Diagnóstico: ¿recibe este proceso el evento ⌘Q?
+                // cat /tmp/md-cmdq.txt — si existe, el monitor está activo en este proceso.
+                try? "⌘Q at \(Date()) pid=\(ProcessInfo.processInfo.processIdentifier)".write(
+                    toFile: "/tmp/md-cmdq.txt", atomically: true, encoding: .utf8)
                 var consumeEvent = false
                 MainActor.assumeIsolated {
                     guard BatchJobManager.shared.isRunning else { return }
@@ -67,7 +70,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     alert.addButton(withTitle: "Salir y cancelar")
                     alert.addButton(withTitle: "Continuar en segundo plano")
                     alert.alertStyle = .warning
-                    consumeEvent = true  // siempre consumir ⌘Q cuando hay lote activo
+                    consumeEvent = true
                     if alert.runModal() == .alertFirstButtonReturn {
                         NSApp.terminate(nil)
                     }

@@ -38,6 +38,7 @@ cp .env.example .env        # Edita y añade tu API key
 La app nativa macOS (v3.0) requiere un bundle CPython autocontenido generado localmente. **Este directorio no se versiona** (`python-bundle/` está en `.gitignore`).
 
 **Requisitos previos:**
+
 - [`uv`](https://astral.sh/uv) instalado (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - Conexión a internet para la descarga inicial del tarball CPython (~30 MB)
 
@@ -93,20 +94,20 @@ En VPS o LAN, ajusta `CORS_ORIGINS` y `HOST=0.0.0.0` (ya en compose). Ver variab
 
 ### API
 
-| Método | Ruta | Descripción |
-| ------ | ---- | ------------- |
-| `GET` | `/api/languages` | Lista de idiomas (filtrada por proveedor activo) |
-| `GET` | `/api/glossary` | Lee glosario (`glossary.yaml`) |
-| `PUT` | `/api/glossary` | Actualiza glosario |
-| `DELETE` | `/api/memory` | Vacía memoria de traducción SQLite |
-| `POST` | `/api/translate` | Traduce JSON `{ content, target_lang?, target_langs?, source_lang, tone? }` |
-| `POST` | `/api/translate/draft` | Borrador revisable (un solo idioma destino) |
-| `POST` | `/api/translate/finalize` | Reensambla con ediciones `{ content, segments: {index: text} }` |
-| `POST` | `/api/translate/file` | Sube un `.md` (form: `tone`, `target_langs`, …) |
-| `POST` | `/api/translate/batch` | Sube varios archivos, devuelve ZIP (síncrono) |
-| `POST` | `/api/translate/batch/jobs` | Crea job de lote con progreso SSE |
-| `POST` | `/api/translate/estimate` | Estima segmentos, caracteres y coste |
-| `POST` | `/api/export/pdf` | Exporta Markdown a PDF `{ content, title? }` (requiere WeasyPrint en servidor) |
+| Método   | Ruta                        | Descripción                                                                    |
+| -------- | --------------------------- | ------------------------------------------------------------------------------ |
+| `GET`    | `/api/languages`            | Lista de idiomas (filtrada por proveedor activo)                               |
+| `GET`    | `/api/glossary`             | Lee glosario (`glossary.yaml`)                                                 |
+| `PUT`    | `/api/glossary`             | Actualiza glosario                                                             |
+| `DELETE` | `/api/memory`               | Vacía memoria de traducción SQLite                                             |
+| `POST`   | `/api/translate`            | Traduce JSON `{ content, target_lang?, target_langs?, source_lang, tone? }`    |
+| `POST`   | `/api/translate/draft`      | Borrador revisable (un solo idioma destino)                                    |
+| `POST`   | `/api/translate/finalize`   | Reensambla con ediciones `{ content, segments: {index: text} }`                |
+| `POST`   | `/api/translate/file`       | Sube un `.md` (form: `tone`, `target_langs`, …)                                |
+| `POST`   | `/api/translate/batch`      | Sube varios archivos, devuelve ZIP (síncrono)                                  |
+| `POST`   | `/api/translate/batch/jobs` | Crea job de lote con progreso SSE                                              |
+| `POST`   | `/api/translate/estimate`   | Estima segmentos, caracteres y coste                                           |
+| `POST`   | `/api/export/pdf`           | Exporta Markdown a PDF `{ content, title? }` (requiere WeasyPrint en servidor) |
 
 Endpoints de traducción pueden requerir `Authorization: Bearer <API_TOKEN>` si `API_TOKEN` está configurado.
 
@@ -138,21 +139,21 @@ DEEPL_API_KEY=tu-auth-key-deepl
 DEEPL_API_URL=https://api-free.deepl.com
 ```
 
-| Variable | Descripción |
-| -------- | ----------- |
-| `TRANSLATION_PROVIDER` | `openai` (default) o `deepl` |
-| `OPENAI_API_KEY` | Clave OpenAI (solo si provider=openai) |
-| `OPENAI_BASE_URL` | Endpoint alternativo (Ollama, Azure, etc.) |
-| `OPENAI_MODEL` | Modelo (default: `gpt-4o-mini`) |
-| `DEEPL_API_KEY` | Auth key de DeepL (solo si provider=deepl) |
-| `DEEPL_API_URL` | `https://api-free.deepl.com` en plan Free |
-| `TRANSLATION_FALLBACK` | `openai` — reintento con OpenAI si DeepL falla (requiere `OPENAI_API_KEY`) |
-| `HOST` / `PORT` | Servidor web (default `127.0.0.1:5400`) |
-| `ESTIMATE_WARN_USD` | Umbral USD para aviso de coste estimado (default: `1.0`) |
-| `CORS_ORIGINS` | Orígenes permitidos separados por coma (default localhost:5400) |
-| `MAX_UPLOAD_MB` / `MAX_BATCH_UPLOAD_MB` | Límites de subida por archivo y lote |
-| `OUTPUT_TTL_HOURS` / `OUTPUT_SWEEP_INTERVAL_HOURS` | Limpieza de `output/` |
-| `API_TOKEN` | Bearer opcional para proteger endpoints de traducción |
+| Variable                                           | Descripción                                                                |
+| -------------------------------------------------- | -------------------------------------------------------------------------- |
+| `TRANSLATION_PROVIDER`                             | `openai` (default) o `deepl`                                               |
+| `OPENAI_API_KEY`                                   | Clave OpenAI (solo si provider=openai)                                     |
+| `OPENAI_BASE_URL`                                  | Endpoint alternativo (Ollama, Azure, etc.)                                 |
+| `OPENAI_MODEL`                                     | Modelo (default: `gpt-4o-mini`)                                            |
+| `DEEPL_API_KEY`                                    | Auth key de DeepL (solo si provider=deepl)                                 |
+| `DEEPL_API_URL`                                    | `https://api-free.deepl.com` en plan Free                                  |
+| `TRANSLATION_FALLBACK`                             | `openai` — reintento con OpenAI si DeepL falla (requiere `OPENAI_API_KEY`) |
+| `HOST` / `PORT`                                    | Servidor web (default `127.0.0.1:5400`)                                    |
+| `ESTIMATE_WARN_USD`                                | Umbral USD para aviso de coste estimado (default: `1.0`)                   |
+| `CORS_ORIGINS`                                     | Orígenes permitidos separados por coma (default localhost:5400)            |
+| `MAX_UPLOAD_MB` / `MAX_BATCH_UPLOAD_MB`            | Límites de subida por archivo y lote                                       |
+| `OUTPUT_TTL_HOURS` / `OUTPUT_SWEEP_INTERVAL_HOURS` | Limpieza de `output/`                                                      |
+| `API_TOKEN`                                        | Bearer opcional para proteger endpoints de traducción                      |
 
 **Nota:** DeepL no soporta todos los idiomas de la lista (p. ej. catalán, gallego, euskera). Para esos casos usa OpenAI.
 
@@ -160,12 +161,12 @@ DEEPL_API_URL=https://api-free.deepl.com
 
 Traducción por lote **asíncrona** con progreso en tiempo real (Server-Sent Events):
 
-| Método | Ruta | Descripción |
-| ------ | ---- | ----------- |
-| `POST` | `/api/translate/batch/jobs` | Crea job; responde `{ job_id }` |
-| `GET` | `/api/translate/batch/jobs/{job_id}/events` | Stream SSE (`file_start`, `segment_progress`, `file_done`, `error`, `complete`) |
-| `DELETE` | `/api/translate/batch/jobs/{job_id}` | Cancelación cooperativa |
-| `GET` | `/api/translate/batch/jobs/{job_id}/download` | ZIP con traducciones (y `errors.json` si hubo fallos) |
+| Método   | Ruta                                          | Descripción                                                                     |
+| -------- | --------------------------------------------- | ------------------------------------------------------------------------------- |
+| `POST`   | `/api/translate/batch/jobs`                   | Crea job; responde `{ job_id }`                                                 |
+| `GET`    | `/api/translate/batch/jobs/{job_id}/events`   | Stream SSE (`file_start`, `segment_progress`, `file_done`, `error`, `complete`) |
+| `DELETE` | `/api/translate/batch/jobs/{job_id}`          | Cancelación cooperativa                                                         |
+| `GET`    | `/api/translate/batch/jobs/{job_id}/download` | ZIP con traducciones (y `errors.json` si hubo fallos)                           |
 
 El endpoint síncrono `POST /api/translate/batch` sigue disponible para lotes pequeños sin SSE.
 
@@ -173,8 +174,8 @@ El endpoint síncrono `POST /api/translate/batch` sigue disponible para lotes pe
 
 Antes de traducir un archivo o lote grande:
 
-| Método | Ruta | Descripción |
-| ------ | ---- | ----------- |
+| Método | Ruta                      | Descripción                                                                         |
+| ------ | ------------------------- | ----------------------------------------------------------------------------------- |
 | `POST` | `/api/translate/estimate` | JSON `{ content, target_lang?, target_langs?, source_lang? }` o multipart `files[]` |
 
 Respuesta: `segments`, `characters`, `estimated_cost_usd`, `provider`, `model`, `exceeds_threshold`, `threshold_usd`, `language_count`.
@@ -267,22 +268,24 @@ La app integra el servidor FastAPI/uvicorn como subprocess embebido y expone la 
 
 ### Integraciones nativas (Phase 13)
 
-| Función | Detalle |
-|---------|---------|
-| **Dock drag & drop** | Arrastrar uno o varios `.md` al icono del Dock los carga en el editor o lanza traducción en lote |
-| **Barra de progreso Dock** | `NSProgressIndicator` en el Dock tile durante traducciones en lote |
-| **Open Recent** | `File > Open Recent` con los últimos archivos abiertos/traducidos |
-| **Drop en ventana** | Arrastrar `.md` directamente sobre la ventana los inyecta en el editor |
-| **Services** | Menú Services del sistema: «Traducir con MDTranslator» — recibe texto seleccionado de cualquier app (TextEdit, Safari…), lo traduce al idioma configurado y devuelve el resultado directamente en la selección |
+| Función   | Detalle   |
+| --------- | --------- |
+
+| **Dock drag & drop**       | Arrastrar uno o varios `.md` al icono del Dock los carga en el editor o lanza traducción en lote                                                                                                               |
+| **Barra de progreso Dock** | `NSProgressIndicator` en el Dock tile durante traducciones en lote                                                                                                                                             |
+| **Open Recent**            | `File > Open Recent` con los últimos archivos abiertos/traducidos                                                                                                                                              |
+| **Drop en ventana**        | Arrastrar `.md` directamente sobre la ventana los inyecta en el editor                                                                                                                                         |
+| **Services**               | Menú Services del sistema: «Traducir con MDTranslator» — recibe texto seleccionado de cualquier app (TextEdit, Safari…), lo traduce al idioma configurado y devuelve el resultado directamente en la selección |
 
 ### Atajos de teclado (Phase 14)
 
-| Atajo | Acción |
-|-------|--------|
-| `⌥⇧T` | Activar MDTranslator desde cualquier app y enfocar el editor |
-| `⌘↩` | Lanzar traducción (equivale al botón «Traducir») |
-| `⌘⇧C` | Copiar el panel de traducción al portapapeles |
-| `⌘Z` / `⌘⇧Z` | Deshacer / rehacer en el textarea del editor |
+| Atajo   | Acción   |
+| ------- | -------- |
+
+| `⌥⇧T`        | Activar MDTranslator desde cualquier app y enfocar el editor |
+| `⌘↩`         | Lanzar traducción (equivale al botón «Traducir»)             |
+| `⌘⇧C`        | Copiar el panel de traducción al portapapeles                |
+| `⌘Z` / `⌘⇧Z` | Deshacer / rehacer en el textarea del editor                 |
 
 ### Indicador de coste en tiempo real (Phase 14)
 

@@ -768,12 +768,24 @@ async function downloadBatchJobResult(jobId) {
 async function cancelBatchJob() {
   if (!state.batchJobId) return;
   if (!confirm('¿Cancelar la traducción en curso?')) return;
+  // CANCEL-01: feedback visual inmediato mientras el servidor procesa el cancel
+  if (els.btnCancelJob) {
+    els.btnCancelJob.disabled = true;
+    els.btnCancelJob.textContent = 'Cancelando…';
+  }
+  if (els.batchProgressText) {
+    els.batchProgressText.textContent = 'Cancelando…';
+  }
   try {
     await apiFetch(`/api/translate/batch/jobs/${state.batchJobId}`, {
       method: 'DELETE',
     });
   } catch {
-    /* ignore */
+    // Restaurar botón si el DELETE falla
+    if (els.btnCancelJob) {
+      els.btnCancelJob.disabled = false;
+      els.btnCancelJob.textContent = 'Cancelar traducción';
+    }
   }
 }
 
@@ -1394,6 +1406,11 @@ async function translateBatch() {
         } else if (type === 'complete') {
           es.close();
           state.eventSource = null;
+          // PROGRESS-01: mostrar 100% antes de resetear
+          if (els.batchProgressBar) {
+            els.batchProgressBar.style.width = '100%';
+            els.batchProgressBar.setAttribute('aria-valuenow', '100');
+          }
           const ok = event.ok_count ?? 0;
           const total = event.total_files ?? state.batchFiles.length;
           const errors = event.error_count ?? 0;

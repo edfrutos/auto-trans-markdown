@@ -50,11 +50,17 @@ shasum -a 256 MDTranslator-3.1.dmg
 
 La app comprueba actualizaciones automáticamente (Sparkle, firma EdDSA). Quienes tengan la 3.0 recibirán aviso de esta versión.
 
+## Correcciones post-release (Phase 15)
+
+- **Descarga ZIP en lote**: el panel de guardar de macOS ahora aparece correctamente en la app nativa — se migró de navegación HTTP a un bridge nativo `nativeDownload` en WKWebView.
+- **Barra de progreso de lote**: llega al 100% al completarse antes de ocultarse.
+- **Botón Cancelar traducción**: da feedback visual inmediato («Cancelando…») tras aceptar el diálogo.
+- **Crash reporter Sparkle**: `UpdateManager` hereda de `NSObject`, resolviendo un error de compilación con `SPUUpdaterDelegate`.
+
 ## Problemas conocidos
 
 - Sin notarización de Apple: requiere el paso de clic derecho → Abrir en la primera ejecución.
 - Solo Apple Silicon (arm64); no hay build Intel.
-- El progreso de lote en la app nativa es indeterminado (SSE granular pendiente).
 - **El servicio "Traducir con MDTranslator" solo aparece en apps nativas de macOS** (TextEdit, Notas, Mail, Safari, Xcode…). Las apps Electron (VS Code, Obsidian, Typora) o Java (JetBrains) no implementan el protocolo NSServices de texto, una limitación de esas apps que macOS no puede sortear. Workaround: copia el texto (⌘C), pulsa el atajo global (⌥⇧T por defecto) y traduce en MDTranslator con ⌘↩.
 - Al actualizar o reinstalar la app, macOS puede pedir de nuevo el permiso de Accesibilidad (necesario para el atajo global) y las API keys del Keychain — es consecuencia de la firma ad-hoc, basta con volver a concederlos.
 

@@ -2,12 +2,12 @@
 
 ## Objetivos v3.1
 
-| Métrica | Baseline v3.0 | Objetivo v3.1 | Estado |
-|---------|--------------|---------------|--------|
-| Arranque en frío (doble clic → UI lista) | ~8–10 s | < 5 s | ✅ **1,46 s** (medido 2026-06-12) |
-| Tamaño `python-bundle/` | ~200 MB | < 120 MB | ✅ **116 MB** |
-| RSS en reposo (app sin traducir) | ~180 MB | < 200 MB | ✅ dentro de objetivo |
-| Tiempo respuesta `/api/translate` (texto corto) | ~2–4 s | < 4 s | ✅ dentro de objetivo |
+| Métrica                                         | Baseline v3.0  | Objetivo v3.1   | Estado                           |
+| ----------------------------------------------- | -------------- | --------------- | -------------------------------- |
+| Arranque en frío (doble clic → UI lista)        | ~8–10 s        | < 5 s           | ✅ **1,46 s** (medido 2026-06-12) |
+| Tamaño `python-bundle/`                         | ~200 MB        | < 120 MB        | ✅ **116 MB**                     |
+| RSS en reposo (app sin traducir)                | ~180 MB        | < 200 MB        | ✅ dentro de objetivo             |
+| Tiempo respuesta `/api/translate` (texto corto) | ~2–4 s         | < 4 s           | ✅ dentro de objetivo             |
 
 ---
 
@@ -72,19 +72,19 @@ ps -o rss= -p $(pgrep MDTranslator)
 > Mediciones realizadas en Mac Studio M2 (16 GB RAM, macOS 14.5).
 > Bundle generado con `build-python-bundle.sh` sin optimizaciones de limpieza.
 
-| Métrica | Valor medido | Notas |
-|---------|-------------|-------|
-| Arranque en frío (1ª ejecución) | ~9.2 s | Python importa sin `.pyc` precalculados |
-| Arranque en caliente (2ª ejecución) | ~6.8 s | `.pyc` en caché del SO |
-| `python-bundle/` total | ~197 MB | Incluye stdlib test/, idlelib, tkinter |
-| — stdlib `test/` | ~52 MB | Suite de tests de CPython, no necesaria |
-| — `idlelib/` | ~4.8 MB | IDE de Python, no necesario |
-| — `tkinter/` | ~3.1 MB | Binding Tk, no necesario |
-| — `ensurepip/` | ~2.2 MB | Bootstrapper pip, no necesario |
-| — `site-packages/*.dist-info/` | ~8 MB | Metadatos pip, no necesarios en runtime |
-| — `.pyi` stubs | ~1.5 MB | Hints para IDEs, no necesarios en runtime |
-| RSS en reposo | ~185 MB | Python + FastAPI cargados |
-| `/api/translate` texto corto | ~2.1 s | gpt-4o-mini, segmento único |
+| Métrica                             | Valor medido  | Notas                                     |
+| ----------------------------------- | ------------- | ----------------------------------------- |
+| Arranque en frío (1ª ejecución)     | ~9.2 s        | Python importa sin `.pyc` precalculados   |
+| Arranque en caliente (2ª ejecución) | ~6.8 s        | `.pyc` en caché del SO                    |
+| `python-bundle/` total              | ~197 MB       | Incluye stdlib test/, idlelib, tkinter    |
+| — stdlib `test/`                    | ~52 MB        | Suite de tests de CPython, no necesaria   |
+| — `idlelib/`                        | ~4.8 MB       | IDE de Python, no necesario               |
+| — `tkinter/`                        | ~3.1 MB       | Binding Tk, no necesario                  |
+| — `ensurepip/`                      | ~2.2 MB       | Bootstrapper pip, no necesario            |
+| — `site-packages/*.dist-info/`      | ~8 MB         | Metadatos pip, no necesarios en runtime   |
+| — `.pyi` stubs                      | ~1.5 MB       | Hints para IDEs, no necesarios en runtime |
+| RSS en reposo                       | ~185 MB       | Python + FastAPI cargados                 |
+| `/api/translate` texto corto        | ~2.1 s        | gpt-4o-mini, segmento único               |
 
 ---
 
@@ -94,18 +94,18 @@ ps -o rss= -p $(pgrep MDTranslator)
 
 Directorios y archivos eliminados tras `uv pip install`:
 
-| Objetivo | Ahorro estimado |
-|----------|----------------|
-| `lib/python3.11/test/` | ~52 MB |
-| `lib/python3.11/idlelib/` | ~5 MB |
-| `lib/python3.11/tkinter/` + `turtle*` | ~4 MB |
-| `lib/python3.11/ensurepip/` | ~2 MB |
-| `lib/python3.11/site-packages/*.dist-info/` | ~8 MB |
-| `.pyi` stubs en site-packages | ~2 MB |
-| `include/` headers C | ~5 MB |
-| `share/` (man pages, etc.) | ~1 MB |
-| `__pycache__` → sustituidos por `.pyc` vía `compileall` | ~5 MB neto |
-| **Total estimado** | **~80 MB** → bundle ~120 MB |
+| Objetivo                                                | Ahorro estimado             |
+| ------------------------------------------------------- | --------------------------- |
+| `lib/python3.11/test/`                                  | ~52 MB                      |
+| `lib/python3.11/idlelib/`                               | ~5 MB                       |
+| `lib/python3.11/tkinter/` + `turtle*`                   | ~4 MB                       |
+| `lib/python3.11/ensurepip/`                             | ~2 MB                       |
+| `lib/python3.11/site-packages/*.dist-info/`             | ~8 MB                       |
+| `.pyi` stubs en site-packages                           | ~2 MB                       |
+| `include/` headers C                                    | ~5 MB                       |
+| `share/` (man pages, etc.)                              | ~1 MB                       |
+| `__pycache__` → sustituidos por `.pyc` vía `compileall` | ~5 MB neto                  |
+| **Total estimado**                                      | **~80 MB** → bundle ~120 MB |
 
 Además, `python -m compileall` pre-compila todos los `.py` a `.pyc` para reducir
 el tiempo de importación en el primer arranque.
@@ -122,11 +122,11 @@ el tiempo de importación en el primer arranque.
 
 > Medición con `./scripts/measure-cold-start.sh` (open → health check `/api/languages`, puerto vía PID file).
 
-| Métrica | Objetivo | Medido | Fecha |
-|---------|----------|--------|-------|
-| Arranque en frío | < 5 s | **1,46 s** (mediana de 1,45 / 1,46 / 1,53 — Mac Studio M2, app v3.1) | 2026-06-12 |
-| `python-bundle/` | < 120 MB | **116 MB** | 2026-06-12 |
-| RSS en reposo | < 200 MB | — (pendiente; sin urgencia) | — |
+| Métrica          | Objetivo   | Medido                                                               | Fecha      |
+| ---------------- | ---------- | -------------------------------------------------------------------- | ---------- |
+| Arranque en frío | < 5 s      | **1,46 s** (mediana de 1,45 / 1,46 / 1,53 — Mac Studio M2, app v3.1) | 2026-06-12 |
+| `python-bundle/` | < 120 MB   | **116 MB**                                                           | 2026-06-12 |
+| RSS en reposo    | < 200 MB   | — (pendiente; sin urgencia)                                          | —          |
 
 ---
 
@@ -143,7 +143,7 @@ make smoke-test
 
 Salida esperada:
 
-```
+```text
 -> smoke-test Phase 15 — TEST-01
    python: .venv/bin/python | puerto: 15499 | log: /tmp/md-translate-smoke.log
 -> Arrancando servidor Python...

@@ -4,13 +4,13 @@ Instrucciones para generar `MDTranslator.app` y `MDTranslator.dmg` desde el cód
 
 ## Prerequisitos
 
-| Herramienta | Versión mínima | Instalación |
-|-------------|----------------|-------------|
-| macOS | 14.0 Sonoma | — |
-| Xcode | 15.x o superior | App Store |
-| Command Line Tools | — | `xcode-select --install` |
-| create-dmg | 1.2+ | `brew install create-dmg` |
-| uv | 0.5+ | `brew install uv` |
+| Herramienta        | Versión mínima   | Instalación               |
+| ------------------ | ---------------- | ------------------------- |
+| macOS              | 14.0 Sonoma      | —                         |
+| Xcode              | 15.x o superior  | App Store                 |
+| Command Line Tools | —                | `xcode-select --install`  |
+| create-dmg         | 1.2+             | `brew install create-dmg` |
+| uv                 | 0.5+             | `brew install uv`         |
 
 ## 1. Clonar y preparar el entorno Python
 
@@ -32,21 +32,21 @@ en `python-bundle/`. Este directorio está gitignored (~116 MB tras la optimizac
 
 Abrir `macos/MDTranslator/MDTranslator.xcodeproj` y verificar:
 
-| Setting | Valor requerido |
-|---------|-----------------|
-| Deployment Target | macOS 14.0 |
-| App Sandbox | **Eliminado** (incompatible con subprocess) |
-| User Script Sandboxing | No |
-| Signing Certificate | Sign to Run Locally |
-| Info.plist File | `MDTranslator/Info.plist` |
-| "Based on dependency analysis" (Run Script) | **Desactivado** |
+| Setting                                     | Valor requerido                             |
+| ------------------------------------------- | ------------------------------------------- |
+| Deployment Target                           | macOS 14.0                                  |
+| App Sandbox                                 | **Eliminado** (incompatible con subprocess) |
+| User Script Sandboxing                      | No                                          |
+| Signing Certificate                         | Sign to Run Locally                         |
+| Info.plist File                             | `MDTranslator/Info.plist`                   |
+| "Based on dependency analysis" (Run Script) | **Desactivado**                             |
 
 El **Run Script phase** ("Copy Python Bundle & Backend") copia `python-bundle/` y `src/` a
 `Resources/` dentro del bundle de la app en cada build.
 
 ## 3. Build de desarrollo (Xcode)
 
-```
+```text
 ⌘B  — compilar
 ⌘R  — compilar y ejecutar
 ```
@@ -63,6 +63,7 @@ make dmg
 ```
 
 El target:
+
 1. `xcodebuild archive` (Release, arm64) — genera `build/MDTranslator.xcarchive`
 2. Firma ad-hoc (`codesign --force --sign -`)
 3. ZIP para Sparkle (`build/MDTranslator-3.1.zip`)
@@ -100,7 +101,7 @@ xattr -dr com.apple.quarantine /Applications/MDTranslator.app
 
 ## Estructura del bundle
 
-```
+```text
 MDTranslator.app/
 └── Contents/
     ├── MacOS/MDTranslator        — ejecutable Swift

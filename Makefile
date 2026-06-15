@@ -159,26 +159,34 @@ dev-install:
 	codesign --force --deep --sign - "$(INSTALL_APP)"
 	@$(MAKE) register-service
 
-## Parchea ~/Applications/ con el binario más reciente del DerivedData de Xcode.
-## Usar cuando xcodebuild CLI falla pero Xcode GUI (⌘B) compila correctamente.
+## Parchea ~/Applications/ sincronizando el Contents/ completo del Debug build de Xcode,
+## excluyendo python/ y backend/ (pesados, ya correctos). Soporta ENABLE_DEBUG_DYLIB
+## (stub 58 KB + *.debug.dylib) y builds monolíticos clásicos.
 ## Flujo: abrir Xcode → ⌘B → make dev-patch
 dev-patch:
-	@if [ ! -d "$(INSTALL_APP)" ]; then \
-		echo "ERROR: $(INSTALL_APP) no existe. Construye primero desde Xcode."; \
-		exit 1; \
-	fi
-	@DERIVED=$$(find ~/Library/Developer/Xcode/DerivedData -name "$(APP_NAME)" \
-		-path "*/Debug/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)" \
+	@DERIVED_APP=$$(find ~/Library/Developer/Xcode/DerivedData -name "$(APP_NAME).app" \
+		-path "*/Debug/$(APP_NAME).app" \
+		-not -path "*/Intermediates*" \
+		-not -path "*/Index.noindex*" \
 		-print0 2>/dev/null \
-		| xargs -0 ls -t 2>/dev/null | head -1); \
-	if [ -z "$$DERIVED" ]; then \
-		echo "ERROR: binario no encontrado en DerivedData. Ejecuta ⌘B en Xcode primero."; \
+		| xargs -0 ls -dt 2>/dev/null | head -1); \
+	if [ -z "$$DERIVED_APP" ]; then \
+		echo "ERROR: $(APP_NAME).app no encontrada en DerivedData. Ejecuta ⌘B en Xcode primero."; \
 		exit 1; \
 	fi; \
-	echo "-> Usando binario: $$DERIVED"; \
-	cp "$$DERIVED" "$(INSTALL_APP)/Contents/MacOS/$(APP_NAME)"; \
-	PLIST=$$(echo "$$DERIVED" | sed 's|Contents/MacOS/$(APP_NAME)|Contents/Info.plist|'); \
-	[ -f "$$PLIST" ] && cp "$$PLIST" "$(INSTALL_APP)/Contents/Info.plist" || true
+	echo "-> Usando app: $$DERIVED_APP"; \
+	mkdir -p "$(INSTALL_DIR)"; \
+	if [ ! -d "$(INSTALL_APP)" ]; then \
+		echo "-> Instalación inicial: copiando app completa desde DerivedData..."; \
+		cp -R "$$DERIVED_APP" "$(INSTALL_APP)"; \
+	else \
+		echo "-> Actualizando Contents/ (excluyendo python y backend)..."; \
+		rsync -a --delete \
+			--exclude 'Resources/python/' \
+			--exclude 'Resources/backend/' \
+			"$$DERIVED_APP/Contents/" \
+			"$(INSTALL_APP)/Contents/"; \
+	fi
 	@echo "-> Sincronizando backend Python y estáticos (src/ + static/)..."
 	rsync -a --delete src/    "$(INSTALL_APP)/Contents/Resources/backend/src/"
 	rsync -a --delete static/ "$(INSTALL_APP)/Contents/Resources/backend/static/"
@@ -259,5 +267,6 @@ smoke-test:
 
 ## Limpiar artefactos de build
 clean:
+	@chmod -R u+w build/ 2>/dev/null || true
 	@rm -rf build/
 	@echo "OK build/ eliminado"
