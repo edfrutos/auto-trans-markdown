@@ -129,6 +129,8 @@ struct SettingsView: View {
             .frame(height: 490)
 
             // MARK: Banner Accesibilidad (hotkey ⌥⇧M)
+            // Tras una actualización Sparkle, macOS revoca el permiso porque la firma cambia.
+            // El usuario debe eliminar la entrada antigua y volver a añadirla.
             if !accessibilityGranted {
                 HStack(spacing: 10) {
                     Image(systemName: "keyboard.badge.ellipsis")
@@ -136,25 +138,39 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Accesibilidad requerida para el atajo ⌥⇧M")
                             .font(.caption).bold()
-                        Text("Activa MDTranslator en Ajustes del Sistema → Privacidad → Accesibilidad.")
+                        Text("En Privacidad → Accesibilidad: elimina MDTranslator y vuelve a añadirlo. Tras una actualización esto es necesario.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Abrir") {
-                        GlobalHotkeyManager.shared.openAccessibilitySettings()
-                        // Re-comprobar tras volver de Ajustes del Sistema (aprox. 3s)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    VStack(spacing: 4) {
+                        Button("Abrir Ajustes") {
+                            GlobalHotkeyManager.shared.openAccessibilitySettings()
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.orange)
+                        Button("Recomprobar") {
                             accessibilityGranted = GlobalHotkeyManager.shared.isAccessibilityGranted
                             if accessibilityGranted { GlobalHotkeyManager.shared.register() }
                         }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.orange)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(Color.orange.opacity(0.08))
+                // Polling automático cada 2 s mientras el banner está visible.
+                .task {
+                    while !accessibilityGranted {
+                        try? await Task.sleep(for: .seconds(2))
+                        await MainActor.run {
+                            accessibilityGranted = GlobalHotkeyManager.shared.isAccessibilityGranted
+                            if accessibilityGranted { GlobalHotkeyManager.shared.register() }
+                        }
+                    }
+                }
             }
 
             // MARK: Mensaje de error
