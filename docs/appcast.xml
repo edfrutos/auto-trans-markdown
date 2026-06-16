@@ -20,9 +20,28 @@
     <description>MarkDown Auto Translator — actualizaciones</description>
     <language>es</language>
 
-    <!-- ===== v3.1 build 3 — Phase 15 fixes ===== -->
+    <!-- ===== v3.1 build 4 — Phase 19 (asociación .md/.txt) + About cosmético ===== -->
+    <!-- PENDING: ejecutar "make dmg && make appcast" y pegar edSignature + length reales -->
     <item>
       <title>MD Translator 3.1</title>
+      <sparkle:releaseNotesLink>
+        https://github.com/edfrutos/auto-trans-markdown/releases/tag/v3.1
+      </sparkle:releaseNotesLink>
+      <pubDate>Tue, 16 Jun 2026 12:00:00 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>3.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1.zip"
+        length="PENDING"
+        type="application/octet-stream"
+        sparkle:edSignature="PENDING"
+      />
+    </item>
+
+    <!-- ===== v3.1 build 3 — Phase 15 fixes (superseded) ===== -->
+    <item>
+      <title>MD Translator 3.1 (build 3)</title>
       <sparkle:releaseNotesLink>
         https://github.com/edfrutos/auto-trans-markdown/releases/tag/v3.1
       </sparkle:releaseNotesLink>
@@ -31,7 +50,7 @@
       <sparkle:shortVersionString>3.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1.zip"
+        url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1-build3.zip"
         length="44074582"
         type="application/octet-stream"
         sparkle:edSignature="RFUOAedEltJfaWTZJweEEFngZa+0Tpz3rw5bEj4U/WYj0JS1QWsJg5zLkrGjwU+U3/E36x1ATikOZaOqOLoABg=="
