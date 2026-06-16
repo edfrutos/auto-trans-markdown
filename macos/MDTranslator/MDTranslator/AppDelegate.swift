@@ -5,6 +5,7 @@
 //   async de Swift 6. Sin @MainActor a nivel de clase para compatibilidad con
 //   @NSApplicationDelegateAdaptor en Xcode 17/Swift 6.
 // Phase 18: flujo batch reemplazado por openBatchSheet + SSE nativo; D-10 via applicationShouldTerminate+.terminateLater.
+// Phase 19: ASSOC-02 — cola pendingURLs para arranque en frío; filtro ampliado a .md/.markdown/.txt.
 import AppKit
 
 /// AppDelegate sin @MainActor a nivel de clase para que @NSApplicationDelegateAdaptor
@@ -17,6 +18,13 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
     /// Referencia al ServerManager compartido con el App struct.
     var serverManager: ServerManager?
+
+    /// ASSOC-02: URLs recibidas antes de que el servidor esté listo (arranque en frío).
+    /// MDTranslatorApp las consume en el momento en que serverManager.state pasa a .running.
+    @MainActor var pendingURLs: [URL] = []
+
+    /// Extensiones aceptadas — ASSOC-01 amplía Info.plist a .md/.markdown/.txt.
+    private static let acceptedExtensions: Set<String> = ["md", "markdown", "txt"]
 
     override init() {
         super.init()
@@ -133,17 +141,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     nonisolated
     func application(_ application: NSApplication, open urls: [URL]) {
         MainActor.assumeIsolated {
-            let markdownURLs = urls.filter { $0.pathExtension.lowercased() == "md" }
-            guard !markdownURLs.isEmpty else { return }
-
-            NSApp.activate(ignoringOtherApps: true)
-            markdownURLs.forEach { NSDocumentController.shared.noteNewRecentDocumentURL($0) }
-
-            if markdownURLs.count == 1 {
-                loadInEditor(url: markdownURLs[0])
-            } else {
-                openBatchSheet(markdownURLs)
+            // ASSOC-01/D-03: aceptar .md, .markdown y .txt.
+            let accepted = urls.filter {
+                AppDelegate.acceptedExtensions.contains($0.pathExtension.lowercased())
             }
+            guard !accepted.isEmpty else { return }
+
+            // ASSOC-02: si el servidor aún no está listo, encolar y esperar.
+            guard serverManager?.state == .running else {
+                pendingURLs.append(contentsOf: accepted)
+                return
+            }
+
+            dispatchURLs(accepted)
+        }
+    }
+
+    /// Envía las URLs al editor/batch y las registra en Open Recent.
+    /// Llamado tanto desde application(_:open:) como desde MDTranslatorApp al
+    /// consumir pendingURLs tras el arranque del servidor.
+    @MainActor
+    func dispatchURLs(_ urls: [URL]) {
+        NSApp.activate(ignoringOtherApps: true)
+        urls.forEach { NSDocumentController.shared.noteNewRecentDocumentURL($0) }
+
+        if urls.count == 1 {
+            loadInEditor(url: urls[0])
+        } else {
+            openBatchSheet(urls)
         }
     }
 

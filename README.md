@@ -319,6 +319,18 @@ open macos/MDTranslator/MDTranslator.xcodeproj
 make dev-install
 ```
 
+## Asociación de archivos (macOS)
+
+La app macOS aparece en el submenú **"Abrir con"** del Finder para archivos `.md`, `.markdown` y `.txt`. Para asociarla permanentemente:
+
+1. Clic derecho sobre cualquier archivo `.md` en el Finder → **Abrir con → Otra aplicación…**
+2. Selecciona **MDTranslator** en el selector.
+3. Activa **"Cambiar todo…"** para que todos los `.md` usen MDTranslator por defecto.
+
+> **Nota:** La app no se proclama handler por defecto en la instalación; el usuario decide la asociación. Si prefieres seguir usando otro editor para `.md`, puedes abrir archivos puntuales con clic derecho → Abrir con → MDTranslator sin cambiar la asociación global.
+
+Si abres un archivo mientras la app está arrancando (barra de carga visible), el archivo se carga automáticamente en cuanto el servidor Python está listo.
+
 ## Arquitectura
 
 ```sh

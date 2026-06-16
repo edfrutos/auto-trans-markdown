@@ -43,12 +43,14 @@
 			<array>
 				<string>md</string>
 				<string>markdown</string>
+				<string>txt</string>
 			</array>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>net.daringfireball.markdown</string>
+				<string>public.plain-text</string>
 			</array>
 			<key>LSHandlerRank</key>
 			<string>Alternate</string>

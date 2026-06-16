@@ -5,6 +5,7 @@
 // Phase 13: DROP-01 — onDrop de archivos .md sobre la ventana.
 // Phase 14: HOTKEY-01 — hotkey global ⌥⇧M para activar la app (requiere Accesibilidad).
 // Phase 18: showBatchSheet + .sheet(BatchSheet) + .onReceive(.openBatchSheet) (SSE batch nativo).
+// Phase 19: ASSOC-02 — consumir delegate.pendingURLs al pasar a .running.
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -103,6 +104,15 @@ struct MDTranslatorApp: App {
                 NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             ) { _ in
                 GlobalHotkeyManager.shared.register()
+            }
+            // ASSOC-02: consumir URLs encoladas durante el arranque en frío.
+            // Se dispara cuando serverManager.state cambia a .running (health check OK).
+            .onChange(of: serverManager.state) { _, newState in
+                guard newState == .running else { return }
+                let queued = delegate.pendingURLs
+                guard !queued.isEmpty else { return }
+                delegate.pendingURLs = []
+                delegate.dispatchURLs(queued)
             }
             // Reiniciar el servidor cuando el usuario guarda nuevas API keys en medio de sesión.
             .onReceive(
