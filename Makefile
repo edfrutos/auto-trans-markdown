@@ -12,7 +12,7 @@
 
 APP_NAME     := MDTranslator
 VERSION      := 3.1
-BUILD_NUM    := 4
+BUILD_NUM    := 5
 SCHEME       := MDTranslator
 PROJECT      := macos/MDTranslator/MDTranslator.xcodeproj
 ARCHIVE      := build/$(APP_NAME).xcarchive

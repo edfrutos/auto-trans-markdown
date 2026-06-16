@@ -20,9 +20,27 @@
     <description>MarkDown Auto Translator — actualizaciones</description>
     <language>es</language>
 
-    <!-- ===== v3.1 build 4 — Phase 19 (asociación .md/.txt) + About cosmético ===== -->
+    <!-- ===== v3.1 build 5 — UX hotkey post-Sparkle (SettingsView) ===== -->
     <item>
       <title>MD Translator 3.1</title>
+      <sparkle:releaseNotesLink>
+        https://github.com/edfrutos/auto-trans-markdown/releases/tag/v3.1
+      </sparkle:releaseNotesLink>
+      <pubDate>Tue, 16 Jun 2026 18:00:00 +0000</pubDate>
+      <sparkle:version>5</sparkle:version>
+      <sparkle:shortVersionString>3.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1.zip"
+        length="44083827"
+        type="application/octet-stream"
+        sparkle:edSignature="G304wfied3sfKA6rcJhZATuaEM8xu9W1exnkkGbA7uR5VCEMIQa1Y59YS7CUkimLqs2PdL8yz33FXiKqRoZeAQ=="
+      />
+    </item>
+
+    <!-- ===== v3.1 build 4 — Phase 19 (asociación .md/.txt) + About cosmético (superseded) ===== -->
+    <item>
+      <title>MD Translator 3.1 (build 4)</title>
       <sparkle:releaseNotesLink>
         https://github.com/edfrutos/auto-trans-markdown/releases/tag/v3.1
       </sparkle:releaseNotesLink>
@@ -31,7 +49,7 @@
       <sparkle:shortVersionString>3.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1.zip"
+        url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.1/MDTranslator-3.1-build4.zip"
         length="44076665"
         type="application/octet-stream"
         sparkle:edSignature="nwN/CZFflGVh6RV0aj2C/JQFHiL5AHyzkeQ/nYfdrnYKn0O1eJdkdEPsrOh/FtLYVTEDojDaFCR+Ezj5kL33BA=="
