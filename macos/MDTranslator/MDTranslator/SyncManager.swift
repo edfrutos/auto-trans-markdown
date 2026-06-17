@@ -9,6 +9,7 @@
 // como directorio normal del sistema de archivos; iCloudDrive lo sincroniza de forma
 // transparente.
 
+import Combine
 import Foundation
 import AppKit
 
@@ -77,12 +78,11 @@ final class SyncManager: ObservableObject {
 
     /// Directorio de iCloud Drive para MDTranslator.
     private static var iCloudDir: URL? {
-        guard let iCloud = FileManager.default
+        let iCloud = FileManager.default
             .url(forUbiquityContainerIdentifier: nil)?
             .appendingPathComponent("Documents")
             ?? FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs")
-        else { return nil }
         return iCloud.appendingPathComponent(iCloudFolderName)
     }
 

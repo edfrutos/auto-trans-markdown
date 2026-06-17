@@ -393,7 +393,7 @@ Plans:
 
 ---
 
-### Phase 25: Release v3.2
+### Phase 25: Release v3.2 ✅ Shipped (2026-06-17)
 
 **Goal**: Publicar MD Translator 3.2 como DMG distribuible con las mejoras de Phases 18–21 (SSE batch, PDF, iCloud sync), bump de versión, release notes y appcast actualizado.
 **Depends on**: Phase 24 *(puede adelantarse a Phase 24 si se prioriza el release)*
@@ -437,9 +437,9 @@ Plans:
 | ------- | ----------------------------------- | --------- | ------------ |
 | 22      | Sparkle Auto-Update Mejorado        | ✅ Shipped  | 2026-06-17   |
 | 23      | Notarización Apple (condicionada)   | ⏸ Diferida | —           |
-| 24      | Preferencias Adicionales            | Pendiente | —            |
-| 25      | Release v3.2                        | Pendiente | —            |
+| 24      | Preferencias Adicionales            | ✅ Shipped  | 2026-06-17   |
+| 25      | Release v3.2                        | ✅ Shipped  | 2026-06-17   |
 | 26      | Selector Tono Formal/Informal (web) | Pendiente | —            |
 
 ---
-*Last updated: 2026-06-17 — Phase 24 completada (PREF-01..04). Selector de modelo OpenAI, tono por defecto, URL base alternativa en Keychain; JS injection en WKWebView para pre-seleccionar tono y tooltip con modelo/tono activos.*
+*Last updated: 2026-06-17 — Phase 25 completada. v3.2 build 6 publicada: appcast.xml actualizado con edSignature real, RELEASE-NOTES-3.2.md, Makefile VERSION=3.2/BUILD_NUM=6.*

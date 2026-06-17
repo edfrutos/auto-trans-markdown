@@ -20,7 +20,25 @@
     <description>MarkDown Auto Translator — actualizaciones</description>
     <language>es</language>
 
-    <!-- ===== v3.1 build 5 — UX hotkey post-Sparkle (SettingsView) ===== -->
+    <!-- ===== v3.2 build 6 — Preferencias, Sparkle mejorado, PDF nativo, iCloud sync ===== -->
+    <item>
+      <title>MD Translator 3.2</title>
+      <sparkle:releaseNotesLink>
+        https://github.com/edfrutos/auto-trans-markdown/releases/tag/v3.2
+      </sparkle:releaseNotesLink>
+      <pubDate>Tue, 17 Jun 2026 18:00:00 +0000</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>3.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/edfrutos/auto-trans-markdown/releases/download/v3.2/MDTranslator-3.2.zip"
+        length="44136528"
+        type="application/octet-stream"
+        sparkle:edSignature="Lnh9cgA9rxaNwW0ZaKtDNavgwoEGNVs7DjaxNj9RZ9D5214g5X+nrD8LKJbTpXK2xkgGEabQ3CBoCNDFaKJWAA=="
+      />
+    </item>
+
+        <!-- ===== v3.1 build 5 — UX hotkey post-Sparkle (SettingsView) ===== -->
     <item>
       <title>MD Translator 3.1</title>
       <sparkle:releaseNotesLink>
