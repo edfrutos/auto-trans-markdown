@@ -59,6 +59,7 @@ const state = {
 };
 
 const API_TOKEN_KEY = 'md-translate-api-token';
+const TONE_KEY       = 'md-translate-tone'; // TONE-03
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -1532,6 +1533,15 @@ function setupDropZone(zone, input, onFiles) {
   input.addEventListener('change', () => onFiles(input.files));
 }
 
+// TONE-03: persiste el selector de tono entre sesiones.
+function initTone() {
+  const stored = localStorage.getItem(TONE_KEY);
+  if (stored && els.toneSelect) els.toneSelect.value = stored;
+  els.toneSelect?.addEventListener('change', () => {
+    localStorage.setItem(TONE_KEY, getTone());
+  });
+}
+
 function initTheme() {
   const stored = localStorage.getItem('theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1677,6 +1687,7 @@ if (els.dropZoneBatch && els.batchInput) {
 }
 
 loadLanguages();
+initTone();
 initTheme();
 initHistory();
 initApiTokenField();

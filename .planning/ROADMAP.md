@@ -412,7 +412,7 @@ Plans:
 
 ---
 
-### Phase 26: Selector de Tono Formal/Informal en la UI Web
+### Phase 26: Selector de Tono Formal/Informal en la UI Web ✅ Shipped (2026-06-17)
 
 **Goal**: La interfaz web expone el selector de tono formal/informal que ya soporta el backend, para coherencia entre web y app nativa.
 **Depends on**: Phase 25
@@ -439,7 +439,7 @@ Plans:
 | 23      | Notarización Apple (condicionada)   | ⏸ Diferida | —           |
 | 24      | Preferencias Adicionales            | ✅ Shipped  | 2026-06-17   |
 | 25      | Release v3.2                        | ✅ Shipped  | 2026-06-17   |
-| 26      | Selector Tono Formal/Informal (web) | Pendiente | —            |
+| 26      | Selector Tono Formal/Informal (web) | ✅ Shipped  | 2026-06-17   |
 
 ---
-*Last updated: 2026-06-17 — Phase 25 completada. v3.2 build 6 publicada: appcast.xml actualizado con edSignature real, RELEASE-NOTES-3.2.md, Makefile VERSION=3.2/BUILD_NUM=6.*
+*Last updated: 2026-06-17 — Phase 26 completada (TONE-03). localStorage persistencia del selector de tono en app.js. TONE-01/02/04 ya estaban implementados desde sesiones anteriores.*
