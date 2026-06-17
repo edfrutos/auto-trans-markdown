@@ -6,6 +6,9 @@
 // Phase 14: HOTKEY-01 — hotkey global ⌥⇧M para activar la app (requiere Accesibilidad).
 // Phase 18: showBatchSheet + .sheet(BatchSheet) + .onReceive(.openBatchSheet) (SSE batch nativo).
 // Phase 19: ASSOC-02 — consumir delegate.pendingURLs al pasar a .running.
+// Phase 22: SPARK-02 — activate() UpdateManager al arrancar para comprobaciones automáticas.
+//           SPARK-03 — badge en menú bar cuando hay actualización disponible.
+//           SPARK-04 — detectar just-updated y abrir Settings si AX fue revocado.
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -16,6 +19,8 @@ struct MDTranslatorApp: App {
     @State private var showSettings   = false
     @State private var showBatchSheet = false
     @State private var isDropTargeted = false   // resalta la ventana durante el arrastre
+    /// SPARK-03: true cuando Sparkle encuentra una versión nueva en el appcast.
+    @State private var sparkleUpdateAvailable = false
 
     // Dimensiones de ventana según estado del servidor.
     private var windowWidth: CGFloat  { serverManager.state == .running ? 1_100 : 400 }
@@ -43,6 +48,34 @@ struct MDTranslatorApp: App {
 
         // SYNC-01: comprobar conflictos SQLite iCloud al arrancar (aviso en SettingsView).
         let _ = { SyncManager.shared.onAppLaunch() }()
+
+        // SPARK-02: activar UpdateManager para que SUEnableAutomaticChecks (Info.plist)
+        // arranque las comprobaciones periódicas de Sparkle desde el primer arranque.
+        let _ = { UpdateManager.shared.activate() }()
+
+        // SPARK-04: detectar "just-updated" comparando CFBundleVersion con el último
+        // arranque. Si el build cambió y AX ya no está concedido (macOS revoca el permiso
+        // cuando cambia la firma), abrir automáticamente SettingsView para que el usuario
+        // vea el banner de Accesibilidad y pueda re-conceder el permiso.
+        let _ = {
+            struct Once { static var done = false }
+            guard !Once.done else { return }
+            Once.done = true
+
+            let currentBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
+            let lastBuild = UserDefaults.standard.string(forKey: "MDTranslator.lastBuildVersion") ?? ""
+            UserDefaults.standard.set(currentBuild, forKey: "MDTranslator.lastBuildVersion")
+
+            // Si el build cambió (primera ejecución tras una actualización Sparkle)
+            // y el permiso de Accesibilidad ya no está concedido, mostrar Settings.
+            if !lastBuild.isEmpty && lastBuild != currentBuild
+                && !GlobalHotkeyManager.shared.isAccessibilityGranted {
+                // DispatchQueue.main.async garantiza que los .onReceive ya están suscritos.
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .openSettings, object: nil)
+                }
+            }
+        }()
 
         // Hotkey global ⌥⇧M: registrado en AppDelegate.applicationDidFinishLaunching (HOTKEY-01).
 
@@ -128,6 +161,12 @@ struct MDTranslatorApp: App {
                     await serverManager.start()
                 }
             }
+            // SPARK-03: marcar updateAvailable para el badge del menú bar.
+            .onReceive(
+                NotificationCenter.default.publisher(for: .sparkleUpdateAvailable)
+            ) { _ in
+                sparkleUpdateAvailable = true
+            }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: windowWidth, height: windowHeight)
@@ -136,10 +175,19 @@ struct MDTranslatorApp: App {
         }
 
         // MARK: Menu bar icon (Phase 11)
+        // SPARK-03: cuando sparkleUpdateAvailable es true, se añade un punto naranja junto
+        // al icono para indicar al usuario que hay una actualización disponible.
         MenuBarExtra {
             MenuBarView(serverManager: serverManager)
         } label: {
-            Label("MDTranslator", systemImage: "translate")
+            HStack(spacing: 2) {
+                Image(systemName: "translate")
+                if sparkleUpdateAvailable {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 5, height: 5)
+                }
+            }
         }
         .menuBarExtraStyle(.menu)
     }

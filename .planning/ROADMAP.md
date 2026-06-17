@@ -435,11 +435,11 @@ Plans:
 
 | Phase   | Nombre                              | Estado    | Completada   |
 | ------- | ----------------------------------- | --------- | ------------ |
-| 22      | Sparkle Auto-Update Mejorado        | Pendiente | —            |
+| 22      | Sparkle Auto-Update Mejorado        | ✅ Shipped  | 2026-06-17   |
 | 23      | Notarización Apple (condicionada)   | ⏸ Diferida | —           |
 | 24      | Preferencias Adicionales            | Pendiente | —            |
 | 25      | Release v3.2                        | Pendiente | —            |
 | 26      | Selector Tono Formal/Informal (web) | Pendiente | —            |
 
 ---
-*Last updated: 2026-06-17 — Phases 22–26 definidas. Siguiente fase activa: Phase 22 (Sparkle Auto-Update Mejorado).*
+*Last updated: 2026-06-17 — Phase 22 completada (SPARK-01..04). UpdateManager.activate() en arranque; badge naranja en menú bar; detección post-update SPARK-04 para re-conceder AX. Siguiente: Phase 24.*
