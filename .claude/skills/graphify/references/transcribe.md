@@ -40,6 +40,7 @@ print(json.dumps(transcript_paths, ensure_ascii=False))
 ```
 
 After transcription:
+
 - Read the transcript paths from `graphify-out/.graphify_transcripts.json`
 - Add them to the docs list before dispatching semantic subagents in Step 3B
 - Print how many transcripts were created: `Transcribed N video file(s) -> treating as docs`

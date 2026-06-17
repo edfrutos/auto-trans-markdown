@@ -1,0 +1,37 @@
+{
+  "default": true,
+  "MD033": {
+    "allowed_elements": [
+      "domain",
+      "decisions",
+      "canonical_refs",
+      "code_context",
+      "specifics",
+      "deferred",
+      "objective",
+      "execution_context",
+      "context",
+      "interfaces",
+      "tasks",
+      "task",
+      "name",
+      "files",
+      "done",
+      "read_first",
+      "action",
+      "verify",
+      "automated",
+      "acceptance_criteria",
+      "threat_model",
+      "verification",
+      "success_criteria",
+      "output",
+      "user_constraints",
+      "phase_requirements"
+    ]
+  },
+  "MD041": false,
+  "MD013": false,
+  "MD036": false,
+  "MD060": false
+}
