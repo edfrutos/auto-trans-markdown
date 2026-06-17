@@ -46,12 +46,19 @@ tr:nth-child(even) { background: #f8fafc; }
 h1,h2,h3,h4,h5,h6 { break-after: avoid; page-break-after: avoid; }
 
 /* ── Solo pantalla: centrar con max-width ────────────────────────────────── */
-/* WKWebView.createPDF no aplica @media screen, así que el PDF usa ancho completo */
 @media screen {
   body { max-width: 48rem; margin: 2rem auto; }
 }
 
-/* ── Paginación: @page respetado por WKWebView.createPDF (macOS 14+) ─────── */
+/* ── Impresión / NSPrintOperation ────────────────────────────────────────── */
+/* NSPrintOperation sí aplica @media print; aquí eliminamos el padding base   */
+/* para que los márgenes los controle @page exclusivamente.                   */
+@media print {
+  body { max-width: none; margin: 0; padding: 0; font-size: 11pt; }
+  a { color: #0369a1; }
+}
+
+/* @page: tamaño A4 + márgenes — respetado por NSPrintOperation y Acrobat */
 @page { size: A4; margin: 18mm 20mm; }
 """
 
