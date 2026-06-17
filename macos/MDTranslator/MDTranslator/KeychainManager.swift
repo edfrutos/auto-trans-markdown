@@ -12,7 +12,10 @@ enum KeychainManager {
 
     static let openAIKeyAccount  = "OPENAI_API_KEY"
     static let deepLKeyAccount   = "DEEPL_API_KEY"
-    static let providerAccount   = "TRANSLATION_PROVIDER"
+    static let providerAccount      = "TRANSLATION_PROVIDER"
+    /// PREF-03: URL base alternativa para OpenAI (Ollama, Azure, proxy). Guardada en Keychain
+    /// porque puede contener credenciales embebidas (http://user:pass@host/v1).
+    static let openAIBaseURLAccount = "OPENAI_BASE_URL"
 
     // MARK: - API pública
 
@@ -99,3 +102,4 @@ enum KeychainManager {
         }
     }
 }
+// Appended at build time — do not duplicate manually

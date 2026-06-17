@@ -289,6 +289,26 @@ struct WebView: NSViewRepresentable {
             }
         }
 
+        // PREF-02/04: inyectar tono por defecto y tooltip del botón de traducción
+        // tras cada carga de página (incluidos reloads del servidor).
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            let tone  = UserDefaults.standard.string(forKey: "MDTranslator.defaultTone") ?? ""
+            let model = UserDefaults.standard.string(forKey: "MDTranslator.openAIModel") ?? "gpt-4o-mini"
+            let toneLabel = tone == "formal" ? "Formal" : tone == "informal" ? "Informal" : "Neutro"
+            let toneValue = tone.isEmpty ? "auto" : tone
+            let safeModel     = model.replacingOccurrences(of: "'", with: "\\'")
+            let safeToneLabel = toneLabel.replacingOccurrences(of: "'", with: "\\'")
+            let js = """
+            (function() {
+              var ts = document.getElementById('tone-select');
+              if (ts) ts.value = '\(toneValue)';
+              var btn = document.getElementById('btn-translate');
+              if (btn) btn.title = 'Modelo: \(safeModel) | Tono: \(safeToneLabel)';
+            })();
+            """
+            webView.evaluateJavaScript(js, completionHandler: nil)
+        }
+
         // Error de navegación provisional (servidor no responde, URL inválida…)
         func webView(_ webView: WKWebView,
                      didFailProvisionalNavigation navigation: WKNavigation!,

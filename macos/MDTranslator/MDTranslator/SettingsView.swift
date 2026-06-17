@@ -1,6 +1,8 @@
 // SettingsView.swift — Configuración de API keys y carpeta de salida para MD Translator.
 // Se muestra en primera ejecución (sin keys en Keychain) y desde el menú ⌘,.
 // Las keys se guardan en el Keychain del sistema, nunca en disco ni en logs.
+// Phase 24: PREF-01 selector modelo OpenAI, PREF-02 tono por defecto,
+//           PREF-03 URL base alternativa (Keychain).
 import SwiftUI
 
 struct SettingsView: View {
@@ -11,6 +13,8 @@ struct SettingsView: View {
     @State private var openAIKey = KeychainManager.load(account: KeychainManager.openAIKeyAccount) ?? ""
     @State private var deepLKey  = KeychainManager.load(account: KeychainManager.deepLKeyAccount)  ?? ""
     @State private var provider  = KeychainManager.load(account: KeychainManager.providerAccount)  ?? "openai"
+    // PREF-03: URL base alternativa (Keychain — puede contener credenciales)
+    @State private var openAIBaseURL = KeychainManager.load(account: KeychainManager.openAIBaseURLAccount) ?? ""
 
     @State private var saveError: String?
     @State private var saved = false
@@ -21,6 +25,17 @@ struct SettingsView: View {
     // SYNC-01: estado local del toggle, sincronizado con SyncManager al guardar.
     @State private var iCloudSyncEnabled = SyncManager.shared.isICloudEnabled
     @State private var syncActionError: String?
+    // PREF-01: modelo OpenAI — persiste en UserDefaults.
+    @AppStorage("MDTranslator.openAIModel") private var openAIModel = "gpt-4o-mini"
+    // PREF-02: tono por defecto — persiste en UserDefaults.
+    @AppStorage("MDTranslator.defaultTone") private var defaultTone = ""
+
+    private let modelOptions: [(label: String, value: String)] = [
+        ("gpt-4o-mini", "gpt-4o-mini"),
+        ("gpt-4o",      "gpt-4o"),
+        ("gpt-4.1",     "gpt-4.1"),
+        ("o4-mini",     "o4-mini"),
+    ]
 
     private var canSave: Bool {
         !openAIKey.trimmingCharacters(in: .whitespaces).isEmpty ||
@@ -57,10 +72,36 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                // PREF-01/03: opciones avanzadas OpenAI (solo visibles cuando el proveedor es openai).
+                if provider == "openai" {
+                    Section {
+                        Picker("Modelo", selection: $openAIModel) {
+                            ForEach(modelOptions, id: \.value) { opt in
+                                Text(opt.label).tag(opt.value)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        Text("gpt-4o-mini es el más rápido y económico. gpt-4o y gpt-4.1 son más precisos. o4-mini optimiza razonamiento.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        // PREF-03: URL base alternativa (Ollama, Azure, proxy)
+                        TextField("https://api.openai.com/v1  (vacío = por defecto)", text: $openAIBaseURL)
+                            .textContentType(.URL)
+                        Text("URL base alternativa para Ollama, Azure OpenAI o cualquier proxy compatible. Se guarda en el Keychain. Vacío = API oficial de OpenAI.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text("Configuración avanzada OpenAI")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section {
                     SecureField("sk-…", text: $openAIKey)
                         .textContentType(.password)
-                    Text("Necesaria para el proveedor OpenAI (modelo gpt-4o-mini por defecto).")
+                    Text("Necesaria para el proveedor OpenAI (modelo \(openAIModel) activo).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } header: {
@@ -116,6 +157,23 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                // PREF-02: tono de traducción por defecto.
+                Section {
+                    Picker("Tono por defecto", selection: $defaultTone) {
+                        Text("Neutro (automático)").tag("")
+                        Text("Formal").tag("formal")
+                        Text("Informal").tag("informal")
+                    }
+                    .pickerStyle(.segmented)
+                    Text("Se aplica como valor inicial del selector de tono en cada sesión. En DeepL, Formal y Informal se mapean a formality=more/less.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Tono de traducción")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
                 // SYNC-01: sincronización de glosario y TM en iCloud Drive.
                 Section {
                     Toggle("Sincronizar datos vía iCloud Drive", isOn: $iCloudSyncEnabled)
@@ -157,7 +215,7 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .frame(height: 590)
+            .frame(height: provider == "openai" ? 780 : 620)
 
             // MARK: Banner Accesibilidad (hotkey ⌥⇧M)
             // Tras una actualización Sparkle, macOS revoca el permiso porque la firma cambia.
@@ -275,6 +333,10 @@ struct SettingsView: View {
                                      value: deepLKey.trimmingCharacters(in: .whitespaces))
             try KeychainManager.save(account: KeychainManager.providerAccount,
                                      value: provider)
+            // PREF-03: guardar URL base alternativa en Keychain.
+            try KeychainManager.save(account: KeychainManager.openAIBaseURLAccount,
+                                     value: openAIBaseURL.trimmingCharacters(in: .whitespaces))
+            // PREF-01/02: modelo y tono se persisten automáticamente vía @AppStorage.
             // Notificar a SplashView (primera ejecución) que ya hay keys disponibles.
             NotificationCenter.default.post(name: .settingsSaved, object: nil)
             saved = true

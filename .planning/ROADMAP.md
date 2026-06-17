@@ -374,7 +374,7 @@ Plans:
 
 ---
 
-### Phase 24: Preferencias Adicionales
+### Phase 24: Preferencias Adicionales ✅ Shipped (2026-06-17)
 
 **Goal**: El usuario puede configurar el modelo OpenAI y el tono de traducción por defecto directamente desde la app, sin editar `.env`.
 **Depends on**: Phase 22
@@ -442,4 +442,4 @@ Plans:
 | 26      | Selector Tono Formal/Informal (web) | Pendiente | —            |
 
 ---
-*Last updated: 2026-06-17 — Phase 22 completada (SPARK-01..04). UpdateManager.activate() en arranque; badge naranja en menú bar; detección post-update SPARK-04 para re-conceder AX. Siguiente: Phase 24.*
+*Last updated: 2026-06-17 — Phase 24 completada (PREF-01..04). Selector de modelo OpenAI, tono por defecto, URL base alternativa en Keychain; JS injection en WKWebView para pre-seleccionar tono y tooltip con modelo/tono activos.*

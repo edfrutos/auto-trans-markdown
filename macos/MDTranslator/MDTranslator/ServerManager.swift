@@ -130,6 +130,13 @@ class ServerManager {
         if let provider = KeychainManager.load(account: KeychainManager.providerAccount) {
             env["TRANSLATION_PROVIDER"] = provider
         }
+        // PREF-01: modelo OpenAI desde UserDefaults (por defecto gpt-4o-mini).
+        env["OPENAI_MODEL"] = UserDefaults.standard.string(forKey: "MDTranslator.openAIModel") ?? "gpt-4o-mini"
+        // PREF-03: URL base alternativa desde Keychain (Ollama, Azure, proxy OpenAI-compatible).
+        if let baseURL = KeychainManager.load(account: KeychainManager.openAIBaseURLAccount),
+           !baseURL.isEmpty {
+            env["OPENAI_BASE_URL"] = baseURL
+        }
         // SYNC-02: inyectar rutas de datos si el usuario activó iCloud Drive sync.
         // El backend lee GLOSSARY_PATH y TM_DB_PATH en pipeline.py y memory.py.
         // NUNCA incluir estas rutas en los logs del servidor.
