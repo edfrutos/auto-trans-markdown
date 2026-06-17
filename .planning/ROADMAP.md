@@ -431,15 +431,142 @@ Plans:
 
 ---
 
-## Progress Table (v3.3)
+## Progress Table (v3.3+)
 
-| Phase   | Nombre                              | Estado    | Completada   |
-| ------- | ----------------------------------- | --------- | ------------ |
-| 22      | Sparkle Auto-Update Mejorado        | ✅ Shipped  | 2026-06-17   |
-| 23      | Notarización Apple (condicionada)   | ⏸ Diferida | —           |
-| 24      | Preferencias Adicionales            | ✅ Shipped  | 2026-06-17   |
-| 25      | Release v3.2                        | ✅ Shipped  | 2026-06-17   |
-| 26      | Selector Tono Formal/Informal (web) | ✅ Shipped  | 2026-06-17   |
+| Phase   | Nombre                              | Estado      | Completada   |
+| ------- | ----------------------------------- | ----------- | ------------ |
+| 22      | Sparkle Auto-Update Mejorado        | ✅ Shipped   | 2026-06-17   |
+| 23      | Notarización Apple (condicionada)   | ⏸ Diferida  | —            |
+| 24      | Preferencias Adicionales            | ✅ Shipped   | 2026-06-17   |
+| 25      | Release v3.2                        | ✅ Shipped   | 2026-06-17   |
+| 26      | Selector Tono Formal/Informal (web) | ✅ Shipped   | 2026-06-17   |
+| 27      | Release v3.3                        | 🔜 Pendiente | —            |
+| 28      | WKWebView Persistente               | 🔜 Pendiente | —            |
+| 29      | Ventana Settings Nativa             | 🔜 Pendiente | —            |
+| 30      | Historial de Traducciones (web)     | 🔜 Pendiente | —            |
+| 31      | Estimación de Coste Visible         | 🔜 Pendiente | —            |
+| 32      | Tests de Integración E2E            | 🔜 Pendiente | —            |
 
 ---
-*Last updated: 2026-06-17 — Phase 26 completada (TONE-03). localStorage persistencia del selector de tono en app.js. TONE-01/02/04 ya estaban implementados desde sesiones anteriores.*
+*Last updated: 2026-06-17 — Phase 26 completada. Phases 27–32 definidas y documentadas: Release v3.3, WKWebView persistente, Settings nativa, historial de traducciones, estimación de coste, tests E2E.*
+
+---
+
+### Phase 27: Release v3.3
+
+**Goal**: Publicar MD Translator 3.3 como DMG distribuible con las mejoras de Phases 24–26 (preferencias avanzadas, Sparkle mejorado, persistencia de tono), bump de versión, release notes y appcast actualizado.
+**Depends on**: Phase 26
+
+**Requirements**:
+
+- `REL33-01` — `VERSION=3.3` / `BUILD_NUM=7` en el Makefile; `make dmg` produce `MDTranslator-3.3.dmg` + `.sha256`
+- `REL33-02` — `docs/RELEASE-NOTES-3.3.md` con novedades (preferencias OpenAI, tono por defecto, URL base alternativa, selector de tono persistente en web)
+- `REL33-03` — Item v3.3 en `docs/appcast.xml` con edSignature/length reales del ZIP firmado
+- `REL33-04` — Tag git `v3.3`; GitHub Release con DMG, ZIP, SHA-256 y release notes
+
+**Success Criteria**:
+
+1. `make dmg && make appcast` completan sin errores y el DMG instala y arranca en macOS 14+
+2. GitHub Release v3.3 publicada con todos los artefactos
+3. Una instalación de la 3.2 recibe aviso de actualización a 3.3 vía Sparkle (appcast `sparkle:version=7 > 6`)
+
+---
+
+### Phase 28: WKWebView Persistente entre Aperturas
+
+**Goal**: El estado del editor (texto introducido, idioma destino, tono seleccionado) sobrevive al cierre y reapertura de la ventana principal, eliminando la pérdida de trabajo accidental.
+**Depends on**: Phase 27
+
+**Requirements**:
+
+- `PERSIST-01` — Guardar el contenido del textarea `#source-text` en `localStorage` con debounce de 500 ms; restaurar al cargar la página
+- `PERSIST-02` — Guardar el idioma destino seleccionado (`#target-lang` chips activos) en `localStorage`; restaurar al cargar
+- `PERSIST-03` — El resultado de la última traducción (tab Editor) se guarda en `sessionStorage` y se restaura al recargar dentro de la misma sesión
+- `PERSIST-04` — Banner discreto "Sesión anterior restaurada" con botón "Limpiar" para descartar el estado guardado
+
+**Success Criteria**:
+
+1. Escribir texto en el editor, cerrar la ventana y reabrirla → el texto sigue ahí
+2. El banner de restauración aparece solo cuando hay estado previo
+3. "Limpiar" borra el estado y deja el editor vacío sin necesidad de recargar
+
+---
+
+### Phase 29: Ventana Settings Nativa (SwiftUI Scene)
+
+**Goal**: Migrar la Configuración de una sheet modal a una ventana `Settings` estándar de SwiftUI, accesible con ⌘, como cualquier app macOS nativa. Mejora la coherencia con las convenciones de la plataforma.
+**Depends on**: Phase 27
+
+**Requirements**:
+
+- `SETTINGS-01` — Añadir `Settings { SettingsView(...) }` como scene en `MDTranslatorApp`; eliminar la sheet modal y el botón "Configuración" del menú contextual del menú bar
+- `SETTINGS-02` — El ítem "Preferencias…" del menú app (⌘,) abre la ventana Settings nativa; la sheet actual queda solo para el flujo de primera ejecución (sin keys)
+- `SETTINGS-03` — La ventana Settings recuerda su posición en pantalla entre sesiones (comportamiento por defecto de `WindowGroup`/`Settings` en SwiftUI)
+- `SETTINGS-04` — El servidor se reinicia automáticamente al cerrar la ventana Settings si alguna preferencia de servidor cambió (modelo, proveedor, URL base)
+
+**Success Criteria**:
+
+1. ⌘, abre una ventana separada no-modal con las preferencias
+2. La ventana principal sigue usable mientras Settings está abierta
+3. Cambiar el modelo OpenAI y cerrar Settings reinicia el servidor; el nuevo modelo aparece en el tooltip del botón Traducir
+
+---
+
+### Phase 30: Historial de Traducciones en la UI Web
+
+**Goal**: La interfaz web muestra las últimas N traducciones realizadas en la sesión actual, con posibilidad de recuperar el texto original y el resultado para reutilizarlos o compararlos.
+**Depends on**: Phase 27
+
+**Requirements**:
+
+- `HIST-01` — Panel "Historial" colapsable (acordeón) debajo del área de resultado en el tab Editor; muestra las últimas 10 traducciones con timestamp, idioma destino y primeras 80 chars del resultado
+- `HIST-02` — Cada entrada tiene botones "Restaurar" (carga el texto original en el editor) y "Copiar resultado" (copia la traducción al portapapeles)
+- `HIST-03` — El historial persiste en `localStorage` entre sesiones (máx. 20 entradas, FIFO); el toggle "Guardar historial" en la UI lo activa/desactiva (el mecanismo ya existe en `app.js`)
+- `HIST-04` — Botón "Limpiar historial" que elimina todas las entradas con confirmación (`confirm()`)
+
+**Success Criteria**:
+
+1. Tras tres traducciones, el historial muestra tres entradas ordenadas de más reciente a más antigua
+2. "Restaurar" carga el texto original correctamente en el textarea `#source-text`
+3. El historial persiste al recargar la página (con toggle activado)
+
+---
+
+### Phase 31: Estimación de Coste Visible antes de Traducir
+
+**Goal**: El usuario ve el número de segmentos y el coste estimado (tokens / caracteres) antes de lanzar una traducción, evitando sorpresas en el gasto de API.
+**Depends on**: Phase 27
+
+**Requirements**:
+
+- `EST-01` — En el tab Editor, al escribir texto con más de 50 chars, llamar a `/api/translate/estimate` con debounce de 800 ms y mostrar una píldora discreta con "~N segmentos · ~X tokens · ~$Y" bajo el textarea
+- `EST-02` — En el tab Archivo, mostrar la estimación tras seleccionar un archivo y antes de pulsar "Traducir"
+- `EST-03` — La estimación muestra advertencia visual (naranja) si el coste supera un umbral configurable (por defecto $0.10); el umbral es un campo en Configuración (UserDefaults)
+- `EST-04` — Si el proveedor es DeepL, mostrar caracteres en lugar de tokens (DeepL cobra por caracter)
+
+**Success Criteria**:
+
+1. Escribir un párrafo en el editor → la estimación aparece en menos de 1 s
+2. Con un archivo de 100 KB, la estimación se muestra antes de traducir
+3. Un texto de 50 000 tokens activa la advertencia naranja con el umbral por defecto
+
+---
+
+### Phase 32: Tests de Integración End-to-End
+
+**Goal**: Ampliar la suite pytest con tests de integración que arranquen el servidor real y verifiquen el flujo completo de traducción usando un proveedor mock, sin necesitar API keys reales.
+**Depends on**: Phase 27
+
+**Requirements**:
+
+- `E2E-01` — Fixture pytest `live_server` que arranca `uvicorn src.main:app` en un puerto libre, espera el health check y lo mata al finalizar el test
+- `E2E-02` — Mock del proveedor OpenAI: `monkeypatch` sobre `translate_segments` que devuelve textos prefijados con `[MOCK]` sin llamar a la API real
+- `E2E-03` — Tests de integración para los endpoints principales: `POST /api/translate`, `POST /api/translate/file`, `POST /api/translate/estimate`; verificar status 200 y estructura de respuesta
+- `E2E-04` — Test de lote completo: subir un ZIP con 3 archivos `.md`, esperar el job SSE hasta `status=done`, descargar el ZIP resultado y verificar que contiene 3 archivos traducidos
+- `E2E-05` — Integrar `make e2e` en el Makefile como target separado de `pytest tests/ -q`
+
+**Success Criteria**:
+
+1. `make e2e` completa en menos de 30 s sin API keys configuradas
+2. Los tests de integración cubren al menos los 3 endpoints principales
+3. El test de lote verifica la estructura del ZIP de salida
