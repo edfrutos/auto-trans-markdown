@@ -15,6 +15,7 @@ import re
 # ── CSS embebido ──────────────────────────────────────────────────────────────
 
 _CSS = """
+/* ── Pantalla ────────────────────────────────────────────────────────────── */
 body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.7;
        max-width: 48rem; margin: 2rem auto; padding: 0 1.5rem; color: #1e293b; }
 h1 { font-size: 2em;   color: #0f766e; margin-top: 1em;   border-bottom: 2px solid #e2e8f0; padding-bottom: .3em; }
@@ -38,6 +39,42 @@ table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: .95em;
 th, td { border: 1px solid #cbd5e1; padding: .45rem .75rem; text-align: left; }
 th { background: #f1f5f9; font-weight: 600; }
 tr:nth-child(even) { background: #f8fafc; }
+
+/* ── Paginación PDF / impresión ──────────────────────────────────────────── */
+@page {
+  size: A4;
+  margin: 18mm 20mm;
+}
+@media print {
+  body {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 11pt;
+    color: #000;
+  }
+  a { color: #0369a1; text-decoration: underline; }
+  pre {
+    background: #f1f5f9;
+    white-space: pre-wrap;
+    word-break: break-word;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  li { break-inside: avoid; page-break-inside: avoid; }
+}
 """
 
 # ── Patrones de bloque ────────────────────────────────────────────────────────

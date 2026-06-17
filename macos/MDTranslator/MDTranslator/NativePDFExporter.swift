@@ -1,6 +1,6 @@
 // NativePDFExporter.swift — Genera un PDF a partir de HTML usando WKWebView.createPDF.
 // PDFN-01: no requiere WeasyPrint ni ninguna dependencia nativa nueva en el bundle.
-// PDFN-03: configuración A4 con márgenes de 15 mm para paridad visual con el export HTML.
+// PDFN-03: paginación A4 automática vía CSS @page; márgenes 18 mm definidos en html_export.py.
 import AppKit
 import WebKit
 
@@ -34,10 +34,10 @@ final class NativePDFExporter: NSObject {
     private func createAndDeliverPDF() {
         guard let wv = webView else { return }
 
-        // Configuración A4 (210 × 297 mm → puntos: 595.28 × 841.89 pt)
+        // Sin rect: WebKit pagina el contenido completo respetando las reglas
+        // @page { size: A4; margin: 18mm 20mm; } definidas en html_export.py.
+        // Fijar rect a un único rectángulo A4 recortaría el contenido a una sola página.
         let pdfConfig = WKPDFConfiguration()
-        let a4Points = CGRect(x: 0, y: 0, width: 595.28, height: 841.89)
-        pdfConfig.rect = a4Points
 
         wv.createPDF(configuration: pdfConfig) { [weak self] result in
             guard let self else { return }
