@@ -3,8 +3,9 @@
 Convierte un subconjunto de CommonMark a HTML con CSS embebido.
 Soporta: headings h1–h6, párrafos, listas UL/OL, blockquotes,
 reglas horizontales, bloques de código con resaltado de lenguaje,
-código inline, negrita, cursiva, tachado, enlaces, imágenes e
-imagen-como-enlace.  No usa dependencias externas.
+código inline, negrita, cursiva, tachado, enlaces, imágenes,
+imagen-como-enlace y HTML inline/bloque pasado tal cual.
+No usa dependencias externas.
 """
 
 from __future__ import annotations
@@ -15,9 +16,9 @@ import re
 # ── CSS embebido ──────────────────────────────────────────────────────────────
 
 _CSS = """
-/* ── Pantalla ────────────────────────────────────────────────────────────── */
+/* ── Base (activo también en WKWebView.createPDF) ───────────────────────── */
 body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.7;
-       max-width: 48rem; margin: 2rem auto; padding: 0 1.5rem; color: #1e293b; }
+       margin: 0; padding: 1.5rem 2rem; color: #1e293b; }
 h1 { font-size: 2em;   color: #0f766e; margin-top: 1em;   border-bottom: 2px solid #e2e8f0; padding-bottom: .3em; }
 h2 { font-size: 1.5em; color: #0f766e; margin-top: 1.4em; border-bottom: 1px solid #e2e8f0; padding-bottom: .2em; }
 h3,h4,h5,h6 { color: #0f766e; margin-top: 1.2em; }
@@ -25,56 +26,33 @@ p  { margin: .75em 0; }
 a  { color: #0369a1; }
 img { max-width: 100%; height: auto; vertical-align: middle; }
 pre { background: #f1f5f9; padding: 1rem; overflow-x: auto;
-      border-radius: .5rem; white-space: pre-wrap; word-break: break-word; }
+      border-radius: .5rem; white-space: pre-wrap; word-break: break-word;
+      break-inside: avoid; page-break-inside: avoid; }
 code { background: #f1f5f9; padding: .1em .35em;
        border-radius: .25rem; font-size: .88em; font-family: ui-monospace, monospace; }
 pre code { background: none; padding: 0; border-radius: 0; font-size: .9em; }
 blockquote { border-left: 4px solid #14b8a6; margin: .75em 0;
-             padding: .1em 1em; color: #475569; background: #f8fafc; }
+             padding: .1em 1em; color: #475569; background: #f8fafc;
+             break-inside: avoid; page-break-inside: avoid; }
 ul, ol { padding-left: 1.5rem; margin: .75em 0; }
-li { margin: .25em 0; }
+li { margin: .25em 0; break-inside: avoid; page-break-inside: avoid; }
 hr { border: none; border-top: 1px solid #cbd5e1; margin: 1.5em 0; }
 del { color: #94a3b8; }
-table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: .95em; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: .95em;
+        break-inside: avoid; page-break-inside: avoid; }
 th, td { border: 1px solid #cbd5e1; padding: .45rem .75rem; text-align: left; }
 th { background: #f1f5f9; font-weight: 600; }
 tr:nth-child(even) { background: #f8fafc; }
+h1,h2,h3,h4,h5,h6 { break-after: avoid; page-break-after: avoid; }
 
-/* ── Paginación PDF / impresión ──────────────────────────────────────────── */
-@page {
-  size: A4;
-  margin: 18mm 20mm;
+/* ── Solo pantalla: centrar con max-width ────────────────────────────────── */
+/* WKWebView.createPDF no aplica @media screen, así que el PDF usa ancho completo */
+@media screen {
+  body { max-width: 48rem; margin: 2rem auto; }
 }
-@media print {
-  body {
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    font-size: 11pt;
-    color: #000;
-  }
-  a { color: #0369a1; text-decoration: underline; }
-  pre {
-    background: #f1f5f9;
-    white-space: pre-wrap;
-    word-break: break-word;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    break-after: avoid;
-    page-break-after: avoid;
-  }
-  table {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  blockquote {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  li { break-inside: avoid; page-break-inside: avoid; }
-}
+
+/* ── Paginación: @page respetado por WKWebView.createPDF (macOS 14+) ─────── */
+@page { size: A4; margin: 18mm 20mm; }
 """
 
 # ── Patrones de bloque ────────────────────────────────────────────────────────
@@ -88,6 +66,10 @@ _UL          = re.compile(r"^(\s*)[-*+]\s+(.*)")
 _OL          = re.compile(r"^(\s*)\d+\.\s+(.*)")
 _TABLE_SEP   = re.compile(r"^\|[-:| ]+\|?\s*$")
 _TABLE_ROW   = re.compile(r"^\|(.+)\|?\s*$")
+# Tag HTML de bloque: línea que empieza con <tag o </tag o <!-- (sin espacio previo)
+_HTML_BLOCK  = re.compile(r"^<[a-zA-Z/!]")
+# Tag HTML inline: <tag …> o </tag> — para proteger del html.escape()
+_HTML_TAG    = re.compile(r"</?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>|<!--.*?-->", re.DOTALL)
 
 
 # ── Helpers inline ────────────────────────────────────────────────────────────
@@ -95,23 +77,29 @@ _TABLE_ROW   = re.compile(r"^\|(.+)\|?\s*$")
 def _inline(raw: str) -> str:
     """Convierte inline Markdown a HTML.
 
-    Extrae primero los spans de código inline para protegerlos;
-    escapa el texto plano con html.escape(); luego aplica los
-    patrones de enlaces, imágenes, negrita, cursiva y tachado.
+    Protege código inline y tags HTML existentes como placeholders,
+    escapa el texto plano con html.escape() y luego aplica patrones MD.
     """
-    # 1. Proteger código inline `…` con placeholders
-    codes: list[str] = []
-    result: list[str] = []
-    last = 0
-    for m in re.finditer(r"`([^`]+)`", raw):
-        result.append(html.escape(raw[last:m.start()], quote=False))
-        codes.append(f"<code>{html.escape(m.group(1))}</code>")
-        result.append(f"\x00CODE{len(codes) - 1}\x00")
-        last = m.end()
-    result.append(html.escape(raw[last:], quote=False))
-    text = "".join(result)
+    placeholders: list[str] = []
 
-    # 2. Imagen dentro de enlace: [![alt](src)](href)
+    def _save(s: str) -> str:
+        placeholders.append(s)
+        return f"\x00PH{len(placeholders) - 1}\x00"
+
+    # 1. Proteger código inline `…`
+    text = re.sub(
+        r"`([^`]+)`",
+        lambda m: _save(f"<code>{html.escape(m.group(1))}</code>"),
+        raw,
+    )
+
+    # 2. Proteger tags HTML inline existentes (no escapar <, >)
+    text = _HTML_TAG.sub(lambda m: _save(m.group(0)), text)
+
+    # 3. Escapar el texto plano restante
+    text = html.escape(text, quote=False)
+
+    # 4. Imagen dentro de enlace: [![alt](src)](href)
     text = re.sub(
         r"\[!\[([^\]]*)\]\(([^)]*)\)\]\(([^)]*)\)",
         lambda m: (
@@ -121,30 +109,30 @@ def _inline(raw: str) -> str:
         ),
         text,
     )
-    # 3. Imagen sola: ![alt](src)
+    # 5. Imagen sola: ![alt](src)
     text = re.sub(
         r"!\[([^\]]*)\]\(([^)]*)\)",
         lambda m: f'<img src="{m.group(2)}" alt="{m.group(1)}">',
         text,
     )
-    # 4. Enlace: [text](href)
+    # 6. Enlace: [text](href)
     text = re.sub(
         r"\[([^\]]+)\]\(([^)]*)\)",
         lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>',
         text,
     )
-    # 5. Negrita: **text** o __text__
+    # 7. Negrita: **text** o __text__
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"__(.+?)__",     r"<strong>\1</strong>", text)
-    # 6. Cursiva: *text*  (sin duplicar *)
+    # 8. Cursiva: *text*  (sin duplicar *)
     text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<em>\1</em>", text)
     text = re.sub(r"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)",       r"<em>\1</em>", text)
-    # 7. Tachado: ~~text~~
+    # 9. Tachado: ~~text~~
     text = re.sub(r"~~(.+?)~~", r"<del>\1</del>", text)
 
-    # 8. Restaurar códigos inline
-    for idx, tag in enumerate(codes):
-        text = text.replace(f"\x00CODE{idx}\x00", tag)
+    # 10. Restaurar placeholders (código + tags HTML)
+    for idx, original in enumerate(placeholders):
+        text = text.replace(f"\x00PH{idx}\x00", original)
 
     return text
 
@@ -179,6 +167,13 @@ def _render(text: str) -> str:
             code = html.escape("\n".join(code_lines))
             cls = f' class="language-{lang}"' if lang else ""
             out.append(f"<pre><code{cls}>{code}</code></pre>")
+            i += 1
+            continue
+
+        # ── HTML de bloque — pasar tal cual (no escapar) ─────────────────────
+        if _HTML_BLOCK.match(line):
+            close_lists()
+            out.append(line)
             i += 1
             continue
 
