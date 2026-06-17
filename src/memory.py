@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import sqlite3
 from pathlib import Path
 
@@ -10,6 +11,17 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def default_memory_path() -> Path:
+    """Devuelve la ruta de la base de datos de traducción.
+
+    Si la variable de entorno TM_DB_PATH está definida (inyectada por
+    ServerManager cuando el usuario activa la sincronización con iCloud Drive),
+    se usa esa ruta. En caso contrario se usa el directorio local data/.
+    """
+    env_path = os.environ.get("TM_DB_PATH", "").strip()
+    if env_path:
+        p = Path(env_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return p
     return ROOT / "data" / "translation_memory.db"
 
 

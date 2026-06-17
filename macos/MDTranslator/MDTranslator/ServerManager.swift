@@ -130,6 +130,16 @@ class ServerManager {
         if let provider = KeychainManager.load(account: KeychainManager.providerAccount) {
             env["TRANSLATION_PROVIDER"] = provider
         }
+        // SYNC-02: inyectar rutas de datos si el usuario activó iCloud Drive sync.
+        // El backend lee GLOSSARY_PATH y TM_DB_PATH en pipeline.py y memory.py.
+        // NUNCA incluir estas rutas en los logs del servidor.
+        let sync = SyncManager.shared
+        if let glossaryPath = sync.effectiveGlossaryPath {
+            env["GLOSSARY_PATH"] = glossaryPath
+        }
+        if let dbPath = sync.effectiveDBPath {
+            env["TM_DB_PATH"] = dbPath
+        }
         p.environment = env
 
         // terminationHandler DEBE usar Task { @MainActor [weak self] in } para Swift 6 (Pitfall 5).

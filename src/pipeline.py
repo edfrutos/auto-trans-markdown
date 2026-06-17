@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,7 +27,23 @@ from .translator import (
 from .validator import ValidationReport, validate_translation
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_GLOSSARY_PATH = ROOT / "glossary.yaml"
+
+
+def _default_glossary_path() -> Path:
+    """Devuelve la ruta del glosario.
+
+    Si la variable de entorno GLOSSARY_PATH está definida (inyectada por
+    ServerManager cuando el usuario activa la sincronización con iCloud Drive),
+    se usa esa ruta. En caso contrario se usa glossary.yaml en la raíz del
+    proyecto (directorio del backend embebido).
+    """
+    env_path = os.environ.get("GLOSSARY_PATH", "").strip()
+    if env_path:
+        return Path(env_path)
+    return ROOT / "glossary.yaml"
+
+
+DEFAULT_GLOSSARY_PATH: Path = _default_glossary_path()
 
 
 @dataclass

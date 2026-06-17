@@ -41,6 +41,9 @@ struct MDTranslatorApp: App {
         // Solicitar permiso de notificaciones al primer arranque (macOS recuerda la decisión).
         let _ = { NotificationManager.shared.requestPermission() }()
 
+        // SYNC-01: comprobar conflictos SQLite iCloud al arrancar (aviso en SettingsView).
+        let _ = { SyncManager.shared.onAppLaunch() }()
+
         // Hotkey global ⌥⇧M: registrado en AppDelegate.applicationDidFinishLaunching (HOTKEY-01).
 
         // WindowGroup(id:) garantiza que macOS persiste el frame de la ventana entre reinicios.

@@ -18,6 +18,9 @@ struct SettingsView: View {
     @State private var accessibilityGranted = GlobalHotkeyManager.shared.isAccessibilityGranted
     // CRASH-01: opt-in diagnóstico — persiste en UserDefaults a través de @AppStorage.
     @AppStorage(CrashReporterManager.sendReportsKey) private var sendCrashReports = false
+    // SYNC-01: estado local del toggle, sincronizado con SyncManager al guardar.
+    @State private var iCloudSyncEnabled = SyncManager.shared.isICloudEnabled
+    @State private var syncActionError: String?
 
     private var canSave: Bool {
         !openAIKey.trimmingCharacters(in: .whitespaces).isEmpty ||
@@ -113,6 +116,34 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                // SYNC-01: sincronización de glosario y TM en iCloud Drive.
+                Section {
+                    Toggle("Sincronizar datos vía iCloud Drive", isOn: $iCloudSyncEnabled)
+                        .onChange(of: iCloudSyncEnabled) { _, newValue in
+                            applyICloudSync(enabled: newValue)
+                        }
+                    if let warning = SyncManager.shared.syncWarning {
+                        Label(warning, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                    if let err = syncActionError {
+                        Text(err)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    Text("Mueve el glosario y la memoria de traducción a iCloud Drive " +
+                         "(~/Library/Mobile Documents/com~apple~CloudDocs/MDTranslator/) " +
+                         "para compartirlos entre Macs. SQLite no admite escritura simultánea: " +
+                         "úsalo desde un solo Mac a la vez.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Sincronización")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
                 // CRASH-01: opt-in informes de diagnóstico anónimos.
                 Section {
                     Toggle("Enviar informes de diagnóstico anónimos", isOn: $sendCrashReports)
@@ -126,7 +157,7 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .frame(height: 490)
+            .frame(height: 590)
 
             // MARK: Banner Accesibilidad (hotkey ⌥⇧M)
             // Tras una actualización Sparkle, macOS revoca el permiso porque la firma cambia.
@@ -208,6 +239,29 @@ struct SettingsView: View {
         } message: {
             Text("Las API keys se han guardado en el Keychain. El servidor se reinicia automáticamente con la nueva configuración.")
         }
+    }
+
+    // MARK: - iCloud sync
+
+    /// Aplica el cambio de preferencia de iCloud sync y reinicia el servidor.
+    private func applyICloudSync(enabled: Bool) {
+        syncActionError = nil
+        let sync = SyncManager.shared
+        let error: String?
+        if enabled {
+            error = sync.enableICloudSync()
+        } else {
+            error = sync.disableICloudSync()
+        }
+        if let err = error {
+            syncActionError = err
+            // Revertir el toggle si la operación falló
+            iCloudSyncEnabled = !enabled
+            return
+        }
+        // El servidor necesita reiniciarse para que las nuevas env vars surtan efecto.
+        serverManager.stop()
+        Task { await serverManager.start() }
     }
 
     // MARK: - Guardar en Keychain
