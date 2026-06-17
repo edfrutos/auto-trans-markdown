@@ -369,6 +369,23 @@ async function exportPdf() {
   }
   const title = state.downloadName?.replace(/\.md$/i, '') || 'traduccion';
   try {
+    // PDFN-01: en la app macOS nativa usamos WKWebView.createPDF vía bridge.
+    if (window.webkit?.messageHandlers?.nativePDF) {
+      const res = await apiFetch('/api/export/html', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: md, title }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(apiErrorMessage(err, 'Error al generar HTML para PDF'));
+      }
+      const { html } = await res.json();
+      window.webkit.messageHandlers.nativePDF.postMessage({ html, title });
+      showStatus('Generando PDF…');
+      return;
+    }
+    // Ruta web estándar (WeasyPrint en el servidor).
     const res = await apiFetch('/api/export/pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

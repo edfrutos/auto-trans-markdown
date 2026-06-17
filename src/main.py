@@ -31,6 +31,7 @@ from .estimate import EstimateResult, estimate_files, estimate_markdown
 from .glossary import glossary_from_dict, glossary_to_dict, load_glossary, save_glossary
 from .jobs import JobState, cancel_job, create_batch_job, get_job, start_batch_job
 from .memory import TranslationMemory, default_memory_path
+from .html_export import markdown_to_html
 from .pdf_export import markdown_to_pdf
 from .pipeline import DEFAULT_GLOSSARY_PATH, TranslateOptions, translate_markdown
 from .review import build_draft, finalize_draft
@@ -431,6 +432,18 @@ async def clear_memory():
     tm = TranslationMemory(default_memory_path())
     deleted = tm.clear()
     return {"deleted": deleted}
+
+
+@app.post("/api/export/html")
+async def export_html(
+    body: ExportPdfRequest,
+    _: None = Depends(_require_api_token),
+):
+    """Exporta Markdown a HTML autocontenido (sin dependencias externas)."""
+    if not body.content.strip():
+        raise HTTPException(400, "El contenido está vacío")
+    html = markdown_to_html(body.content, title=body.title)
+    return {"html": html}
 
 
 @app.post("/api/export/pdf")

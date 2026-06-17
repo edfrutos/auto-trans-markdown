@@ -317,12 +317,12 @@ Plans:
 
 ## Progress Table (v3.2)
 
-| Phase   | Nombre            | Estado      | Completada   |
-| ------- | ----------------- | ----------- | ------------ |
-| 18      | 2/3               | In Progress |              |
-| 19      | Asociación .md    | Definida    | —            |
-| 20      | Export PDF Nativo | Definida    | —            |
-| 21      | iCloud Drive Sync | Definida    | —            |
+| Phase   | Nombre            | Estado         | Completada   |
+| ------- | ----------------- | -------------- | ------------ |
+| 18      | SSE Batch Nativo  | ✅ Shipped      | 2026-06-13   |
+| 19      | Asociación .md    | ✅ Shipped      | 2026-06-17   |
+| 20      | Export PDF Nativo | ✅ Shipped      | 2026-06-17   |
+| 21      | iCloud Drive Sync | Definida       | —            |
 
 ---
-*Last updated: 2026-06-13 — Phase 18 completada (3 planes ejecutados, checkpoint humano aprobado). D-10 via NSEvent monitor. Siguiente fase: Phase 19 (Asociación .md).*
+*Last updated: 2026-06-17 — Phase 20 completada (PDFN-01..03). WKWebView.createPDF vía bridge nativePDF; /api/export/html añadido al backend. Siguiente fase: Phase 21 (iCloud Drive Sync).*

@@ -53,6 +53,8 @@ struct WebView: NSViewRepresentable {
         config.userContentController.add(handler, name: "saveTranslatedFile")
         // DOWNLOAD-01: descarga nativa de archivos (MD, ZIP) desde WKWebView.
         config.userContentController.add(handler, name: "nativeDownload")
+        // PDFN-01: generación de PDF nativo vía WKWebView.createPDF (sin WeasyPrint).
+        config.userContentController.add(handler, name: "nativePDF")
 
         // Inyectar funciones globales que el frontend puede llamar opcionalmente.
         let helperScript = WKUserScript(source: """
@@ -207,6 +209,8 @@ struct WebView: NSViewRepresentable {
         var copyResultObserver: NSObjectProtocol?   // HOTKEY-03
         var undoObserver: NSObjectProtocol?          // UNDO-01
         var redoObserver: NSObjectProtocol?          // UNDO-01
+        // PDFN-01: exportador PDF nativo (WKWebView oculto).
+        let pdfExporter = NativePDFExporter()
 
         deinit {
             if let obs = reloadObserver       { NotificationCenter.default.removeObserver(obs) }
@@ -252,6 +256,32 @@ struct WebView: NSViewRepresentable {
                 guard let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters) else { return }
                 Task { @MainActor in
                     OutputManager.shared.saveDownload(name: filename, data: data)
+                }
+
+            case "nativePDF":
+                // PDFN-01: genera un PDF A4 a partir del HTML devuelto por /api/export/html.
+                // NativePDFExporter carga el HTML en un WKWebView oculto y usa createPDF(configuration:).
+                let html  = body["html"]  as? String ?? ""
+                let title = body["title"] as? String ?? "traduccion"
+                guard !html.isEmpty else { return }
+                Task { @MainActor in
+                    self.pdfExporter.exportHTML(html, title: title) { result in
+                        switch result {
+                        case .success(let pdfData):
+                            // PDFN-02: guardar vía NSSavePanel (o carpeta configurada).
+                            OutputManager.shared.saveDownload(name: "\(title).pdf", data: pdfData)
+                            // Notificar al frontend que el PDF está listo.
+                            self.webView?.evaluateJavaScript(
+                                "window.showStatus && window.showStatus('PDF exportado.');",
+                                completionHandler: nil
+                            )
+                        case .failure(let error):
+                            self.webView?.evaluateJavaScript(
+                                "window.showStatus && window.showStatus('Error al generar PDF: \(error.localizedDescription)', 'error');",
+                                completionHandler: nil
+                            )
+                        }
+                    }
                 }
 
             default:
