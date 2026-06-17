@@ -322,7 +322,124 @@ Plans:
 | 18      | SSE Batch Nativo  | ✅ Shipped      | 2026-06-13   |
 | 19      | Asociación .md    | ✅ Shipped      | 2026-06-17   |
 | 20      | Export PDF Nativo | ✅ Shipped      | 2026-06-17   |
-| 21      | iCloud Drive Sync | Definida       | —            |
+| 21      | iCloud Drive Sync | ✅ Shipped      | 2026-06-17   |
 
 ---
-*Last updated: 2026-06-17 — Phase 20 completada (PDFN-01..03). WKWebView.createPDF vía bridge nativePDF; /api/export/html añadido al backend. Siguiente fase: Phase 21 (iCloud Drive Sync).*
+*Last updated: 2026-06-17 — Phase 21 completada (SYNC-01..04). SyncManager, toggle iCloud Drive en Settings, rutas GLOSSARY_PATH/TM_DB_PATH inyectadas en backend. Siguiente milestone: v3.3.*
+
+---
+
+## Milestones (v3.3)
+
+- 🔄 **v3.3 Polish & Release** — Phases 22–26 (definido 2026-06-17)
+
+## Phases (v3.3 — definido)
+
+### Phase 22: Sparkle Auto-Update Mejorado
+
+**Goal**: La app detecta y aplica actualizaciones automáticamente desde un appcast publicado con EdDSA, sin intervención manual del usuario más allá de aceptar la actualización.
+**Depends on**: Phase 21
+**Requirements**:
+
+- `SPARK-01` — Appcast `docs/appcast.xml` accesible desde una URL pública (GitHub Pages o GitHub Releases); `make appcast` genera el XML con la firma EdDSA real tras cada build
+- `SPARK-02` — `UpdateManager` comprueba actualizaciones al arrancar y cada 24 h; el usuario puede forzar la comprobación desde el menú "MD Translator → Buscar actualizaciones…"
+- `SPARK-03` — El delta entre versiones se descarga en background sin bloquear el hilo principal; la UI muestra un badge en el menú de barra cuando hay actualización disponible
+- `SPARK-04` — Tras actualizar vía Sparkle, la app relee las API keys del Keychain y reactiva el hotkey global automáticamente (hoy requiere intervención manual documentada en release notes)
+
+**Success Criteria**:
+
+1. Una instalación de la 3.1 recibe aviso de actualización a 3.2+ y puede instalarla con un clic
+2. Después de la actualización, el hotkey global `⌥⇧M` sigue funcionando sin tocar Privacidad → Accesibilidad
+3. `make appcast` no falla en CI y el XML resultante pasa la validación de Sparkle
+
+---
+
+### Phase 23: Notarización Apple *(condicionada a Apple Developer account)*
+
+**Goal**: Eliminar el paso "clic derecho → Abrir" en primera ejecución mediante notarización y stapling con Apple.
+**Depends on**: Phase 22
+**Requiere**: Apple Developer Program ($99/año). **Aplazada indefinidamente** hasta que el usuario lo contrate.
+**Requirements**:
+
+- `NOTARIZE-01` — Hardened Runtime activado; `codesign --deep --options runtime`
+- `NOTARIZE-02` — `xcrun notarytool submit` en el Makefile; `xcrun stapler staple` tras aprobación
+- `NOTARIZE-03` — Gatekeeper pasa sin "clic derecho" en macOS 14 y 15
+
+**Success Criteria**:
+
+1. El DMG abre directamente al hacer doble clic en un Mac limpio sin mensaje de Gatekeeper
+2. `spctl --assess --verbose dist/MDTranslator.app` devuelve `accepted`
+
+> ⏸ **Estado: diferida** — ver Phase 17 para contexto histórico.
+
+---
+
+### Phase 24: Preferencias Adicionales
+
+**Goal**: El usuario puede configurar el modelo OpenAI y el tono de traducción por defecto directamente desde la app, sin editar `.env`.
+**Depends on**: Phase 22
+**Requirements**:
+
+- `PREF-01` — Selector de modelo en Configuración: `gpt-4o-mini` (por defecto), `gpt-4o`, `gpt-4.1`, `o4-mini`; se guarda en UserDefaults y se inyecta como `OPENAI_MODEL` en `ServerManager`
+- `PREF-02` — Selector de tono por defecto: Neutro / Formal / Informal; se guarda en UserDefaults y se pasa como `tone` en cada request de traducción desde la app
+- `PREF-03` — Campo de URL base alternativa (`OPENAI_BASE_URL`) en Configuración para usuarios con Ollama, Azure o proxies compatibles con OpenAI; se guarda en Keychain (puede contener credenciales)
+- `PREF-04` — Los valores de modelo y tono se muestran en el tooltip del botón "Traducir" para que el usuario sepa con qué configuración va a traducir
+
+**Success Criteria**:
+
+1. Cambiar el modelo a `gpt-4o` y traducir un texto usa ese modelo (verificable en el log del servidor)
+2. El selector de tono se respeta en la traducción (el prompt enviado al LLM incluye la instrucción de tono correcta)
+3. Una URL base alternativa permite usar Ollama local sin modificar ningún archivo de configuración
+
+---
+
+### Phase 25: Release v3.2
+
+**Goal**: Publicar MD Translator 3.2 como DMG distribuible con las mejoras de Phases 18–21 (SSE batch, PDF, iCloud sync), bump de versión, release notes y appcast actualizado.
+**Depends on**: Phase 24 *(puede adelantarse a Phase 24 si se prioriza el release)*
+**Requirements**:
+
+- `REL22-01` — `VERSION=3.2` / `BUILD_NUM=3` en el Makefile; `make dmg` produce `MDTranslator-3.2.dmg` + `.sha256`
+- `REL22-02` — `docs/RELEASE-NOTES-3.2.md` con novedades (batch SSE, PDF A4, iCloud sync), instrucciones y problemas conocidos
+- `REL22-03` — Item v3.2 en `docs/appcast.xml` con edSignature/length reales
+- `REL22-04` — Tags git `v3.2`; GitHub Release con DMG, ZIP, SHA-256 y release notes
+
+**Success Criteria**:
+
+1. `make dmg && make appcast` completan sin errores y el DMG instala y arranca
+2. GitHub Release v3.2 publicada con todos los artefactos
+3. Una instalación de la 3.1 recibe aviso de actualización a 3.2 vía Sparkle
+
+---
+
+### Phase 26: Selector de Tono Formal/Informal en la UI Web
+
+**Goal**: La interfaz web expone el selector de tono formal/informal que ya soporta el backend, para coherencia entre web y app nativa.
+**Depends on**: Phase 25
+**Requirements**:
+
+- `TONE-01` — Dropdown "Tono: Automático / Formal / Informal" en el tab Editor y en el tab Archivo de la UI web (`static/index.html` + `static/js/`)
+- `TONE-02` — El valor seleccionado se envía como campo `tone` en el body JSON de `/api/translate` y `/api/translate/file`; el backend ya lo acepta en `TranslateOptions`
+- `TONE-03` — La selección de tono se recuerda entre sesiones con `localStorage`
+- `TONE-04` — En DeepL, el tono se mapea a `formality=more` (formal) / `formality=less` (informal) / `formality=default` (automático)
+
+**Success Criteria**:
+
+1. Seleccionar "Formal" y traducir al español produce `usted` en lugar de `tú` (verificable con un texto de prueba)
+2. El valor persiste al recargar la página
+3. DeepL respeta la configuración de formalidad cuando el idioma destino lo soporta (es, de, fr, it, pt…)
+
+---
+
+## Progress Table (v3.3)
+
+| Phase   | Nombre                              | Estado    | Completada   |
+| ------- | ----------------------------------- | --------- | ------------ |
+| 22      | Sparkle Auto-Update Mejorado        | Pendiente | —            |
+| 23      | Notarización Apple (condicionada)   | ⏸ Diferida | —           |
+| 24      | Preferencias Adicionales            | Pendiente | —            |
+| 25      | Release v3.2                        | Pendiente | —            |
+| 26      | Selector Tono Formal/Informal (web) | Pendiente | —            |
+
+---
+*Last updated: 2026-06-17 — Phases 22–26 definidas. Siguiente fase activa: Phase 22 (Sparkle Auto-Update Mejorado).*
