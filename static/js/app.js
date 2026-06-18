@@ -306,12 +306,81 @@ function appendTargetLangsToForm(form) {
 }
 
 const HISTORY_KEY = 'md-translate-history';
-const MAX_HISTORY = 50;
+const MAX_HISTORY = 20; // HIST-03
 const EXPORT_CSS =
   'body{font-family:system-ui,sans-serif;line-height:1.6;max-width:48rem;margin:2rem auto;padding:0 1rem;color:#1e293b}' +
   'h1,h2,h3{color:#0f766e;margin-top:1.5em}pre{background:#f1f5f9;padding:1rem;overflow-x:auto;border-radius:.5rem}' +
   'code{background:#f1f5f9;padding:.1em .35em;border-radius:.25rem;font-size:.9em}' +
   'blockquote{border-left:4px solid #14b8a6;margin-left:0;padding-left:1rem;color:#475569}';
+
+// HIST-01: renderiza las últimas 10 entradas del historial en el panel colapsable.
+function renderHistory() {
+  const panel = document.getElementById('history-panel');
+  const listEl = document.getElementById('history-list');
+  const countEl = document.getElementById('history-count');
+  if (!panel || !listEl) return;
+  let entries = [];
+  try {
+    entries = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch {
+    entries = [];
+  }
+  if (entries.length === 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+  if (countEl) countEl.textContent = `(${entries.length})`;
+  const top10 = entries.slice(0, 10);
+  listEl.innerHTML = top10.map((e, i) => {
+    const date = new Date(e.ts).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+    const langName = state.langNames[e.targetLang] || e.targetLang || '—';
+    const preview = escapeHtml((e.result || '').slice(0, 80));
+    const hasSource = Boolean(e.source);
+    const hasResult = Boolean(e.result);
+    return `<div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+      <div class="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-xs text-ink-muted mb-1">
+        <span class="font-semibold text-ink">${escapeHtml(langName)}</span>
+        <span>${date}</span>
+        <span>${e.chars || 0} chars${e.mode ? ' · ' + e.mode : ''}</span>
+      </div>
+      ${preview ? `<p class="text-xs text-ink-muted mb-1.5 truncate">${preview}…</p>` : ''}
+      <div class="flex gap-3">
+        ${hasSource ? `<button type="button" class="btn-hist-restore text-xs text-primary hover:underline" data-index="${i}">Restaurar</button>` : ''}
+        ${hasResult ? `<button type="button" class="btn-hist-copy text-xs text-primary hover:underline" data-index="${i}">Copiar resultado</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // HIST-02: bind "Restaurar" — carga el texto original en el editor.
+  listEl.querySelectorAll('.btn-hist-restore').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index, 10);
+      const entry = entries[idx];
+      if (!entry?.source) return;
+      if (els.inputMd) {
+        els.inputMd.value = entry.source;
+        try { localStorage.setItem(SOURCE_KEY, entry.source); } catch {/* */}
+        renderPreview(entry.source, els.previewSource);
+      }
+      showStatus('Texto original restaurado.');
+    });
+  });
+
+  // HIST-02: bind "Copiar resultado" — copia la traducción al portapapeles.
+  listEl.querySelectorAll('.btn-hist-copy').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index, 10);
+      const entry = entries[idx];
+      if (!entry?.result) return;
+      navigator.clipboard.writeText(entry.result).then(() => {
+        showStatus('Resultado copiado al portapapeles.');
+      }).catch(() => {
+        showStatus('No se pudo copiar al portapapeles.', 'error');
+      });
+    });
+  });
+}
 
 function pushHistory(entry) {
   if (!state.historyEnabled) return;
@@ -323,9 +392,12 @@ function pushHistory(entry) {
       mode: entry.mode,
       segments: entry.segments,
       chars: entry.chars,
+      source: (entry.source || '').slice(0, 10000), // HIST-02
+      result: (entry.result || '').slice(0, 10000), // HIST-02
     });
     localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, MAX_HISTORY)));
     els.btnClearHistory?.classList.remove('hidden');
+    renderHistory(); // HIST-01
   } catch {
     /* localStorage no disponible */
   }
@@ -335,7 +407,10 @@ function initHistory() {
   const stored = localStorage.getItem('md-translate-history-enabled');
   state.historyEnabled = stored === '1';
   if (els.historyEnabled) els.historyEnabled.checked = state.historyEnabled;
-  if (state.historyEnabled) els.btnClearHistory?.classList.remove('hidden');
+  if (state.historyEnabled) {
+    els.btnClearHistory?.classList.remove('hidden');
+    renderHistory(); // HIST-01
+  }
 }
 
 function exportHtml() {
@@ -539,6 +614,8 @@ async function finalizeReview() {
       mode: 'editor-review',
       segments: data.segments_translated,
       chars: data.content.length,
+      source: state.sourceContent || '',  // HIST-02
+      result: data.content,               // HIST-02
     });
     showStatus('Revisión confirmada y lista para exportar.');
   } catch (err) {
@@ -563,6 +640,8 @@ function onTranslateSuccess({ content, source, validation, segmentsTranslated, m
     mode: state.mode,
     segments: segmentsTranslated,
     chars: content?.length || 0,
+    source: source || state.sourceContent || '', // HIST-02
+    result: content || '',                        // HIST-02
   });
   if (!multiLang) {
     showStatus(`Listo — ${segmentsTranslated} segmentos traducidos.`);
@@ -1119,6 +1198,7 @@ async function loadLanguages() {
     if (els.btnTranslate) els.btnTranslate.disabled = false;
     els.targetLang.removeAttribute('aria-busy');
     await loadGlossary();
+    renderHistory(); // HIST-01: re-render con langNames ya poblado
   } catch (err) {
     state.languagesLoaded = false;
     els.targetLang.removeAttribute('aria-busy');
@@ -1328,6 +1408,8 @@ async function translateFile() {
         mode: 'file',
         segments: 0,
         chars: text.length,
+        source: src || '',  // HIST-02 (src leído justo antes)
+        result: text,       // HIST-02
       });
       // Guardar archivo traducido en carpeta de salida macOS (si está disponible).
       if (typeof window.__saveTranslatedFile === 'function') {
@@ -1671,14 +1753,30 @@ els.historyEnabled?.addEventListener('change', () => {
   localStorage.setItem('md-translate-history-enabled', state.historyEnabled ? '1' : '0');
   if (state.historyEnabled) {
     els.btnClearHistory?.classList.remove('hidden');
+    renderHistory(); // HIST-01: mostrar entradas previas si las hay
   } else {
     els.btnClearHistory?.classList.add('hidden');
   }
 });
 els.btnClearHistory?.addEventListener('click', () => {
+  // HIST-04: confirmar antes de borrar
+  if (!confirm('¿Borrar todo el historial de traducciones?')) return;
   localStorage.removeItem(HISTORY_KEY);
   els.btnClearHistory?.classList.add('hidden');
+  renderHistory(); // HIST-01: ocultar panel
   showStatus('Historial local borrado.');
+});
+
+// HIST-01: toggle colapsar/expandir el panel de historial.
+document.getElementById('history-toggle')?.addEventListener('click', () => {
+  const wrap = document.getElementById('history-list-wrap');
+  const chevron = document.getElementById('history-chevron');
+  const btn = document.getElementById('history-toggle');
+  if (!wrap) return;
+  const isOpen = !wrap.classList.contains('hidden');
+  wrap.classList.toggle('hidden', isOpen);
+  chevron?.classList.toggle('rotate-90', !isOpen);
+  btn?.setAttribute('aria-expanded', String(!isOpen));
 });
 
 els.apiTokenToggle?.addEventListener('click', () => {
