@@ -64,19 +64,16 @@ struct AppCommands: Commands {
             .keyboardShortcut("f", modifiers: [.command, .shift])
         }
 
-        // MARK: App — Configuración (⌘,), actualizaciones y About
+        // MARK: App — About y actualizaciones
+        // Phase 29: el ítem "Settings…" (⌘,) lo añade SwiftUI automáticamente desde la
+        // Settings scene de MDTranslatorApp — ya no necesitamos un CommandGroup propio.
         CommandGroup(replacing: .appInfo) {
             Button("Acerca de MD Translator") {
                 showAboutPanel()
             }
         }
 
-        CommandGroup(replacing: .appSettings) {
-            Button("Configuración…") {
-                NotificationCenter.default.post(name: .openSettings, object: nil)
-            }
-            .keyboardShortcut(",")
-
+        CommandGroup(after: .appInfo) {
             Button("Buscar actualizaciones…") {
                 UpdateManager.shared.checkForUpdates()
             }

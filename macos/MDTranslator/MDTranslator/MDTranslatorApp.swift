@@ -9,6 +9,7 @@
 // Phase 22: SPARK-02 — activate() UpdateManager al arrancar para comprobaciones automáticas.
 //           SPARK-03 — badge en menú bar cuando hay actualización disponible.
 //           SPARK-04 — detectar just-updated y abrir Settings si AX fue revocado.
+// Phase 29: SETTINGS-01 — Settings scene nativa (⌘,); sheet queda solo para primera ejecución.
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -101,9 +102,10 @@ struct MDTranslatorApp: App {
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: serverManager.state == .running)
-            // Sheet de configuración de API keys — se activa con ⌘, o en primera ejecución.
+            // Sheet de configuración — solo para primera ejecución (sin API keys en Keychain)
+            // y para SPARK-04 (post-update + AX revocado). ⌘, usa la Settings scene nativa.
             .sheet(isPresented: $showSettings) {
-                SettingsView(isPresented: $showSettings, serverManager: serverManager)
+                SettingsView(serverManager: serverManager)
             }
             // Sheet de lote SSE — se activa desde AppDelegate (drag Dock) o Commands (⌘⇧B).
             .sheet(isPresented: $showBatchSheet) {
@@ -190,6 +192,14 @@ struct MDTranslatorApp: App {
             }
         }
         .menuBarExtraStyle(.menu)
+
+        // MARK: Settings scene nativa (Phase 29 — SETTINGS-01)
+        // SwiftUI añade automáticamente "Settings…" (⌘,) al menú de la app.
+        // La ventana es no-modal, recuerda su posición (SETTINGS-03) y coexiste
+        // con la ventana principal (SETTINGS-02).
+        Settings {
+            SettingsView(serverManager: serverManager)
+        }
     }
 
     // MARK: - DROP-01: manejo de archivos arrastrados sobre la ventana

@@ -3,10 +3,13 @@
 // Las keys se guardan en el Keychain del sistema, nunca en disco ni en logs.
 // Phase 24: PREF-01 selector modelo OpenAI, PREF-02 tono por defecto,
 //           PREF-03 URL base alternativa (Keychain).
+// Phase 29: SETTINGS-01 — usa @Environment(\.dismiss); funciona tanto como Settings scene
+//           como como sheet modal para primera ejecución.
+//           SETTINGS-04 — rastrea valores iniciales; reinicia servidor si cambian al cerrar.
 import SwiftUI
 
 struct SettingsView: View {
-    @Binding var isPresented: Bool
+    @Environment(\.dismiss) private var dismiss
     /// Referencia al ServerManager para reiniciar el servidor tras un cambio de provider.
     var serverManager: ServerManager
 
@@ -29,6 +32,18 @@ struct SettingsView: View {
     @AppStorage("MDTranslator.openAIModel") private var openAIModel = "gpt-4o-mini"
     // PREF-02: tono por defecto — persiste en UserDefaults.
     @AppStorage("MDTranslator.defaultTone") private var defaultTone = ""
+
+    // SETTINGS-04: valores iniciales para detectar cambios que requieren reinicio del servidor.
+    private let initialProvider:    String
+    private let initialModel:       String
+    private let initialOpenAIBaseURL: String
+
+    init(serverManager: ServerManager) {
+        self.serverManager = serverManager
+        self.initialProvider     = KeychainManager.load(account: KeychainManager.providerAccount) ?? "openai"
+        self.initialModel        = UserDefaults.standard.string(forKey: "MDTranslator.openAIModel") ?? "gpt-4o-mini"
+        self.initialOpenAIBaseURL = KeychainManager.load(account: KeychainManager.openAIBaseURLAccount) ?? ""
+    }
 
     private let modelOptions: [(label: String, value: String)] = [
         ("gpt-4o-mini", "gpt-4o-mini"),
@@ -275,7 +290,7 @@ struct SettingsView: View {
             // MARK: Botones
             HStack {
                 Button("Cancelar") {
-                    isPresented = false
+                    dismiss()
                 }
                 .keyboardShortcut(.escape)
 
@@ -293,9 +308,22 @@ struct SettingsView: View {
         .frame(width: 460)
         .onAppear { accessibilityGranted = GlobalHotkeyManager.shared.isAccessibilityGranted }
         .alert("Keys guardadas", isPresented: $saved) {
-            Button("OK") { isPresented = false }
+            Button("OK") { dismiss() }
         } message: {
             Text("Las API keys se han guardado en el Keychain. El servidor se reinicia automáticamente con la nueva configuración.")
+        }
+        // SETTINGS-04: si el usuario cierra la ventana sin guardar pero cambió una
+        // preferencia que afecta al servidor (provider, modelo, URL base), reiniciar.
+        .onDisappear {
+            let currentProvider = KeychainManager.load(account: KeychainManager.providerAccount) ?? "openai"
+            let currentModel    = UserDefaults.standard.string(forKey: "MDTranslator.openAIModel") ?? "gpt-4o-mini"
+            let currentBaseURL  = KeychainManager.load(account: KeychainManager.openAIBaseURLAccount) ?? ""
+            let serverPrefsChanged = currentProvider != initialProvider
+                || currentModel != initialModel
+                || currentBaseURL != initialOpenAIBaseURL
+            if serverPrefsChanged {
+                NotificationCenter.default.post(name: .settingsSaved, object: nil)
+            }
         }
     }
 
@@ -347,5 +375,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(isPresented: .constant(true), serverManager: ServerManager())
+    SettingsView(serverManager: ServerManager())
 }
