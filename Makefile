@@ -11,8 +11,8 @@
 #   - /tmp/sparkle/bin/sign_update  (ver target appcast)
 
 APP_NAME     := MDTranslator
-VERSION      := 3.2
-BUILD_NUM    := 6
+VERSION      := 3.3
+BUILD_NUM    := 7
 SCHEME       := MDTranslator
 PROJECT      := macos/MDTranslator/MDTranslator.xcodeproj
 ARCHIVE      := build/$(APP_NAME).xcarchive

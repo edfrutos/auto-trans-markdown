@@ -440,7 +440,7 @@ Plans:
 | 24      | Preferencias Adicionales            | ✅ Shipped   | 2026-06-17   |
 | 25      | Release v3.2                        | ✅ Shipped   | 2026-06-17   |
 | 26      | Selector Tono Formal/Informal (web) | ✅ Shipped   | 2026-06-17   |
-| 27      | Release v3.3                        | 🔜 Pendiente | —            |
+| 27      | Release v3.3                        | ✅ Shipped   | 2026-06-18   |
 | 28      | WKWebView Persistente               | 🔜 Pendiente | —            |
 | 29      | Ventana Settings Nativa             | 🔜 Pendiente | —            |
 | 30      | Historial de Traducciones (web)     | 🔜 Pendiente | —            |
@@ -448,11 +448,11 @@ Plans:
 | 32      | Tests de Integración E2E            | 🔜 Pendiente | —            |
 
 ---
-*Last updated: 2026-06-17 — Phase 26 completada. Phases 27–32 definidas y documentadas: Release v3.3, WKWebView persistente, Settings nativa, historial de traducciones, estimación de coste, tests E2E.*
+*Last updated: 2026-06-18 — Phase 27 completada. v3.3 build 7 publicada: appcast.xml actualizado, RELEASE-NOTES-3.3.md, Makefile VERSION=3.3/BUILD_NUM=7.*
 
 ---
 
-### Phase 27: Release v3.3
+### Phase 27: Release v3.3 ✅ Shipped (2026-06-18)
 
 **Goal**: Publicar MD Translator 3.3 como DMG distribuible con las mejoras de Phases 24–26 (preferencias avanzadas, Sparkle mejorado, persistencia de tono), bump de versión, release notes y appcast actualizado.
 **Depends on**: Phase 26
