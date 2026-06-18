@@ -33,17 +33,11 @@ struct SettingsView: View {
     // PREF-02: tono por defecto — persiste en UserDefaults.
     @AppStorage("MDTranslator.defaultTone") private var defaultTone = ""
 
-    // SETTINGS-04: valores iniciales para detectar cambios que requieren reinicio del servidor.
-    private let initialProvider:    String
-    private let initialModel:       String
-    private let initialOpenAIBaseURL: String
-
-    init(serverManager: ServerManager) {
-        self.serverManager = serverManager
-        self.initialProvider     = KeychainManager.load(account: KeychainManager.providerAccount) ?? "openai"
-        self.initialModel        = UserDefaults.standard.string(forKey: "MDTranslator.openAIModel") ?? "gpt-4o-mini"
-        self.initialOpenAIBaseURL = KeychainManager.load(account: KeychainManager.openAIBaseURLAccount) ?? ""
-    }
+    // SETTINGS-04: valores capturados en onAppear para detectar cambios que requieren
+    // reinicio del servidor. @State vacío porque se llenan una sola vez al aparecer.
+    @State private var initialProvider:       String = ""
+    @State private var initialModel:          String = ""
+    @State private var initialOpenAIBaseURL:  String = ""
 
     private let modelOptions: [(label: String, value: String)] = [
         ("gpt-4o-mini", "gpt-4o-mini"),
@@ -306,7 +300,14 @@ struct SettingsView: View {
             .padding(20)
         }
         .frame(width: 460)
-        .onAppear { accessibilityGranted = GlobalHotkeyManager.shared.isAccessibilityGranted }
+        .onAppear {
+            accessibilityGranted = GlobalHotkeyManager.shared.isAccessibilityGranted
+            // SETTINGS-04: snapshot de valores que afectan al servidor, para detectar
+            // cambios al cerrar sin haber pulsado "Guardar".
+            initialProvider      = KeychainManager.load(account: KeychainManager.providerAccount) ?? "openai"
+            initialModel         = UserDefaults.standard.string(forKey: "MDTranslator.openAIModel") ?? "gpt-4o-mini"
+            initialOpenAIBaseURL = KeychainManager.load(account: KeychainManager.openAIBaseURLAccount) ?? ""
+        }
         .alert("Keys guardadas", isPresented: $saved) {
             Button("OK") { dismiss() }
         } message: {
