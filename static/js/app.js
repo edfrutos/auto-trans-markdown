@@ -58,8 +58,11 @@ const state = {
   activeResultLang: null,
 };
 
-const API_TOKEN_KEY = 'md-translate-api-token';
-const TONE_KEY       = 'md-translate-tone'; // TONE-03
+const API_TOKEN_KEY   = 'md-translate-api-token';
+const TONE_KEY        = 'md-translate-tone';        // TONE-03
+const SOURCE_KEY      = 'md-translate-source';      // PERSIST-01
+const TARGET_LANGS_KEY = 'md-translate-target-langs'; // PERSIST-02
+const RESULT_KEY      = 'md-translate-result';      // PERSIST-03
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -247,6 +250,7 @@ function showTranslationForLang(lang) {
   if (!result) return;
   state.activeResultLang = lang;
   els.outputMd.value = result.content;
+  sessionStorage.setItem(RESULT_KEY, result.content); // PERSIST-03
   els.btnCopy.disabled = false;
   const blob = new Blob([result.content], { type: 'text/markdown;charset=utf-8' });
   state.downloadBlob = blob;
@@ -587,6 +591,7 @@ function renderTargetChips() {
       const code = chip?.getAttribute('data-lang');
       if (!code || state.targetLangs.length <= 1) return;
       state.targetLangs = state.targetLangs.filter((l) => l !== code);
+      localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(state.targetLangs)); // PERSIST-02
       renderTargetChips();
       if (state.glossary.loaded) loadGlossary();
       scheduleEstimateBatch();
@@ -598,6 +603,7 @@ function renderTargetChips() {
 function addTargetLang(code) {
   if (!code || state.targetLangs.includes(code)) return;
   state.targetLangs.push(code);
+  localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(state.targetLangs)); // PERSIST-02
   renderTargetChips();
   if (state.glossary.loaded) loadGlossary();
   scheduleEstimateBatch();
@@ -1097,7 +1103,17 @@ async function loadLanguages() {
       const first = langs.find((l) => l.code !== 'auto');
       defaultCode = first?.code || null;
     }
-    state.targetLangs = defaultCode ? [defaultCode] : [];
+    // PERSIST-02 — restaurar idiomas guardados (sobreescribe el default 'es')
+    const savedLangs = localStorage.getItem(TARGET_LANGS_KEY);
+    if (savedLangs) {
+      try {
+        const parsed = JSON.parse(savedLangs);
+        const valid = parsed.filter((c) => state.langNames[c]);
+        if (valid.length) state.targetLangs = valid;
+      } catch (_) { /* JSON inválido, ignorar */ }
+    } else {
+      state.targetLangs = defaultCode ? [defaultCode] : [];
+    }
     renderTargetChips();
     state.languagesLoaded = true;
     if (els.btnTranslate) els.btnTranslate.disabled = false;
@@ -1533,6 +1549,52 @@ function setupDropZone(zone, input, onFiles) {
   input.addEventListener('change', () => onFiles(input.files));
 }
 
+// PERSIST-01..04: restaura el estado de la sesión anterior al cargar la página.
+function initSession() {
+  let restored = false;
+
+  // PERSIST-01 — texto del editor
+  const savedSource = localStorage.getItem(SOURCE_KEY);
+  if (savedSource && els.inputMd) {
+    els.inputMd.value = savedSource;
+    renderPreview(savedSource, els.previewSource);
+    restored = true;
+  }
+
+  // PERSIST-01 — guardar con debounce de 500 ms
+  let _sourceTimer = null;
+  els.inputMd?.addEventListener('input', () => {
+    clearTimeout(_sourceTimer);
+    _sourceTimer = setTimeout(() => {
+      localStorage.setItem(SOURCE_KEY, els.inputMd.value);
+    }, 500);
+  });
+
+  // PERSIST-03 — resultado de la última traducción (sessionStorage: solo misma sesión)
+  const savedResult = sessionStorage.getItem(RESULT_KEY);
+  if (savedResult && els.outputMd) {
+    els.outputMd.value = savedResult;
+    restored = true;
+  }
+
+  // PERSIST-04 — banner discreto si hay estado previo
+  if (restored) {
+    const banner = document.getElementById('session-restore-banner');
+    if (banner) {
+      banner.classList.remove('hidden');
+      document.getElementById('btn-clear-session')?.addEventListener('click', () => {
+        localStorage.removeItem(SOURCE_KEY);
+        localStorage.removeItem(TARGET_LANGS_KEY);
+        sessionStorage.removeItem(RESULT_KEY);
+        if (els.inputMd) els.inputMd.value = '';
+        if (els.outputMd) els.outputMd.value = '';
+        if (els.previewSource) els.previewSource.innerHTML = '';
+        banner.classList.add('hidden');
+      });
+    }
+  }
+}
+
 // TONE-03: persiste el selector de tono entre sesiones.
 function initTone() {
   const stored = localStorage.getItem(TONE_KEY);
@@ -1687,6 +1749,7 @@ if (els.dropZoneBatch && els.batchInput) {
 }
 
 loadLanguages();
+initSession(); // PERSIST-01..04
 initTone();
 initTheme();
 initHistory();
