@@ -27,11 +27,13 @@ class EstimateResult:
 
 
 def _threshold_usd() -> float:
-    raw = os.getenv("ESTIMATE_WARN_USD", "1.0")
+    # EST-03: umbral por defecto $0.10; configurable vía ESTIMATE_WARN_USD (env var
+    # inyectada por ServerManager desde UserDefaults MDTranslator.estimateWarnUSD).
+    raw = os.getenv("ESTIMATE_WARN_USD", "0.10")
     try:
         return float(raw)
     except ValueError:
-        return 1.0
+        return 0.10
 
 
 def _resolve_source(source_lang: str | None) -> str | None:

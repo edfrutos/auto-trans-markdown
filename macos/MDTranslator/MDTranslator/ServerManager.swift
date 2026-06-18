@@ -132,6 +132,9 @@ class ServerManager {
         }
         // PREF-01: modelo OpenAI desde UserDefaults (por defecto gpt-4o-mini).
         env["OPENAI_MODEL"] = UserDefaults.standard.string(forKey: "MDTranslator.openAIModel") ?? "gpt-4o-mini"
+        // EST-03: umbral de aviso de coste estimado, configurable desde SettingsView.
+        let warnUSD = UserDefaults.standard.double(forKey: "MDTranslator.estimateWarnUSD")
+        env["ESTIMATE_WARN_USD"] = String(format: "%.2f", warnUSD > 0 ? warnUSD : 0.10)
         // PREF-03: URL base alternativa desde Keychain (Ollama, Azure, proxy OpenAI-compatible).
         if let baseURL = KeychainManager.load(account: KeychainManager.openAIBaseURLAccount),
            !baseURL.isEmpty {

@@ -281,12 +281,19 @@ function renderEstimateBlock(el, warnEl, data) {
     return;
   }
   el.classList.remove('hidden');
-  const langNote =
-    data.language_count > 1 ? ` · ${data.language_count} idiomas` : '';
-  el.textContent = `~${data.segments} segmentos · ~${data.characters} chars · ~$${Number(data.estimated_cost_usd).toFixed(2)} (${data.model})${langNote}`;
+  const langNote = data.language_count > 1 ? ` · ${data.language_count} idiomas` : '';
+  // EST-04: DeepL cobra por caracter → mostrar "caracteres"; OpenAI por tokens → estimación tokens.
+  let unitLabel;
+  if (data.provider === 'deepl') {
+    unitLabel = `~${data.characters} caracteres`;
+  } else {
+    const tokens = Math.round(data.characters / 4);
+    unitLabel = `~${tokens} tokens`;
+  }
+  el.textContent = `~${data.segments} segmentos · ${unitLabel} · ~$${Number(data.estimated_cost_usd).toFixed(3)} (${data.model})${langNote}`;
   if (warnEl) {
     if (data.exceeds_threshold) {
-      warnEl.textContent = `Estimación por encima del umbral ($${Number(data.threshold_usd).toFixed(2)})`;
+      warnEl.textContent = `⚠ Estimación supera el umbral ($${Number(data.threshold_usd).toFixed(2)})`;
       warnEl.classList.remove('hidden');
     } else {
       warnEl.classList.add('hidden');
@@ -749,12 +756,13 @@ const scheduleEstimateBatch = debounce(fetchEstimateBatch, 300);
 const scheduleEstimateFile = debounce(fetchEstimateFile, 300);
 
 // ESTIMATE-01: estimación en tiempo real conforme el usuario escribe en el editor.
-// Usa cuerpo JSON (no FormData) con el contenido actual del textarea.
+// Solo se lanza si el contenido supera 50 chars; debounce 800 ms (EST-01).
 async function fetchEstimateEditor() {
   if (!els.estimateEditor) return;
   const content = els.inputMd?.value?.trim();
-  if (!content) {
-    renderEstimateBlock(els.estimateEditor, null, null);
+  const warnEl = document.getElementById('estimate-warn-editor');
+  if (!content || content.length < 50) { // EST-01: mínimo 50 chars
+    renderEstimateBlock(els.estimateEditor, warnEl, null);
     return;
   }
   state.estimateEditorController?.abort();
@@ -772,15 +780,15 @@ async function fetchEstimateEditor() {
     });
     if (!res.ok) return;
     const data = await res.json();
-    renderEstimateBlock(els.estimateEditor, null, data);
+    renderEstimateBlock(els.estimateEditor, warnEl, data); // EST-03: warnEl activo
   } catch (err) {
     if (err.name !== 'AbortError') {
-      renderEstimateBlock(els.estimateEditor, null, null);
+      renderEstimateBlock(els.estimateEditor, warnEl, null);
     }
   }
 }
 
-const scheduleEstimateEditor = debounce(fetchEstimateEditor, 500);
+const scheduleEstimateEditor = debounce(fetchEstimateEditor, 800); // EST-01: 800 ms
 
 function resetBatchJobUI() {
   state.batchJobId = null;

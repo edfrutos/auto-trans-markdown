@@ -32,6 +32,9 @@ struct SettingsView: View {
     @AppStorage("MDTranslator.openAIModel") private var openAIModel = "gpt-4o-mini"
     // PREF-02: tono por defecto — persiste en UserDefaults.
     @AppStorage("MDTranslator.defaultTone") private var defaultTone = ""
+    // EST-03: umbral de aviso de coste estimado (USD). Por defecto $0.10.
+    // ServerManager lo inyecta como ESTIMATE_WARN_USD al subprocess Python.
+    @AppStorage("MDTranslator.estimateWarnUSD") private var estimateWarnUSD = 0.10
 
     // SETTINGS-04: valores capturados en onAppear para detectar cambios que requieren
     // reinicio del servidor. @State vacío porque se llenan una sola vez al aparecer.
@@ -183,6 +186,23 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                // EST-03: umbral de aviso de coste estimado.
+                Section {
+                    HStack {
+                        Text("$")
+                            .foregroundStyle(.secondary)
+                        TextField("0.10", value: $estimateWarnUSD, format: .number.precision(.fractionLength(2)))
+                            .keyboardType(.decimalPad)
+                    }
+                    Text("Si la estimación de coste supera este valor, la UI web muestra un aviso naranja antes de traducir. Reinicia el servidor para aplicar el cambio.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Umbral de aviso de coste (USD)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
                 // SYNC-01: sincronización de glosario y TM en iCloud Drive.
                 Section {
                     Toggle("Sincronizar datos vía iCloud Drive", isOn: $iCloudSyncEnabled)
@@ -224,7 +244,7 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .frame(height: provider == "openai" ? 780 : 620)
+            .frame(height: provider == "openai" ? 880 : 720) // EST-03: +100 por nueva sección umbral
 
             // MARK: Banner Accesibilidad (hotkey ⌥⇧M)
             // Tras una actualización Sparkle, macOS revoca el permiso porque la firma cambia.
