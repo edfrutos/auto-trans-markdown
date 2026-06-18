@@ -516,6 +516,12 @@ def translate_segments(
     client=None,
 ) -> dict[int, str]:
     """Traduce segmentos en lotes y devuelve mapa index -> texto traducido."""
+    # E2E_MOCK_TRANSLATE=1: devuelve mocks prefijados con [MOCK] sin llamar a la API.
+    # Usado exclusivamente en tests de integración E2E (make e2e) para ejecutar
+    # el flujo completo sin necesitar API keys reales.
+    if os.getenv("E2E_MOCK_TRANSLATE") == "1":
+        return {idx: f"[MOCK] {text}" for idx, text in items}
+
     global _provider_used
     if not items:
         return {}

@@ -441,11 +441,11 @@ Plans:
 | 25      | Release v3.2                        | ✅ Shipped   | 2026-06-17   |
 | 26      | Selector Tono Formal/Informal (web) | ✅ Shipped   | 2026-06-17   |
 | 27      | Release v3.3                        | ✅ Shipped   | 2026-06-18   |
-| 28      | WKWebView Persistente               | 🔜 Pendiente | —            |
-| 29      | Ventana Settings Nativa             | 🔜 Pendiente | —            |
-| 30      | Historial de Traducciones (web)     | 🔜 Pendiente | —            |
-| 31      | Estimación de Coste Visible         | 🔜 Pendiente | —            |
-| 32      | Tests de Integración E2E            | 🔜 Pendiente | —            |
+| 28      | WKWebView Persistente               | ✅ Shipped   | 2026-06-16   |
+| 29      | Ventana Settings Nativa             | ✅ Shipped   | 2026-06-17   |
+| 30      | Historial de Traducciones (web)     | ✅ Shipped   | 2026-06-18   |
+| 31      | Estimación de Coste Visible         | ✅ Shipped   | 2026-06-18   |
+| 32      | Tests de Integración E2E            | ✅ Shipped   | 2026-06-18   |
 
 ---
 *Last updated: 2026-06-18 — Phase 27 completada. v3.3 build 7 publicada: appcast.xml actualizado, RELEASE-NOTES-3.3.md, Makefile VERSION=3.3/BUILD_NUM=7.*

@@ -33,7 +33,7 @@ LSREGISTER   := /System/Library/Frameworks/CoreServices.framework/Frameworks/Lau
 
 # ---------------------------------------------------------------------------
 
-.PHONY: all build sign zip dmg appcast dev-install dev-patch register-service clean smoke-test
+.PHONY: all build sign zip dmg appcast dev-install dev-patch register-service clean smoke-test e2e
 
 all: dmg
 
@@ -264,6 +264,25 @@ smoke-test:
 	\
 	echo ""; \
 	echo "smoke-test OK"
+
+## e2e (Phase 32 — E2E-01..04): tests de integración con servidor uvicorn real y mock de traducción.
+## No requiere API keys reales — translate_segments se parchea con un mock [MOCK]-prefixed.
+## Uso: make e2e
+## Requiere: pip install -r requirements.txt (o uv sync)
+e2e:
+	@echo "-> e2e Phase 32 — E2E-01..04"
+	@PYTHON="$$([ -f .venv/bin/python ] && echo .venv/bin/python || echo python3)"; \
+	echo "   python: $$PYTHON"; \
+	$$PYTHON -m pytest tests/test_e2e.py -v --tb=short -q 2>&1; \
+	STATUS=$$?; \
+	if [ $$STATUS -eq 0 ]; then \
+	    echo ""; \
+	    echo "e2e OK"; \
+	else \
+	    echo ""; \
+	    echo "e2e FAILED (exit $$STATUS)"; \
+	    exit $$STATUS; \
+	fi
 
 ## Limpiar artefactos de build
 clean:

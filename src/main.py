@@ -53,8 +53,11 @@ logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_DIR = ROOT / "static"
-OUTPUT_DIR = ROOT / "output"
-DATA_DIR = ROOT / "data"
+# E2E-01: OUTPUT_DIR y DATA_DIR son configurables vía variable de entorno para
+# redirigirlos a un directorio temporal en los tests de integración sin tocar
+# el árbol del proyecto.
+OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", str(ROOT / "output")))
+DATA_DIR = Path(os.getenv("DATA_DIR", str(ROOT / "data")))
 OUTPUT_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
 
